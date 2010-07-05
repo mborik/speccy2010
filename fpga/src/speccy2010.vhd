@@ -1501,7 +1501,7 @@ begin
 	VIDEO_B <= videoY when videoMode = 0 else -- ( S-Video 3, 1 --> SCART 20, 17 )
 			"0" & rgbB( 7 downto 1 );      -- ( VGA 3, 8  --> SCART 7, 5 )
 	
-	VIDEO_HSYNC <= palSync; -- VGA 13 --> SCART 20
-	VIDEO_VSYNC <= '1';  -- VGA 14 --> SCART 16
+	VIDEO_HSYNC <= '1'; -- VGA 13 --> SCART 16
+	VIDEO_VSYNC <= palSync;  -- VGA 14 --> SCART 20
 
 end rtl;
