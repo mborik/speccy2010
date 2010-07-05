@@ -1,0 +1,216 @@
+# -------------------------------------------------------------------------- #
+#
+# Copyright (C) 1991-2009 Altera Corporation
+# Your use of Altera Corporation's design tools, logic functions 
+# and other software and tools, and its AMPP partner logic 
+# functions, and any output files from any of the foregoing 
+# (including device programming or simulation files), and any 
+# associated documentation or information are expressly subject 
+# to the terms and conditions of the Altera Program License 
+# Subscription Agreement, Altera MegaCore Function License 
+# Agreement, or other applicable license agreement, including, 
+# without limitation, that your use is for the sole purpose of 
+# programming logic devices manufactured by Altera and sold by 
+# Altera or its authorized distributors.  Please refer to the 
+# applicable agreement for further details.
+#
+# -------------------------------------------------------------------------- #
+#
+# Quartus II
+# Version 9.1 Build 222 10/21/2009 SJ Full Version
+# Date created = 19:36:25  December 15, 2009
+#
+# -------------------------------------------------------------------------- #
+#
+# Notes:
+#
+# 1) The default values for assignments are stored in the file:
+#		speccy2010_assignment_defaults.qdf
+#    If this file doesn't exist, see file:
+#		assignment_defaults.qdf
+#
+# 2) Altera recommends that you do not modify this file. This
+#    file is updated automatically by the Quartus II software
+#    and any changes you make may be lost or overwritten.
+#
+# -------------------------------------------------------------------------- #
+
+
+set_global_assignment -name FAMILY "Cyclone II"
+set_global_assignment -name DEVICE EP2C8Q208C8
+set_global_assignment -name TOP_LEVEL_ENTITY speccy2010_top
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION 9.1
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "19:36:25  DECEMBER 15, 2009"
+set_global_assignment -name LAST_QUARTUS_VERSION 9.1
+set_global_assignment -name USE_GENERATED_PHYSICAL_CONSTRAINTS OFF -section_id eda_blast_fpga
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
+set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_global_assignment -name MISC_FILE "D:/workSvn/speccy2012/trunk/firmware/ep2c8q208/speccy2010.dpf"
+set_global_assignment -name MISC_FILE "D:/workSvn/speccy2010/trunk/firmware/ep2c8q208/speccy2010.dpf"
+set_global_assignment -name CYCLONEII_CONFIGURATION_SCHEME "PASSIVE SERIAL"
+set_global_assignment -name GENERATE_TTF_FILE ON
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS REGULAR IO"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_location_assignment PIN_69 -to ARM_A[16]
+set_location_assignment PIN_70 -to ARM_A[17]
+set_location_assignment PIN_27 -to ARM_A[18]
+set_location_assignment PIN_28 -to ARM_A[19]
+set_location_assignment PIN_31 -to ARM_A[20]
+set_location_assignment PIN_44 -to ARM_A[21]
+set_location_assignment PIN_45 -to ARM_A[22]
+set_location_assignment PIN_46 -to ARM_A[23]
+set_location_assignment PIN_56 -to ARM_ALE
+set_location_assignment PIN_47 -to ARM_RD
+set_location_assignment PIN_48 -to ARM_WR
+set_location_assignment PIN_58 -to ARM_AD[0]
+set_location_assignment PIN_59 -to ARM_AD[1]
+set_location_assignment PIN_60 -to ARM_AD[2]
+set_location_assignment PIN_61 -to ARM_AD[3]
+set_location_assignment PIN_63 -to ARM_AD[8]
+set_location_assignment PIN_64 -to ARM_AD[9]
+set_location_assignment PIN_67 -to ARM_AD[10]
+set_location_assignment PIN_68 -to ARM_AD[11]
+set_location_assignment PIN_72 -to ARM_AD[4]
+set_location_assignment PIN_74 -to ARM_AD[5]
+set_location_assignment PIN_39 -to ARM_AD[15]
+set_location_assignment PIN_37 -to ARM_AD[14]
+set_location_assignment PIN_35 -to ARM_AD[13]
+set_location_assignment PIN_34 -to ARM_AD[12]
+set_location_assignment PIN_33 -to ARM_AD[7]
+set_location_assignment PIN_30 -to ARM_AD[6]
+set_location_assignment PIN_132 -to CLK_20
+set_location_assignment PIN_57 -to ARM_WAIT
+set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id CLK_20
+set_instance_assignment -name CLOCK_SETTINGS CLK_20 -to CLK_20
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
+set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
+set_global_assignment -name INCREMENTAL_COMPILATION OFF
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name MISC_FILE "D:/workSvn/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
+set_location_assignment PIN_152 -to pMemUdq
+set_location_assignment PIN_151 -to pMemClk
+set_location_assignment PIN_150 -to pMemDat[8]
+set_location_assignment PIN_149 -to pMemDat[9]
+set_location_assignment PIN_147 -to pMemDat[10]
+set_location_assignment PIN_146 -to pMemDat[11]
+set_location_assignment PIN_145 -to pMemDat[12]
+set_location_assignment PIN_144 -to pMemDat[13]
+set_location_assignment PIN_143 -to pMemDat[14]
+set_location_assignment PIN_142 -to pMemDat[15]
+set_location_assignment PIN_141 -to pMemDat[0]
+set_location_assignment PIN_139 -to pMemDat[1]
+set_location_assignment PIN_138 -to pMemDat[2]
+set_location_assignment PIN_137 -to pMemDat[3]
+set_location_assignment PIN_135 -to pMemDat[4]
+set_location_assignment PIN_134 -to pMemDat[5]
+set_location_assignment PIN_133 -to pMemDat[6]
+set_location_assignment PIN_128 -to pMemDat[7]
+set_location_assignment PIN_127 -to pMemLdq
+set_location_assignment PIN_118 -to pMemWe_n
+set_location_assignment PIN_115 -to pMemCs_n
+set_location_assignment PIN_116 -to pMemRas_n
+set_location_assignment PIN_117 -to pMemCas_n
+set_location_assignment PIN_114 -to pMemBa0
+set_location_assignment PIN_113 -to pMemBa1
+set_location_assignment PIN_112 -to pMemAdr[10]
+set_location_assignment PIN_110 -to pMemAdr[0]
+set_location_assignment PIN_108 -to pMemAdr[1]
+set_location_assignment PIN_107 -to pMemAdr[2]
+set_location_assignment PIN_106 -to pMemAdr[3]
+set_location_assignment PIN_105 -to pMemAdr[4]
+set_location_assignment PIN_104 -to pMemAdr[5]
+set_location_assignment PIN_103 -to pMemAdr[6]
+set_location_assignment PIN_102 -to pMemAdr[7]
+set_location_assignment PIN_101 -to pMemAdr[8]
+set_location_assignment PIN_99 -to pMemAdr[9]
+set_location_assignment PIN_97 -to pMemAdr[11]
+set_location_assignment PIN_96 -to pMemAdr[12]
+set_location_assignment PIN_95 -to pMemCke
+set_location_assignment PIN_43 -to RESET_n
+set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS OFF
+set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER ON
+set_location_assignment PIN_189 -to VIDEO_B[0]
+set_location_assignment PIN_191 -to VIDEO_B[1]
+set_location_assignment PIN_192 -to VIDEO_B[2]
+set_location_assignment PIN_193 -to VIDEO_B[3]
+set_location_assignment PIN_195 -to VIDEO_B[4]
+set_location_assignment PIN_197 -to VIDEO_B[5]
+set_location_assignment PIN_198 -to VIDEO_B[6]
+set_location_assignment PIN_170 -to VIDEO_G[0]
+set_location_assignment PIN_171 -to VIDEO_G[1]
+set_location_assignment PIN_173 -to VIDEO_G[2]
+set_location_assignment PIN_175 -to VIDEO_G[3]
+set_location_assignment PIN_176 -to VIDEO_G[4]
+set_location_assignment PIN_180 -to VIDEO_G[5]
+set_location_assignment PIN_182 -to VIDEO_G[6]
+set_location_assignment PIN_179 -to VIDEO_HSYNC
+set_location_assignment PIN_181 -to VIDEO_VSYNC
+set_location_assignment PIN_160 -to VIDEO_R[0]
+set_location_assignment PIN_161 -to VIDEO_R[1]
+set_location_assignment PIN_162 -to VIDEO_R[2]
+set_location_assignment PIN_163 -to VIDEO_R[3]
+set_location_assignment PIN_164 -to VIDEO_R[4]
+set_location_assignment PIN_165 -to VIDEO_R[5]
+set_location_assignment PIN_168 -to VIDEO_R[6]
+set_location_assignment PIN_169 -to VIDEO_R[7]
+set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL OFF
+set_location_assignment PIN_13 -to KEYS_CLK
+set_location_assignment PIN_12 -to KEYS_DATA
+set_location_assignment PIN_201 -to SOUND_LEFT[7]
+set_location_assignment PIN_205 -to SOUND_LEFT[6]
+set_location_assignment PIN_207 -to SOUND_LEFT[5]
+set_location_assignment PIN_1 -to SOUND_LEFT[4]
+set_location_assignment PIN_3 -to SOUND_LEFT[3]
+set_location_assignment PIN_5 -to SOUND_LEFT[2]
+set_location_assignment PIN_8 -to SOUND_LEFT[1]
+set_location_assignment PIN_11 -to SOUND_LEFT[0]
+set_location_assignment PIN_200 -to SOUND_RIGHT[7]
+set_location_assignment PIN_10 -to SOUND_RIGHT[0]
+set_location_assignment PIN_6 -to SOUND_RIGHT[1]
+set_location_assignment PIN_4 -to SOUND_RIGHT[2]
+set_location_assignment PIN_2 -to SOUND_RIGHT[3]
+set_location_assignment PIN_187 -to VIDEO_G[7]
+set_location_assignment PIN_199 -to VIDEO_B[7]
+set_location_assignment PIN_208 -to SOUND_RIGHT[4]
+set_location_assignment PIN_206 -to SOUND_RIGHT[5]
+set_location_assignment PIN_203 -to SOUND_RIGHT[6]
+set_location_assignment PIN_84 -to JOY0_SEL
+set_location_assignment PIN_86 -to JOY1_SEL
+set_location_assignment PIN_87 -to JOY1[0]
+set_location_assignment PIN_88 -to JOY1[1]
+set_location_assignment PIN_89 -to JOY1[2]
+set_location_assignment PIN_80 -to JOY0[3]
+set_location_assignment PIN_92 -to JOY1[4]
+set_location_assignment PIN_94 -to JOY1[5]
+set_location_assignment PIN_90 -to JOY1[3]
+set_location_assignment PIN_75 -to JOY0[0]
+set_location_assignment PIN_76 -to JOY0[1]
+set_location_assignment PIN_77 -to JOY0[2]
+set_location_assignment PIN_81 -to JOY0[4]
+set_location_assignment PIN_82 -to JOY0[5]
+set_location_assignment PIN_14 -to MOUSE_DATA
+set_location_assignment PIN_15 -to MOUSE_CLK
+set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2fifo.vhd
+set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2.vhd
+set_global_assignment -name VHDL_FILE src/peripheral/ps2/fifo.vhd
+set_global_assignment -name VHDL_FILE src/peripheral/memory/sdram.vhd
+set_global_assignment -name VHDL_FILE src/cpu/T80a.vhd
+set_global_assignment -name VHDL_FILE src/peripheral/sound/vol_table_array.vhd
+set_global_assignment -name VHDL_FILE src/peripheral/sound/YM2149_volmix.vhd
+set_global_assignment -name VHDL_FILE src/cpu/T80.vhd
+set_global_assignment -name VHDL_FILE src/cpu/T80_ALU.vhd
+set_global_assignment -name VHDL_FILE src/cpu/T80_MCode.vhd
+set_global_assignment -name VHDL_FILE src/cpu/T80_Pack.vhd
+set_global_assignment -name VHDL_FILE src/cpu/T80_Reg.vhd
+set_global_assignment -name VHDL_FILE src/peripheral/video/sinus.vhd
+set_global_assignment -name VHDL_FILE src/peripheral/video/fir.vhd
+set_global_assignment -name VHDL_FILE src/peripheral/video/vencode.vhd
+set_global_assignment -name VHDL_FILE src/speccy2010.vhd
+set_global_assignment -name QIP_FILE src/peripheral/pll/pll.qip

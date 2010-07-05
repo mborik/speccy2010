@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="speccy2010" />
+		<Option pch_mode="2" />
+		<Option compiler="armelfgcc" />
+		<Build>
+			<Target title="Release">
+				<Option output="_release\speccy2010.elf" prefix_auto="0" extension_auto="0" />
+				<Option object_output="_release\obj" />
+				<Option type="1" />
+				<Option compiler="armelfgcc" />
+				<Compiler>
+					<Add option="-mthumb" />
+					<Add option="-mthumb-interwork" />
+					<Add option="-Os" />
+				</Compiler>
+				<Linker>
+					<Add option="-Wl,-Map=_release/speccy2010.map" />
+					<Add option="-mthumb" />
+					<Add option="-mthumb-interwork" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="objcopy.exe -O ihex _release/speccy2010.elf _release/speccy2010.hex" />
+					<Add after="hex2bin _release/speccy2010.hex" />
+				</ExtraCommands>
+			</Target>
+			<Target title="Debug">
+				<Option output="_debug\speccy2010.elf" prefix_auto="0" extension_auto="0" />
+				<Option object_output="_debug\obj" />
+				<Option type="1" />
+				<Option compiler="armelfgcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add option="-Wl,-Map=_debug/speccy2010.map" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="objcopy.exe -O ihex _debug/speccy2010.elf _debug/speccy2010.hex" />
+					<Add after="hex2bin _debug/speccy2010.hex" />
+				</ExtraCommands>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Os" />
+			<Add option="-Wall" />
+			<Add option="-mcpu=arm7tdmi" />
+			<Add option="-ffunction-sections" />
+			<Add option="-fdata-sections" />
+			<Add option="-fno-strict-aliasing" />
+			<Add option="-fno-exceptions" />
+			<Add directory="libstr\inc" />
+		</Compiler>
+		<Linker>
+			<Add option="-Tsystem/STR75xFx2_FLASH.ld" />
+			<Add option="-Wl,--gc-sections" />
+			<Add option="-fno-exceptions" />
+		</Linker>
+		<Unit filename="75x_it.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\bdi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\bdi.h" />
+		<Unit filename="betadisk\dskdebug.h" />
+		<Unit filename="betadisk\fdc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\fdc.h" />
+		<Unit filename="betadisk\floppy.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\floppy.h" />
+		<Unit filename="betadisk\flpimg.h" />
+		<Unit filename="betadisk\img_fdi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\img_odi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\img_scl.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\img_trd.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\stdinc.h" />
+		<Unit filename="betadisk\sysinc.h" />
+		<Unit filename="betadisk\trace.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\types.h" />
+		<Unit filename="betadisk\wd1793.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="betadisk\wd1793.h" />
+		<Unit filename="crc16.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="crc16.h" />
+		<Unit filename="fatfs\diskio.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="fatfs\diskio.h" />
+		<Unit filename="fatfs\ff.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="fatfs\ff.h" />
+		<Unit filename="fatfs\ffconf.h" />
+		<Unit filename="fatfs\integer.h" />
+		<Unit filename="fatfs\option\ccsbcs.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="fifo.cpp" />
+		<Unit filename="fifo.h" />
+		<Unit filename="libnosys\chown.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\close.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\execve.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\exit.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\fork.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\fstat.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\getpid.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\gettod.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\isatty.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\kill.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\link.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\lseek.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\open.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\read.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\readlink.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\sbrk.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\stat.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\symlink.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\times.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\unlink.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\wait.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\write.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_adc.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_can.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_cfg.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_conf.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_dma.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_eic.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_extit.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_gpio.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_i2c.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_lib.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_map.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_mrcc.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_pwm.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_rtc.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_smi.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_ssp.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_tb.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_tim.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_type.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_uart.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_wdg.h">
+			<Option target="&lt;{~None~}&gt;" />
+		</Unit>
+		<Unit filename="libstr\src\75x_adc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_can.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_cfg.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_dma.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_eic.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_extit.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_gpio.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_i2c.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_lib.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_mrcc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_pwm.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_rtc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_smi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_ssp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_tb.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_tim.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_uart.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_wdg.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="main.cpp" />
+		<Unit filename="ps2port.cpp" />
+		<Unit filename="ps2port.h" />
+		<Unit filename="ps2scancodes.h" />
+		<Unit filename="ramFile.cpp" />
+		<Unit filename="ramFile.h" />
+		<Unit filename="settings.cpp" />
+		<Unit filename="settings.h" />
+		<Unit filename="specBetadisk.cpp" />
+		<Unit filename="specBetadisk.h" />
+		<Unit filename="specChars.cpp" />
+		<Unit filename="specChars.h" />
+		<Unit filename="specConfig.cpp" />
+		<Unit filename="specConfig.h" />
+		<Unit filename="specKeyMap.cpp" />
+		<Unit filename="specKeyMap.h" />
+		<Unit filename="specKeyboard.cpp" />
+		<Unit filename="specKeyboard.h" />
+		<Unit filename="specLoader.h" />
+		<Unit filename="specShell.cpp" />
+		<Unit filename="specShell.h" />
+		<Unit filename="specSnapshot.cpp" />
+		<Unit filename="specSnapshot.h" />
+		<Unit filename="specTape.cpp" />
+		<Unit filename="specTape.h" />
+		<Unit filename="string.cpp" />
+		<Unit filename="string.h" />
+		<Unit filename="system.h" />
+		<Unit filename="system\STR75xFx2_DEF.ld" />
+		<Unit filename="system\STR75xFx2_FLASH.ld" />
+		<Unit filename="system\STR75x_COMMON.ld" />
+		<Unit filename="system\sections_FLASH.ld" />
+		<Unit filename="system\str750_crt0.s" />
+		<Unit filename="types.h" />
+		<Unit filename="uarts.cpp" />
+		<Unit filename="uarts.h" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
