@@ -22,7 +22,7 @@
 					<Add option="-mthumb-interwork" />
 				</Linker>
 				<ExtraCommands>
-					<Add after="objcopy.exe -O ihex _release/speccy2010.elf _release/speccy2010.hex" />
+					<Add after="arm-none-eabi-objcopy.exe -O ihex _release/speccy2010.elf _release/speccy2010.hex" />
 					<Add after="hex2bin _release/speccy2010.hex" />
 				</ExtraCommands>
 			</Target>
