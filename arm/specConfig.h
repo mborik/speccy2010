@@ -25,6 +25,7 @@ struct CSpecConfig
 	int specJoyModeEmulation;
 	int specJoyMode1;
 	int specJoyMode2;
+	int specMouseSensitivity;
 };
 
 extern CSpecConfig specConfig;

@@ -715,6 +715,8 @@ dword tickCounter = 0;
 
 int kbdInited = 0;
 const int KBD_OK = 2;
+int mouseInited = 0;
+const int MOUSE_OK = 4;
 
 CFifo keyboard( 0x10 );
 CFifo joystick( 0x10 );
@@ -793,9 +795,76 @@ void Timer_Routine()
             word mouseCode = SystemBus_Read( 0xc00033 );
             while( ( mouseCode & 0x8000 ) != 0 )
             {
-                char str[ 0x20 ];
-                sniprintf( str, sizeof(str), "mouse - 0x%.2x\n", (byte) mouseCode );
-                UART0_WriteText( str );
+                mouseCode &= 0xff;
+
+                //char str[ 0x20 ];
+                //sniprintf( str, sizeof(str), "mouse - 0x%.2x\n", mouseCode );
+                //UART0_WriteText( str );
+
+                if( mouseInited == 0 && mouseCode == 0xfa ) mouseInited++;
+                else if( mouseInited == 1 && mouseCode == 0xaa ) mouseInited++;
+                else if( mouseInited == 2 && mouseCode == 0x00 )
+                {
+                    mouseInited++;
+                    SystemBus_Write( 0xc00033, 0xf4 );
+                }
+                else if( mouseInited == 3 && mouseCode == 0xfa ) mouseInited++;
+                else
+                {
+                    static byte mouseBuff[4];
+                    static byte mouseBuffPos = 0;
+                    static dword x = 0;
+                    static dword y = 0;
+
+                    mouseBuff[ mouseBuffPos++ ] = mouseCode;
+
+                    if( mouseBuffPos >= 3 )
+                    {
+                        int dx, dy;
+
+                        if( ( mouseBuff[0] & ( 1 << 6 ) ) == 0 )
+                        {
+                            if( ( mouseBuff[0] & ( 1 << 4 ) ) == 0 ) dx = mouseBuff[ 1 ];
+                            else dx = mouseBuff[ 1 ] - 256;
+                        }
+                        else
+                        {
+                            if( ( mouseBuff[0] & ( 1 << 4 ) ) == 0 ) dx = 256;
+                            else dx = -256;
+                        }
+
+                        if( ( mouseBuff[0] & ( 1 << 7 ) ) == 0 )
+                        {
+                            if( ( mouseBuff[0] & ( 1 << 5 ) ) == 0 ) dy = mouseBuff[ 2 ];
+                            else dy = mouseBuff[ 2 ] - 256;
+                        }
+                        else
+                        {
+                            if( ( mouseBuff[0] & ( 1 << 5 ) ) == 0 ) dy = 256;
+                            else dy = -256;
+                        }
+
+                        x += dx;
+                        y += dy;
+
+                        byte buttons = 0xff;
+                        if( ( mouseBuff[0] & ( 1 << 0 ) ) != 0 ) buttons ^= ( 1 << 1 );
+                        if( ( mouseBuff[0] & ( 1 << 1 ) ) != 0 ) buttons ^= ( 1 << 0 );
+                        if( ( mouseBuff[0] & ( 1 << 2 ) ) != 0 ) buttons ^= ( 1 << 2 );
+
+                        byte sx = x >> (byte)( ( 6 - specConfig.specMouseSensitivity ) );
+                        byte sy = y >> (byte)( ( 6 - specConfig.specMouseSensitivity ) );
+
+                        SystemBus_Write( 0xc0001e, sx | ( sy << 8 ) );
+                        SystemBus_Write( 0xc0001f, buttons );
+
+                        mouseBuffPos = 0;
+
+                        //char str[ 0x20 ];
+                        //sniprintf( str, sizeof(str), "mouse x - 0x%.2x, y - 0x%.2x\n", sx, sy );
+                        //UART0_WriteText( str );
+                    }
+                }
 
                 mouseCode = SystemBus_Read( 0xc00033 );
             }
@@ -841,6 +910,11 @@ void Timer_Routine()
             if( kbdInited != KBD_OK )
             {
                 SystemBus_Write( 0xc00032, 0xff );
+            }
+
+            if( mouseInited != MOUSE_OK )
+            {
+                SystemBus_Write( 0xc00033, 0xff );
             }
 
             //static word fpgaTimer = 0;

@@ -159,6 +159,9 @@ architecture rtl of speccy2010_top is
 	signal tapeIn 		: std_logic;
 	signal keyboard		: std_logic_vector(39 downto 0) := "1111111111111111111111111111111111111111";
 	signal joystick		: std_logic_vector(7 downto 0) := x"00";
+	signal mouseX		: std_logic_vector(7 downto 0) := x"00";
+	signal mouseY		: std_logic_vector(7 downto 0) := x"00";
+	signal mouseButtons	: std_logic_vector(7 downto 0) := x"00";
 	signal sound 		: std_logic_vector(15 downto 0) := x"0000";
 	
 	signal soundLeft	: std_logic_vector(15 downto 0) := x"0000";
@@ -776,8 +779,10 @@ begin
 			------------------------------------------------------------------------
 			
 			keysRd <= '0';
-			keysWr <= '0';
-        
+			keysWr <= '0';			        
+			mouseRd <= '0';
+			mouseWr <= '0';
+			
 			if ( ArmAle = "10" ) then
 				addressReg := unsigned( ARM_A ) & unsigned( ARM_AD );
 			end if;
@@ -846,8 +851,14 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"1b" then
 							cpuDin <= ARM_AD(7 downto 0);
 						elsif addressReg( 7 downto 0 ) = x"1d" then							
-							specTrdosStat <= ARM_AD(7 downto 0);
+							specTrdosStat <= ARM_AD( 7 downto 0 );
 						
+						elsif addressReg( 7 downto 0 ) = x"1e" then							
+							mouseX <= ARM_AD( 7 downto 0 );
+							mouseY <= ARM_AD( 15 downto 8 );
+						elsif addressReg( 7 downto 0 ) = x"1f" then							
+							mouseButtons <= ARM_AD( 7 downto 0 );
+
 						elsif addressReg( 7 downto 0 ) = x"20" then
 							activeBank <= unsigned( ARM_AD( 1 downto 0 ) );
 						elsif addressReg( 7 downto 0 ) = x"21" then
@@ -1077,6 +1088,12 @@ begin
 							cpuDin <= "0" & tapeIn & "0" & kbdTmp;
 						elsif cpuA( 7 downto 0 ) = x"1F" then
 							cpuDin <= joystick;
+						elsif cpuA( 15 downto 0 ) = x"FADF" then
+							cpuDin <= mouseButtons;
+						elsif cpuA( 15 downto 0 ) = x"FBDF" then
+							cpuDin <= mouseX;
+						elsif cpuA( 15 downto 0 ) = x"FFDF" then
+							cpuDin <= mouseY;
 						--elsif cpuA = x"7ffd" then
 							--cpuDin <= specPort7ffd;
 						else

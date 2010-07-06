@@ -17,6 +17,7 @@ const CParameter *GetIniParameters()
         CParameter( PTYPE_LIST, "Joystick emulation", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyModeEmulation ),
         CParameter( PTYPE_LIST, "Joystick 1", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode1 ),
         CParameter( PTYPE_LIST, "Joystick 2", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode2 ),
+        CParameter( PTYPE_INT, "Mouse Sensitivity", "1|6|1", &specConfig.specMouseSensitivity ),
         CParameter( PTYPE_END )
     };
 
@@ -28,6 +29,7 @@ void RestreConfig()
 {
     specConfig.specVideoMode = 0;
     specConfig.specVideoSubcarrierDelta = 885662;
+    specConfig.specMouseSensitivity = 4;
 
     CSettingsFile file( "speccy2010.ini" );
 

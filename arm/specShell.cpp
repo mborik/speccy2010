@@ -890,15 +890,16 @@ CMenuItem mainMenu[] = {
 
     CMenuItem( 1, 6, "ROM/RAM: ", GetParam( iniParameters, "ROM/RAM" ) ),
     CMenuItem( 1, 7, "Timings: ", GetParam( iniParameters, "Timings" ) ),
-    CMenuItem( 1, 8, "AY mode: ", GetParam( iniParameters, "AY mode" ) ),
-    CMenuItem( 1, 9, "Turbo: ", GetParam( iniParameters, "Turbo" ) ),
+    CMenuItem( 1, 8, "Turbo: ", GetParam( iniParameters, "Turbo" ) ),
+    CMenuItem( 1, 9, "AY mode: ", GetParam( iniParameters, "AY mode" ) ),
 
     CMenuItem( 1, 10, "Joystick emulation: ", GetParam( iniParameters, "Joystick emulation" ) ),
     CMenuItem( 1, 11, "Joystick 1: ", GetParam( iniParameters, "Joystick 1" ) ),
     CMenuItem( 1, 12, "Joystick 2: ", GetParam( iniParameters, "Joystick 2" ) ),
+    CMenuItem( 1, 13, "Mouse Sensitivity: ", GetParam( iniParameters, "Mouse Sensitivity" ) ),
 
-    CMenuItem( 1, 14, "Video mode: ", GetParam( iniParameters, "Video mode" ) ),
-    CMenuItem( 1, 15, "Audio DAC mode: ", GetParam( iniParameters, "Audio DAC mode" ) ),
+    CMenuItem( 1, 15, "Video mode: ", GetParam( iniParameters, "Video mode" ) ),
+    CMenuItem( 1, 16, "Audio DAC mode: ", GetParam( iniParameters, "Audio DAC mode" ) ),
 };
 
 const int mainMenuSize = sizeof( mainMenu ) / sizeof( CMenuItem );
@@ -962,6 +963,22 @@ bool Shell_SettingsMenu()
                     SetTime( &time );
                     tickCounter = 0;
                 }
+                else
+                {
+                    const CParameter *param = mainMenu[ menuPos ].GetParam();
+                    if( param != 0 )
+                    {
+                        if( param->GetType() == PTYPE_INT )
+                        {
+                            int value = param->GetValue() + delta;
+                            if( value < param->GetValueMin() ) value = param->GetValueMin();
+                            if( value > param->GetValueMax() ) value = param->GetValueMax();
+                            param->SetValue( value );
+
+                            mainMenu[ menuPos ].UpdateData();
+                        }
+                    }
+                }
             }
         }
         if ( key == 0x0d )
@@ -973,13 +990,23 @@ bool Shell_SettingsMenu()
                 if( editMode ) mainMenu[ menuPos ].UpdateState( 2 );
                 else mainMenu[ menuPos ].UpdateState( 1 );
             }
-            else if( menuPos >= 6 && menuPos <= 14 )
+            else if( menuPos >= 6 && menuPos <= 15 )
             {
                 const CParameter *param = mainMenu[ menuPos ].GetParam();
                 if( param != 0 )
                 {
-                    param->SetValue( ( param->GetValue() + 1 ) % ( param->GetValueMax() + 1 ) );
-                    mainMenu[ menuPos ].UpdateData();
+                    if( param->GetType() == PTYPE_LIST )
+                    {
+                        param->SetValue( ( param->GetValue() + 1 ) % ( param->GetValueMax() + 1 ) );
+                        mainMenu[ menuPos ].UpdateData();
+                    }
+                    else if( param->GetType() == PTYPE_INT )
+                    {
+                        editMode = !editMode;
+
+                        if( editMode ) mainMenu[ menuPos ].UpdateState( 2 );
+                        else mainMenu[ menuPos ].UpdateState( 1 );
+                    }
                 }
             }
         }
@@ -1032,8 +1059,9 @@ void Shell_Enter()
     {
         if( pos == 0 ) result = Shell_Browser();
         else if( pos == 1 ) result = Shell_SettingsMenu();
+        else if( pos == 2 ) break;
 
-        pos = ( pos + 1 ) % 2;
+        pos = ( pos + 1 ) % 3;
     }
 
     SystemBus_Write( 0xc00021, 0 );            // Enable Video
