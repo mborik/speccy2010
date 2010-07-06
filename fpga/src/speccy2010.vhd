@@ -25,9 +25,9 @@ entity speccy2010_top is
 		ARM_WAIT		: out std_logic := '0';
 		
 		JOY0			: in std_logic_vector(5 downto 0);
-		JOY0_SEL  		: out std_logic := '1';
+		JOY0_SEL  		: out std_logic := '0';
 		JOY1			: in std_logic_vector(5 downto 0);
-		JOY1_SEL  		: out std_logic := '1';
+		JOY1_SEL  		: out std_logic := '0';
 		
 		KEYS_CLK		: inout std_logic := 'Z';
 		KEYS_DATA		: inout std_logic := 'Z';

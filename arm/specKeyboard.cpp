@@ -187,8 +187,8 @@ void DecodeKey( word keyCode, word keyFlags )
 
     int joyMode = specConfig.specJoyModeEmulation;
 
-    if( ( keyCode & fKeyJoy1 ) != 0 ) joyMode = specConfig.specJoyMode1;
-    else if( ( keyCode & fKeyJoy2 ) != 0 ) joyMode = specConfig.specJoyMode2;
+    if( ( keyFlags & fKeyJoy1 ) != 0 ) joyMode = specConfig.specJoyMode1;
+    else if( ( keyFlags & fKeyJoy2 ) != 0 ) joyMode = specConfig.specJoyMode2;
 
     switch( joyMode )
     {

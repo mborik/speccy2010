@@ -772,6 +772,13 @@ void Timer_Routine()
             static dword joyCodePrev = 0;
             dword joyCode = SystemBus_Read( 0xc00030 ) | ( SystemBus_Read( 0xc00031 ) << 16 );
 
+            //if( joyCode != 0 )
+            //{
+                //char str[ 0x20 ];
+                //sniprintf( str, sizeof(str), "joyCode - 0x%.8x\n", joyCode );
+                //UART0_WriteText( str );
+            //}
+
             dword bit = 1;
             for( byte i = 0; i < 32; i++, bit <<= 1 )
             {
@@ -1145,11 +1152,15 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
     {
         byte joyCode = joystick.ReadByte();
 
+        //char str[ 0x20 ];
+        //sniprintf( str, sizeof(str), "joyCode - 0x%.2x\n", joyCode );
+        //UART0_WriteText( str );
+
         word keyCode = KEY_NONE;
         word keyFlags2 = 0;
 
-        if( joyCode & 0x80 ) keyFlags2 = fKeyRelease;
-        joyCode &= 0x80;
+        if( ( joyCode & 0x80 )  ) keyFlags2 = fKeyRelease;
+        joyCode &= 0x7f;
 
         if( joyCode < 16 ) keyFlags2 |= fKeyJoy1;
         else keyFlags2 |= fKeyJoy2;
@@ -1161,7 +1172,8 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
             case 1: keyCode = KEY_DOWN; break;
             case 2: keyCode = KEY_LEFT; break;
             case 3: keyCode = KEY_RIGHT; break;
-            case 4: keyCode = KEY_LCTRL; break;
+            case 4: keyCode = KEY_F12; break;
+            case 5: keyCode = KEY_LCTRL; break;
         }
 
         if( keyCode != KEY_NONE )
@@ -1291,6 +1303,7 @@ int main()
 
         //------------------------------------------------------------------------------
 
+        /*
         static bool traceMode = false;
 
         if( traceMode )
@@ -1310,88 +1323,14 @@ int main()
             }
 
             pcPrev = pc;
-        }
+        }*/
 
         if( uart0.GetRxCntr() > 0  )
         {
-            byte b = uart0.ReadByte();
+            uart0.ReadByte();
 
-            char str[ 0x40 ];
-            static dword carrierDelta = 885662;
-
-            //static word pcBp = 0;
-            //if( b >= '0' && b <= '9' ) pcBp = pcBp * 16 + ( b - '0' );
-            //if( b >= 'a' && b <= 'f' ) pcBp = pcBp * 16 + ( b - 'a' + 10 );
-
-            if( b == 'q' )
-            {
-                carrierDelta += 1;
-                SystemBus_Write( 0xc00040, carrierDelta & 0xffff );
-                SystemBus_Write( 0xc00041, carrierDelta >> 16 );
-                sniprintf( str, sizeof(str), "carrierDelta - %d\n", carrierDelta );
-                UART0_WriteText( str );
-            }
-            else if( b == 'w' )
-            {
-                carrierDelta += 16;
-                SystemBus_Write( 0xc00040, carrierDelta & 0xffff );
-                SystemBus_Write( 0xc00041, carrierDelta >> 16 );
-                sniprintf( str, sizeof(str), "carrierDelta - %d\n", carrierDelta );
-                UART0_WriteText( str );
-            }
-            else if( b == 'a' )
-            {
-                carrierDelta -= 1;
-                SystemBus_Write( 0xc00040, carrierDelta & 0xffff );
-                SystemBus_Write( 0xc00041, carrierDelta >> 16 );
-                sniprintf( str, sizeof(str), "carrierDelta - %d\n", carrierDelta );
-                UART0_WriteText( str );
-            }
-            else if( b == 's' )
-            {
-                carrierDelta -= 16;
-                SystemBus_Write( 0xc00040, carrierDelta & 0xffff );
-                SystemBus_Write( 0xc00041, carrierDelta >> 16 );
-                sniprintf( str, sizeof(str), "carrierDelta - %d\n", carrierDelta );
-                UART0_WriteText( str );
-            }
-            else if( b == 'e' )
-            {
-                kbdInited = 0;
-            }
-            else if( b == 'r' )
-            {
-                RFIL rf;
-                int result = rf_open( &rf, "fifo.cpp", FA_READ );
-
-                sniprintf( str, sizeof(str), "result - %d\n", result );
-                UART0_WriteText( str );
-
-                if( result == 0 )
-                {
-                    while( true )
-                    {
-                        WDT_Kick();
-
-                        byte b[0x10];
-                        dword res;
-                        rf_read( &rf, b, 0x10, &res );
-
-                        if( res == 0 ) break;
-                        uart0.WriteFile( b, res );
-                    }
-                    rf_close( &rf );
-                }
-            }
-            else if( b == 'o' )
-            {
-                SystemBus_Write( 0xc00032, 0xed );
-            }
-            else if( b == 'p' )
-            {
-                SystemBus_Write( 0xc00032, 0x07 );
-            }
-            else if( b == 'z' )
+            /*
+            if( b == 'z' )
             {
                 CPU_Stop();
                 sniprintf( str, sizeof(str), "PC = 0x%x\n", SystemBus_Read( 0xc00001 ) );
@@ -1423,90 +1362,6 @@ int main()
             else if( b == 't' )
             {
                 TestStack();
-            }
-
-
-            /*
-            else
-            if( b == 'f' )
-            {
-                while( true );
-            }
-            else if( b == 'c' )
-            {
-                word c1 = SystemBus_Read( 0xc00000 );
-                word c2 = SystemBus_Read( 0xc00001 );
-
-                sniprintf( str, sizeof(str), "c1 - 0x%.4x\n", c1 );
-                UART0_WriteText( str );
-                sniprintf( str, sizeof(str), "c2 - 0x%.4x\n", c2 );
-                UART0_WriteText( str );
-            }
-            else if ( b == 't' )
-            {
-                int counter = 0;
-
-                bool result = true;
-                dword address;
-                word data;
-
-                SystemBus_SetAddress( 0 );
-                data = 0xa36d;
-
-                for( address = 0; address < 0x1000000; address++ )
-                {
-                    SystemBus_Write( data );
-                    data = data ^ ( data << 3 ) ^ ( data >> 3 );
-
-                    if( timer_flag_1Hz > 0 )
-                    {
-                        sniprintf( str, sizeof(str), "tick - %d ( address - 0x%.8x )\n", counter, address );
-                        UART0_WriteText( str );
-
-                        counter++;
-                        timer_flag_1Hz--;
-                    }
-                }
-
-                UART0_WriteText( "Write OK\n" );
-
-                SystemBus_SetAddress( 0 );
-                data = 0xa36d;
-
-                for( address = 0; address < 0x1000000; address++ )
-                {
-                    if( SystemBus_Read() != data )
-                    {
-                        sniprintf( str, sizeof(str), "Error at - 0x%.8x : 0x%.4x - 0x%.4x\n", address, data, SystemBus_Read() );
-                        UART0_WriteText( str );
-                    }
-
-                    data = data ^ ( data << 3 ) ^ ( data >> 3 );
-
-                    if( timer_flag_1Hz > 0 )
-                    {
-                        sniprintf( str, sizeof(str), "tick - %d ( address - 0x%.8x )\n", counter, address );
-                        UART0_WriteText( str );
-
-                        counter++;
-                        timer_flag_1Hz--;
-                    }
-                }
-
-                if( result ) UART0_WriteText( "Read OK\n" );
-                else UART0_WriteText( "Read Error\n" );
-            }
-            else */
-            /*
-            if ( b == 's' )
-            {
-                traceMode = !traceMode;
-
-                SystemBus_Write( 0xc00008, pcBp );
-                pcBp = 0;
-
-                //if( traceMode ) SystemBus_Write( 0xc00005, 1 );
-                //else SystemBus_Write( 0xc00005, 0 );
             }*/
         }
     }
