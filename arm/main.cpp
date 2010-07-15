@@ -349,6 +349,26 @@ bool WriteLine( FIL *file, const char *str )
 dword fpgaConfigVersionPrev = 0;
 dword romConfigPrev = -1;
 
+void FPGA_TestClock()
+{
+    if( fpgaConfigVersionPrev == 0 ) return;
+
+    SystemBus_Write( 0xc00050, 0 );
+    SystemBus_Write( 0xc00050, 1 );
+    DelayMs( 100 );
+    SystemBus_Write( 0xc00050, 0 );
+
+    dword counter20 = SystemBus_Read( 0xc00050 ) | ( SystemBus_Read( 0xc00051 ) << 16 );
+    dword counterMem = SystemBus_Read( 0xc00052 ) | ( SystemBus_Read( 0xc00053 ) << 16 );
+
+    char str[ 0x20 ];
+    sniprintf( str, sizeof(str), "FPGA clock - %d.%.5d MHz\n", counter20 / 100000, counter20 % 100000 );
+    UART0_WriteText( str );
+
+    sniprintf( str, sizeof(str), "FPGA PLL clock - %d.%.5d MHz\n", counterMem / 100000, counterMem % 100000 );
+    UART0_WriteText( str );
+}
+
 void FPGA_Config()
 {
     if( ( disk_status(0) & STA_NOINIT ) != 0 )
@@ -476,6 +496,7 @@ void FPGA_Config()
     }
 
     romConfigPrev = -1;
+    FPGA_TestClock();
 
     WDT_Kick();
     timer_flag_1Hz = 0;

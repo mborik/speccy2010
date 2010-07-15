@@ -66,7 +66,10 @@ architecture rtl of speccy2010_top is
 	signal clk7m : std_logic;
 	signal clk35m : std_logic;
 
-    signal counter : unsigned(31 downto 0) := x"00000000";    
+    signal counter20 : unsigned(31 downto 0) := x"00000000";    
+    signal counterMem : unsigned(31 downto 0) := x"00000000";    
+    signal counter20_en : std_logic := '0';    
+    signal counterMem_en : std_logic := '0';
 
     signal cpuHaltReq : std_logic := '0';
     signal cpuHaltAck : std_logic := '0';
@@ -575,18 +578,50 @@ begin
 			ps2_clk_io => MOUSE_CLK,
 			ps2_data_io => MOUSE_DATA
 		);
+
+	process( CLK_20 )
+		
+		variable counter20_en_prev : std_logic := '0';
+		
+	begin
+	
+		if CLK_20'event and CLK_20 = '1' then
 			
+			if counter20_en = '1' then
+				if counter20_en_prev = '0' then
+					counter20 <= x"00000000";
+				else
+					counter20 <= counter20 + 1;
+				end if;
+			end if;
+			
+			counter20_en_prev := counter20_en;
+			
+		end if;
+		
+	end process;
 				
     process( memclk )
     
 		variable divCounter28 : unsigned(7 downto 0) := x"00";
 		variable mulCounter28 : unsigned(7 downto 0) := x"00";
 		
+		variable counterMem_en_prev : std_logic := '0';
+		
     begin
     
         if memclk'event and memclk = '1' then
 		
-			counter <= counter + 1;
+			if counterMem_en = '1' then
+				if counterMem_en_prev = '0' then
+					counterMem <= x"00000000";
+				else
+					counterMem <= counterMem + 1;
+				end if;
+			end if;
+			
+			counterMem_en_prev := counterMem_en;
+			
 			divCounter28 := divCounter28 + 28;
 			
 			clk28m <= '0';
@@ -889,6 +924,10 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"47" then
 							ayMode <= unsigned( ARM_AD );
 
+						elsif addressReg( 7 downto 0 ) = x"50" then
+							counter20_en <= ARM_AD(0);
+							counterMem_en <= ARM_AD(0);
+							
 						end if;
 						
 					end if;
@@ -957,9 +996,14 @@ begin
 							end if;
 							
 						elsif addressReg( 7 downto 0 ) = x"50" then
-							ARM_AD <= std_logic_vector( counter( 15 downto 0 ) );
+							ARM_AD <= std_logic_vector( counter20( 15 downto 0 ) );
 						elsif addressReg( 7 downto 0 ) = x"51" then
-							ARM_AD <= std_logic_vector( counter( 31 downto 16 ) );
+							ARM_AD <= std_logic_vector( counter20( 31 downto 16 ) );
+						elsif addressReg( 7 downto 0 ) = x"52" then
+							ARM_AD <= std_logic_vector( counterMem( 15 downto 0 ) );
+						elsif addressReg( 7 downto 0 ) = x"53" then
+							ARM_AD <= std_logic_vector( counterMem( 31 downto 16 ) );
+							
 						else
 							ARM_AD <= x"ffff";
 							
