@@ -131,7 +131,7 @@ bool fdc_open_image( int drv, const char *img_file )
 {
     if( floppy_open( drv, img_file ) != FLPO_ERR_OK ) return false;
 
-    int wp = 1;
+    int wp = 0;
     floppy_disk_wp( drv, &wp );
 
 	return true;

@@ -353,6 +353,8 @@ void FPGA_TestClock()
 {
     if( fpgaConfigVersionPrev == 0 ) return;
 
+    CPU_Stop();
+
     SystemBus_Write( 0xc00050, 0 );
     SystemBus_Write( 0xc00050, 1 );
     DelayMs( 100 );
@@ -367,6 +369,8 @@ void FPGA_TestClock()
 
     sniprintf( str, sizeof(str), "FPGA PLL clock - %d.%.5d MHz\n", counterMem / 100000, counterMem % 100000 );
     UART0_WriteText( str );
+
+    CPU_Start();
 }
 
 void FPGA_Config()
@@ -1193,7 +1197,8 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
             case 1: keyCode = KEY_DOWN; break;
             case 2: keyCode = KEY_LEFT; break;
             case 3: keyCode = KEY_RIGHT; break;
-            case 4: keyCode = KEY_F12; break;
+
+            case 4: keyCode = KEY_LCTRL; break;
             case 5: keyCode = KEY_LCTRL; break;
         }
 
