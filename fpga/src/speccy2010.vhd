@@ -424,6 +424,8 @@ architecture rtl of speccy2010_top is
 			wr_i		: in  std_logic;
 			
 			out_ready_o : out std_logic;
+			out_full_o	: out std_logic;		
+
 			in_full_o   : out std_logic;
 
 			ps2_clk_io  : inout std_logic;   -- PS2 Clock line
@@ -555,7 +557,9 @@ begin
 			wr_i => keysWr,
 			
 			out_ready_o => keysReady,
-			in_full_o => keysFull,
+			out_full_o => keysFull,
+			
+			in_full_o => open,
 
 			ps2_clk_io => KEYS_CLK,
 			ps2_data_io => KEYS_DATA
@@ -573,7 +577,9 @@ begin
 			wr_i => mouseWr,
 			
 			out_ready_o => mouseReady,
-			in_full_o => mouseFull,
+			out_full_o => mouseFull,
+			
+			in_full_o => open,
 
 			ps2_clk_io => MOUSE_CLK,
 			ps2_data_io => MOUSE_DATA
@@ -983,15 +989,13 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"31" then
 							ARM_AD <= joyCode1;
 						elsif addressReg( 7 downto 0 ) = x"32" then
-							ARM_AD <= x"0000";														
+							ARM_AD <= keysReady & keysFull & "000000" & keysDataOut;
 							if keysReady = '1' then
-								ARM_AD <= x"80" & keysDataOut;
 								keysRd <= '1';
 							end if;
 						elsif addressReg( 7 downto 0 ) = x"33" then
-							ARM_AD <= x"0000";														
-							if mouseReady = '1' then
-								ARM_AD <= x"80" & mouseDataOut;
+							ARM_AD <= mouseReady & mouseFull & "000000" & mouseDataOut;
+							if mouseReady = '1' then								
 								mouseRd <= '1';
 							end if;
 							

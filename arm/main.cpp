@@ -17,6 +17,10 @@
 
 #include "ramFile.h"
 
+const int VER_MAJOR = 1;
+const int VER_MINIR = 0;
+const int REV = 30;
+
 byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
 
@@ -363,12 +367,8 @@ void FPGA_TestClock()
     dword counter20 = SystemBus_Read( 0xc00050 ) | ( SystemBus_Read( 0xc00051 ) << 16 );
     dword counterMem = SystemBus_Read( 0xc00052 ) | ( SystemBus_Read( 0xc00053 ) << 16 );
 
-    char str[ 0x20 ];
-    sniprintf( str, sizeof(str), "FPGA clock - %d.%.5d MHz\n", counter20 / 100000, counter20 % 100000 );
-    UART0_WriteText( str );
-
-    sniprintf( str, sizeof(str), "FPGA PLL clock - %d.%.5d MHz\n", counterMem / 100000, counterMem % 100000 );
-    UART0_WriteText( str );
+    __TRACE( "FPGA clock - %d.%.5d MHz\n", counter20 / 100000, counter20 % 100000 );
+    __TRACE( "FPGA PLL clock - %d.%.5d MHz\n", counterMem / 100000, counterMem % 100000 );
 
     CPU_Start();
 }
@@ -740,8 +740,11 @@ dword tickCounter = 0;
 
 int kbdInited = 0;
 const int KBD_OK = 2;
+int kbdResetTimer = 0;
+
 int mouseInited = 0;
 const int MOUSE_OK = 4;
+int mouseResetTimer = 0;
 
 CFifo keyboard( 0x10 );
 CFifo joystick( 0x10 );
@@ -755,6 +758,27 @@ byte keybordSend[ 4 ];
 int keybordSendPos = 0;
 int keybordSendSize = 0;
 
+void Mouse_Reset()
+{
+    word mouseCode = SystemBus_Read( 0xc00033 );
+    while( ( mouseCode & 0x8000 ) != 0 ) mouseCode = SystemBus_Read( 0xc00033 );
+
+    mouseInited = 0;
+    SystemBus_Write( 0xc00033, 0xff );
+
+    mouseResetTimer = 0;
+}
+
+void Keyboard_Reset()
+{
+    word keyCode = SystemBus_Read( 0xc00032 );
+    while( ( keyCode & 0x8000 ) != 0 ) keyCode = SystemBus_Read( 0xc00032 );
+
+    kbdInited = 0;
+    SystemBus_Write( 0xc00032, 0xff );
+
+    kbdResetTimer = 0;
+}
 void Keyboard_Send( const byte *data, int size )
 {
     if( size <= 0 || size > (int) sizeof(keybordSend) ) return;
@@ -776,6 +800,12 @@ void Keyboard_SendNext( byte code )
 
 void Timer_Routine()
 {
+    if( fpgaConfigVersionPrev == 0 )
+    {
+        kbdInited = 0;
+        mouseInited = 0;
+    }
+
     static byte prev_status = STA_NODISK;
 
     byte status = ( disk_status( 0 ) & STA_NODISK );
@@ -797,21 +827,29 @@ void Timer_Routine()
             static dword joyCodePrev = 0;
             dword joyCode = SystemBus_Read( 0xc00030 ) | ( SystemBus_Read( 0xc00031 ) << 16 );
 
-            //if( joyCode != 0 )
-            //{
-                //char str[ 0x20 ];
-                //sniprintf( str, sizeof(str), "joyCode - 0x%.8x\n", joyCode );
-                //UART0_WriteText( str );
-            //}
-
-            dword bit = 1;
-            for( byte i = 0; i < 32; i++, bit <<= 1 )
+            if( joyCode != joyCodePrev )
             {
-                if( ( joyCodePrev & bit ) == 0 && ( joyCode & bit ) != 0 ) joystick.WriteByte( i );
-                else if( ( joyCodePrev & bit ) != 0 && ( joyCode & bit ) == 0 ) joystick.WriteByte( 0x80 | i );
-            }
+                //if( joyCode != 0 )
+                //{
+                    //char str[ 0x20 ];
+                    //sniprintf( str, sizeof(str), "joyCode - 0x%.8x\n", joyCode );
+                    //UART0_WriteText( str );
+                //}
 
-            joyCodePrev = joyCode;
+                dword bit = 1;
+                dword joyCodeDiff = joyCode ^ joyCodePrev;
+
+                for( byte i = 0; i < 32; i++, bit <<= 1 )
+                {
+                    if( ( joyCodeDiff & bit ) != 0 )
+                    {
+                        if( ( joyCode & bit ) != 0 ) joystick.WriteByte( i );
+                        else joystick.WriteByte( 0x80 | i );
+                    }
+                }
+
+                joyCodePrev = joyCode;
+            }
 
             //--------------------------------------------------------------------------
 
@@ -827,11 +865,18 @@ void Timer_Routine()
             word mouseCode = SystemBus_Read( 0xc00033 );
             while( ( mouseCode & 0x8000 ) != 0 )
             {
-                mouseCode &= 0xff;
+                if( mouseCode & 0x4000 )
+                {
+                    //__TRACE( "Mouse buffer overflow\n" );
+                    Mouse_Reset();
+                    break;
+                }
 
-                //char str[ 0x20 ];
-                //sniprintf( str, sizeof(str), "mouse - 0x%.2x\n", mouseCode );
-                //UART0_WriteText( str );
+                mouseCode &= 0xff;
+                //__TRACE( "mouse code - 0x%.2x\n", mouseCode );
+
+                static byte mouseBuff[4];
+                static byte mouseBuffPos = 0;
 
                 if( mouseInited == 0 && mouseCode == 0xfa ) mouseInited++;
                 else if( mouseInited == 1 && mouseCode == 0xaa ) mouseInited++;
@@ -840,19 +885,25 @@ void Timer_Routine()
                     mouseInited++;
                     SystemBus_Write( 0xc00033, 0xf4 );
                 }
-                else if( mouseInited == 3 && mouseCode == 0xfa ) mouseInited++;
+                else if( mouseInited == 3 && mouseCode == 0xfa )
+                {
+                    mouseInited++;
+                    mouseBuffPos = 0;
+                }
                 else
                 {
-                    static byte mouseBuff[4];
-                    static byte mouseBuffPos = 0;
-                    static dword x = 0;
-                    static dword y = 0;
+                    static dword x = 0x12345678;
+                    static dword y = 0x12345678;
 
                     mouseBuff[ mouseBuffPos++ ] = mouseCode;
 
                     if( mouseBuffPos >= 3 )
                     {
                         int dx, dy;
+
+                        //char str[ 0x20 ];
+                        //sniprintf( str, sizeof(str), "mouse 0x%.2x.0x%.2x.0x%.2x, ", mouseBuff[0], mouseBuff[1], mouseBuff[2] );
+                        //UART0_WriteText( str );
 
                         if( ( mouseBuff[0] & ( 1 << 6 ) ) == 0 )
                         {
@@ -893,7 +944,7 @@ void Timer_Routine()
                         mouseBuffPos = 0;
 
                         //char str[ 0x20 ];
-                        //sniprintf( str, sizeof(str), "mouse x - 0x%.2x, y - 0x%.2x\n", sx, sy );
+                        //sniprintf( str, sizeof(str), "x - 0x%.2x, y - 0x%.2x, b - 0x%.2x\n", sx, sy, buttons );
                         //UART0_WriteText( str );
                     }
                 }
@@ -901,7 +952,20 @@ void Timer_Routine()
                 mouseCode = SystemBus_Read( 0xc00033 );
             }
 
-            //--------------------------------------------------------------------------
+            if( kbdInited != KBD_OK )
+            {
+                kbdResetTimer++;
+                if( kbdResetTimer > 100 ) Keyboard_Reset();
+            }
+
+            if( mouseInited != MOUSE_OK )
+            {
+                mouseResetTimer++;
+                if( mouseResetTimer > 100 ) Mouse_Reset();
+            }
+
+            //-------------------------------------------------
+
 
             static byte leds_prev = 0;
             byte leds = floppy_leds();
@@ -937,26 +1001,6 @@ void Timer_Routine()
             Spectrum_UpdateConfig();
         }
 
-        if( fpgaConfigVersionPrev != 0 )
-        {
-            if( kbdInited != KBD_OK )
-            {
-                SystemBus_Write( 0xc00032, 0xff );
-            }
-
-            if( mouseInited != MOUSE_OK )
-            {
-                SystemBus_Write( 0xc00033, 0xff );
-            }
-
-            //static word fpgaTimer = 0;
-            //word currentTimer = SystemBus_Read( 0xc00051 );
-            //char str[ 0x20 ];
-            //sniprintf( str, sizeof(str), "fpga  ticks - %u\n", (dword) ( currentTimer - fpgaTimer ) * 0x10000 );
-            //UART0_WriteText( str );
-            //fpgaTimer = currentTimer;
-        }
-
         portENTER_CRITICAL();
         timer_flag_1Hz--;
         portEXIT_CRITICAL();
@@ -983,9 +1027,7 @@ void Timer_Routine()
                     {
                         if( counter == 0 ) UART0_WriteText( "Data write : " );
 
-                        char str[ 0x20 ];
-                        sniprintf( str, sizeof(str), "%.2x.", trdosData );
-                        UART0_WriteText( str );
+                        __TRACE( "%.2x.", trdosData );
 
                         counter++;
                         if( counter == 16 )
@@ -1002,9 +1044,7 @@ void Timer_Routine()
                             UART0_WriteText( "\n" );
                         }
 
-                        char str[ 0x20 ];
-                        sniprintf( str, sizeof(str), "WR: 0x%.2x, 0x%.2x\n", trdosAddr, trdosData );
-                        UART0_WriteText( str );
+                        __TRACE( "WR: 0x%.2x, 0x%.2x\n", trdosAddr, trdosData );
                     }
                 }
             }
@@ -1019,9 +1059,7 @@ void Timer_Routine()
                     {
                         if( counter == 0 ) UART0_WriteText( "Data read : " );
 
-                        char str[ 0x20 ];
-                        sniprintf( str, sizeof(str), "%.2x.", trdosData );
-                        UART0_WriteText( str );
+                        __TRACE( "%.2x.", trdosData );
 
                         counter++;
                         if( counter == 16 )
@@ -1038,9 +1076,7 @@ void Timer_Routine()
                             UART0_WriteText( "\n" );
                         }
 
-                        char str[ 0x20 ];
-                        sniprintf( str, sizeof(str), "RD: 0x%.2x, 0x%.2x\n", trdosAddr, trdosData );
-                        UART0_WriteText( str );
+                        __TRACE( "RD: 0x%.2x, 0x%.2x\n", trdosAddr, trdosData );
                     }
                 }
             }
@@ -1052,14 +1088,11 @@ void Timer_Routine()
 
 void UpdateCarrier( int delta )
 {
-    char str[ 0x40 ];
-
     specConfig.specVideoSubcarrierDelta += delta;
     SystemBus_Write( 0xc00044, (dword) specConfig.specVideoSubcarrierDelta & 0xffff );
     SystemBus_Write( 0xc00045, (dword) specConfig.specVideoSubcarrierDelta >> 16 );
 
-    sniprintf( str, sizeof(str), "subcarrierDelta - %d\n", specConfig.specVideoSubcarrierDelta );
-    UART0_WriteText( str );
+    __TRACE( "subcarrierDelta - %d\n", specConfig.specVideoSubcarrierDelta );
 }
 
 static word pressedKeys[4] = { KEY_NONE, KEY_NONE, KEY_NONE, KEY_NONE };
@@ -1263,14 +1296,9 @@ void TestStack()
         }
     }
 
-    char str[ 0x20 ];
-
-    sniprintf( str, sizeof(str), "stack current - 0x%.8x\n", stackCurrent );
-    UART0_WriteText( str );
-    sniprintf( str, sizeof(str), "stack max - 0x%.8x\n", stackMin );
-    UART0_WriteText( str );
-    sniprintf( str, sizeof(str), "heap max - 0x%.8x\n\n", (dword) current_heap_end );
-    UART0_WriteText( str );
+    __TRACE( "stack current - 0x%.8x\n", stackCurrent );
+    __TRACE( "stack max - 0x%.8x\n", stackMin );
+    __TRACE( "heap max - 0x%.8x\n\n", (dword) current_heap_end );
 }
 
 int main()
@@ -1309,7 +1337,7 @@ int main()
 
 	InitStack();
 
-    UART0_WriteText( "Hello, Speccy2010 !\n" );
+    __TRACE( "Speccy2010, ver %d.%d, rev %d !\n", VER_MAJOR, VER_MINIR, REV );
     if( !pllStatusOK ) UART0_WriteText( "PLL initialization error !\n" );
     DelayMs( 100 );
 
@@ -1519,7 +1547,7 @@ extern "C" void __cxa_guard_release()
 
 void __TRACE( const char *str, ... )
 {
-    char fullStr[ 0x80 ];
+    static char fullStr[ 0x80 ];
 
     va_list ap;
     va_start( ap, str );

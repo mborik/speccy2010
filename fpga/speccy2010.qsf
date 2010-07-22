@@ -214,3 +214,4 @@ set_global_assignment -name VHDL_FILE src/peripheral/video/fir.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/video/vencode.vhd
 set_global_assignment -name VHDL_FILE src/speccy2010.vhd
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll.qip
+set_global_assignment -name MISC_FILE "D:/workGit/speccy2010/trunk/firmware/fpga/speccy2010.dpf"

@@ -922,7 +922,7 @@ bool Shell_SettingsMenu()
         mainMenu[i].Redraw();
     }
 
-    int menuPos = 0;
+    int menuPos = 6;
     mainMenu[ menuPos ].UpdateState( 1 );
 
     bool editMode = false;

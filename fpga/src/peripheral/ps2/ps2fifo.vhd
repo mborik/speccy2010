@@ -15,6 +15,7 @@ entity ps2fifo is
 		wr_i		: in  std_logic;
 		
 		out_ready_o	: out std_logic;
+		out_full_o	: out std_logic;		
 		in_full_o 	: out std_logic;
 
 		ps2_clk_io  : inout std_logic;   -- PS2 Clock line
@@ -54,8 +55,8 @@ architecture rtl of ps2fifo is
 	component fifo is
 
 		generic (
-			fifo_width : integer := 8;
-			fifo_depth : integer := 16
+			fifo_width : integer;
+			fifo_depth : integer
 		);
 		
 		port (
@@ -125,7 +126,7 @@ begin
 	U01 : fifo
 		generic map(
 			fifo_width => 8,
-			fifo_depth => 16 
+			fifo_depth => 32 
 		)
 		
 		port map(
@@ -145,7 +146,7 @@ begin
 	U02 : fifo
 		generic map(
 			fifo_width => 8,
-			fifo_depth => 16 
+			fifo_depth => 8 
 		)
 		
 		port map(
@@ -210,6 +211,7 @@ begin
 	data_o <= read_data_o;	
 	read_rd_i <= rd_i;
 	out_ready_o <= read_out_ready_o;
+	out_full_o <= read_in_full_o;
 	
 	write_data_i <= data_i;
 	write_wr_i <= wr_i;
