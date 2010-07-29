@@ -23,7 +23,7 @@ architecture rtl of sinus is
 		x"2d41", x"2e5a", x"2f6c", x"3076", x"3179", x"3274", x"3368", x"3453",
 		x"3537", x"3612", x"36e5", x"37b0", x"3871", x"392b", x"39db", x"3a82",
 		x"3b21", x"3bb6", x"3c42", x"3cc5", x"3d3f", x"3daf", x"3e15", x"3e72",
-		x"3ec5", x"3f0f", x"3f4f", x"3f85", x"3fb1", x"3fd4", x"3fec", x"3ffb", x"3fff"
+		x"3ec5", x"3f0f", x"3f4f", x"3f85", x"3fb1", x"3fd4", x"3fec", x"3ffb", x"4000"
     );  
 
 begin

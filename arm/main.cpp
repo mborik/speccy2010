@@ -19,7 +19,7 @@
 
 const int VER_MAJOR = 1;
 const int VER_MINIR = 0;
-const int REV = 30;
+const int REV = 31;
 
 byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;

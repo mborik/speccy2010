@@ -124,18 +124,30 @@ begin
 	--clk_en <= '1';
 	--clk_en <= hcounter( 0 );
 	clk_en <= '1' when hcounter( 1 downto 0 ) = "00" else '0';
+	
+	Y1 <= ( to_unsigned( 38, 8 ) * ivideoR );
+	Y2 <= ( to_unsigned( 75, 8 ) * ivideoG );
+	Y3 <= ( to_unsigned( 15, 8 ) * ivideoB );
 
-	Y1 <= ( to_unsigned( integer( 0.299 * 256 / 2 + 0.5 ), 8 ) * ivideoR );
-	Y2 <= ( to_unsigned( integer( 0.587 * 256 / 2 + 0.5 ), 8 ) * ivideoG );
-	Y3 <= ( to_unsigned( integer( 0.114 * 256 / 2 + 0.5 ), 8 ) * ivideoB );
+	U1 <= ( to_unsigned( 19, 8 ) * ivideoR );
+	U2 <= ( to_unsigned( 37, 8 ) * ivideoG );
+	U3 <= ( to_unsigned( 56, 8 ) * ivideoB );
 
-	U1 <= ( to_unsigned( integer( 0.147 * 256 / 2 + 0.5 ), 8 ) * ivideoR );
-	U2 <= ( to_unsigned( integer( 0.289 * 256 / 2 + 0.5 ), 8 ) * ivideoG );
-	U3 <= ( to_unsigned( integer( 0.436 * 256 / 2 + 0.5 ), 8 ) * ivideoB );
+	V1 <= ( to_unsigned( 79, 8 ) * ivideoR );
+	V2 <= ( to_unsigned( 66, 8 ) * ivideoG );
+	V3 <= ( to_unsigned( 13, 8 ) * ivideoB );	
 
-	V1 <= ( to_unsigned( integer( 0.615 * 256 / 2 + 0.5 ), 8 ) * ivideoR );
-	V2 <= ( to_unsigned( integer( 0.515 * 256 / 2 + 0.5 ), 8 ) * ivideoG );
-	V3 <= ( to_unsigned( integer( 0.100 * 256 / 2 + 0.5 ), 8 ) * ivideoB );
+--	Y1 <= ( to_unsigned( integer( 0.299 * 256 / 2 + 0.5 ), 8 ) * ivideoR );
+--	Y2 <= ( to_unsigned( integer( 0.587 * 256 / 2 + 0.5 ), 8 ) * ivideoG );
+--	Y3 <= ( to_unsigned( integer( 0.114 * 256 / 2 + 0.5 ), 8 ) * ivideoB );
+--
+--	U1 <= ( to_unsigned( integer( 0.147 * 256 / 2 + 0.5 ), 8 ) * ivideoR );
+--	U2 <= ( to_unsigned( integer( 0.289 * 256 / 2 + 0.5 ), 8 ) * ivideoG );
+--	U3 <= ( to_unsigned( integer( 0.436 * 256 / 2 + 0.5 ), 8 ) * ivideoB );
+--
+--	V1 <= ( to_unsigned( integer( 0.615 * 256 / 2 + 0.5 ), 8 ) * ivideoR );
+--	V2 <= ( to_unsigned( integer( 0.515 * 256 / 2 + 0.5 ), 8 ) * ivideoG );
+--	V3 <= ( to_unsigned( integer( 0.100 * 256 / 2 + 0.5 ), 8 ) * ivideoB );
 	
     prevY <= to_signed( 0, 14 ) when videoPS_n = '0' else
 		vref + signed( Y1 + Y2 + Y3 ) when ( window_h = '1' and window_v = '1' ) else

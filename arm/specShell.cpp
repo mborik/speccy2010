@@ -373,6 +373,27 @@ void display_path( char *str, int col, int row, byte max_sz )
 	WriteStr( col, row, path_buff, max_sz );
 }
 
+byte get_sel_attr( FRECORD &fr )
+{
+    byte result = 007;
+
+    if( ( fr.attr & AM_DIR ) == 0 )
+    {
+        strlwr( fr.name );
+
+        char *ext = fr.name + strlen( fr.name );
+        while( ext > fr.name && *ext != '.' ) ext--;
+
+        if ( strcmp( ext, ".trd" ) == 0 || strcmp( ext, ".fdi" ) == 0 || strcmp( ext, ".scl" ) == 0 ) result = 006;
+        else if ( strcmp( ext, ".tap" ) == 0 || strcmp( ext, ".tzx" ) == 0 ) result = 004;
+        else if ( strcmp( ext, ".sna" ) == 0 ) result = 0103;
+        else if ( strcmp( ext, ".scr" ) == 0 ) result = 0102;
+        else result = 005;
+    }
+
+    return result;
+}
+
 void show_table()
 {
 	byte i;
@@ -391,10 +412,14 @@ void show_table()
 		char sname[ 16 ];
 		make_short_name( sname, sizeof( sname ), fr.name );
 
-		if( ( fr.attr & AM_DIR ) == 0 ) strlwr( sname );
-		else strupr( sname );
+		//if( ( fr.attr & AM_DIR ) == 0 ) strlwr( sname );
+		//else strupr( sname );
 
-		if ( pos < files_size ) WriteStr( col, row, sname, 15 );
+		if ( pos < files_size )
+		{
+		    WriteStr( col, row, sname, 15 );
+	    	WriteAttr( col, row, get_sel_attr( fr ), 15 );
+		}
 		else WriteStr( col, row, "", 15 );
 	}
 
@@ -430,10 +455,12 @@ bool calc_sel()
 	return redraw;
 }
 
-
 void hide_sel()
 {
-	WriteAttr( selx * 16, 2 + sely, 007, 16 );
+    FRECORD fr;
+    ReadRecord( fr, files_sel );
+
+	WriteAttr( selx * 16, 2 + sely, get_sel_attr( fr ), 16 );
 	WriteStr( 0, 20, "", 32 );
 }
 

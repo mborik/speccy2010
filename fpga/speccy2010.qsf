@@ -86,8 +86,6 @@ set_location_assignment PIN_33 -to ARM_AD[7]
 set_location_assignment PIN_30 -to ARM_AD[6]
 set_location_assignment PIN_132 -to CLK_20
 set_location_assignment PIN_57 -to ARM_WAIT
-set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id CLK_20
-set_instance_assignment -name CLOCK_SETTINGS CLK_20 -to CLK_20
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
@@ -160,7 +158,6 @@ set_location_assignment PIN_164 -to VIDEO_R[4]
 set_location_assignment PIN_165 -to VIDEO_R[5]
 set_location_assignment PIN_168 -to VIDEO_R[6]
 set_location_assignment PIN_169 -to VIDEO_R[7]
-set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL OFF
 set_location_assignment PIN_13 -to KEYS_CLK
 set_location_assignment PIN_12 -to KEYS_DATA
 set_location_assignment PIN_201 -to SOUND_LEFT[7]
@@ -197,6 +194,7 @@ set_location_assignment PIN_81 -to JOY0[4]
 set_location_assignment PIN_82 -to JOY0[5]
 set_location_assignment PIN_14 -to MOUSE_DATA
 set_location_assignment PIN_15 -to MOUSE_CLK
+set_global_assignment -name MISC_FILE "D:/workGit/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2fifo.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/fifo.vhd
@@ -214,4 +212,3 @@ set_global_assignment -name VHDL_FILE src/peripheral/video/fir.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/video/vencode.vhd
 set_global_assignment -name VHDL_FILE src/speccy2010.vhd
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll.qip
-set_global_assignment -name MISC_FILE "D:/workGit/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
