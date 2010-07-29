@@ -19,7 +19,7 @@
 
 const int VER_MAJOR = 1;
 const int VER_MINIR = 0;
-const int REV = 31;
+const int REV = 32;
 
 byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
@@ -820,7 +820,7 @@ void Timer_Routine()
         prev_status = status;
     }
 
-    if( timer_flag_100Hz )        // 100Hz
+    //if( timer_flag_100Hz )        // 100Hz
     {
         if( fpgaConfigVersionPrev != 0 )
         {
@@ -951,7 +951,13 @@ void Timer_Routine()
 
                 mouseCode = SystemBus_Read( 0xc00033 );
             }
+        }
+    }
 
+    if( timer_flag_100Hz )        // 100Hz
+    {
+        if( fpgaConfigVersionPrev != 0 )
+        {
             if( kbdInited != KBD_OK )
             {
                 kbdResetTimer++;
@@ -1044,7 +1050,8 @@ void Timer_Routine()
                             UART0_WriteText( "\n" );
                         }
 
-                        __TRACE( "WR: 0x%.2x, 0x%.2x\n", trdosAddr, trdosData );
+                        word specPc = SystemBus_Read( 0xc00001 );
+                        __TRACE( "0x%.4x WR: 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData );
                     }
                 }
             }
@@ -1076,7 +1083,8 @@ void Timer_Routine()
                             UART0_WriteText( "\n" );
                         }
 
-                        __TRACE( "RD: 0x%.2x, 0x%.2x\n", trdosAddr, trdosData );
+                        word specPc = SystemBus_Read( 0xc00001 );
+                        __TRACE( "0x%.4x RD : 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData );
                     }
                 }
             }

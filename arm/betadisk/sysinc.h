@@ -15,6 +15,9 @@
 #define FLP_TRACE_FLAG          0
 #define FLPh_TRACE_FLAG         0
 
+#define FDI_TRACE_FLAG          0
+#define TRD_TRACE_FLAG          0
+
 #include "types.h"
 
 char *wd_stat_decode( word data, word data2 );

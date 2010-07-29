@@ -97,8 +97,10 @@ int floppy_open(int drv, const char *filename)
 	floppy_close(drv);
 
   	open_mode = FA_OPEN_EXISTING|FA_READ;
+
 #if !_FS_READONLY
-  	if ((ops->flags & FLP_FLAGS_RO) == 0) {
+  	if ( ( disk_status( 0 ) & STA_PROTECT ) == 0 && ( fi.fattrib & AM_RDO ) == 0 && ( ops->flags & FLP_FLAGS_RO ) == 0 )
+  	{
   		open_mode |= FA_WRITE;
   	}
 #endif
@@ -128,7 +130,7 @@ int floppy_open(int drv, const char *filename)
 		return i;
 	}
 
-	drives[drv].fs_wp = (fi.fattrib & AM_RDO) != 0 || (ops->flags & FLP_FLAGS_RO) != 0 || _FS_READONLY;
+	drives[drv].fs_wp = ( disk_status( 0 ) & STA_PROTECT ) != 0 || ( fi.fattrib & AM_RDO ) != 0 || ( ops->flags & FLP_FLAGS_RO ) != 0 || _FS_READONLY;
 	drives[drv].stat &= ~FLP_STAT_DEL;
 	drives[drv].ops = ops;
 	drives[drv].data_left = 0;
@@ -256,11 +258,14 @@ void floppy_dispatch(void)
 	static int step = 0, index = 0;
 
 	sel = fdc_query(FDC_DRVSEL);
-	if (sel_drv != drives + sel || sel_drv->set_trk) {
-		if (sel_drv->ops != 0 && sel_drv->ops->change != 0) {
+	if (sel_drv != drives + sel || sel_drv->set_trk )
+	{
+		sel_drv = drives + sel;
+
+		if ( sel_drv->ops != 0 && sel_drv->ops->change != 0 )
+		{
 			sel_drv->ops->change();
 		}
-		sel_drv = drives + sel;
 
 		ready = sel_drv->ops != 0;
 		fdc_set(FDC_WP, sel_drv->wp || sel_drv->fs_wp || sel_drv->img_wp);

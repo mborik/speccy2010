@@ -269,7 +269,8 @@ static void wd_proc(void)
    		JUMP(t1);
 	} else {
 		wd.cr_c = wd.cr;
-		wd.str &= ~(WD17XX_STAT_RECTYPE|WD17XX_STAT_WRERR|WD17XX_STAT_CRCERR|WD17XX_STAT_LOST);
+		wd.str &= ~(WD17XX_STAT_RECTYPE|WD17XX_STAT_WRERR|WD17XX_STAT_CRCERR|WD17XX_STAT_LOST|WD17XX_STAT_WP);
+
 		if (!fdc_query(FDC_READY)) {
 			JUMP(done);
 		}
@@ -622,7 +623,7 @@ static void wd_proc(void)
 	WAIT();
 	/***************/ ENTRY(done); /***************/
 	fdc_set(FDC_STEP, 0);
-	WD_TRACE(("wd: clr busy signal (#2)\n"));
+	WD_TRACE(("wd: clr busy signal (#2)\n\n"));
 	WD_CLR_BUSY();
 	//WD_CLR_DRQ();
 	WD_SET_INT();
@@ -634,6 +635,7 @@ static void wd_proc(void)
 static inline void wd_update_stat(void)
 {
 	byte str = wd.str;
+
 	if ((wd.cr_c & TYPEI_MASK) == TYPEI) {
 		str &= ~(WD17XX_STAT_INDEX|WD17XX_STAT_TRK0|WD17XX_STAT_HLD|WD17XX_STAT_WP);
 		if (fdc_query(FDC_INDEX)) str |= WD17XX_STAT_INDEX;

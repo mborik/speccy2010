@@ -1420,10 +1420,28 @@ begin
 				|"11110000"|"11110001"|"11110010"|"11110011"|"11110100"|"11110101"|"11110111"
 				|"11111000"|"11111001"|"11111010"|"11111011"|"11111100"|"11111101"|"11111111" =>
 				-- SET b,r
-				if MCycle = "001" or MCycle = "111" then
+				if MCycle = "001" then
 					ALU_Op <= "1010";
 					Read_To_Reg <= '1';
 					Save_ALU <= '1';
+				else
+					MCycles <= "100";
+					case to_integer(unsigned(MCycle)) is
+					when 7 =>
+						Set_Addr_To <= aXY;
+					when 2 =>
+						Set_BusB_To(2 downto 0) <= "110";
+						ALU_Op <= "1010";
+						Read_To_Reg <= '1';
+						Save_ALU <= '1';
+						Set_Addr_To <= aXY;
+						TStates <= "100";
+					when 3 =>
+						Set_Addr_To <= aXY;
+					when 4 =>
+						Write <= '1';
+					when others =>
+					end case;
 				end if;
 			when "11000110"|"11001110"|"11010110"|"11011110"|"11100110"|"11101110"|"11110110"|"11111110" =>
 				-- SET b,(HL)
@@ -1450,10 +1468,28 @@ begin
 				|"10110000"|"10110001"|"10110010"|"10110011"|"10110100"|"10110101"|"10110111"
 				|"10111000"|"10111001"|"10111010"|"10111011"|"10111100"|"10111101"|"10111111" =>
 				-- RES b,r
-				if MCycle = "001" or MCycle = "111" then
+				if MCycle = "001" then
 					ALU_Op <= "1011";
 					Read_To_Reg <= '1';
 					Save_ALU <= '1';
+				else
+					MCycles <= "100";
+					case to_integer(unsigned(MCycle)) is
+					when 7 =>
+						Set_Addr_To <= aXY;
+					when 2 =>
+						Set_BusB_To(2 downto 0) <= "110";
+						ALU_Op <= "1011";
+						Read_To_Reg <= '1';
+						Save_ALU <= '1';
+						Set_Addr_To <= aXY;
+						TStates <= "100";
+					when 3 =>
+						Set_Addr_To <= aXY;
+					when 4 =>
+						Write <= '1';
+					when others =>
+					end case;
 				end if;
 			when "10000110"|"10001110"|"10010110"|"10011110"|"10100110"|"10101110"|"10110110"|"10111110" =>
 				-- RES b,(HL)
