@@ -126,17 +126,44 @@ void DecodeKey( word keyCode, word keyFlags )
     {
         if( ( keyFlags & fKeyCtrl ) != 0 )
         {
-            if( keyCode == KEY_1 )
+            switch( keyCode )
             {
-                specConfig.specVideoMode = 0;
-                Spectrum_UpdateConfig();
-                SaveConfig();
-            }
-            else if( keyCode == KEY_2 )
-            {
-                specConfig.specVideoMode = 1;
-                Spectrum_UpdateConfig();
-                SaveConfig();
+                case KEY_1 :
+                    specConfig.specVideoMode = 0;
+                    Spectrum_UpdateConfig();
+                    SaveConfig();
+                    break;
+                case KEY_2 :
+                    specConfig.specVideoMode = 1;
+                    Spectrum_UpdateConfig();
+                    SaveConfig();
+                    break;
+                case KEY_3 :
+                    specConfig.specVideoMode = 2;
+                    Spectrum_UpdateConfig();
+                    SaveConfig();
+                    break;
+
+                case KEY_Q :
+                    specConfig.specTurbo = 0;
+                    Spectrum_UpdateConfig();
+                    //SaveConfig();
+                    break;
+                case KEY_W :
+                    specConfig.specTurbo = 1;
+                    Spectrum_UpdateConfig();
+                    //SaveConfig();
+                    break;
+                case KEY_E :
+                    specConfig.specTurbo = 2;
+                    Spectrum_UpdateConfig();
+                    //SaveConfig();
+                    break;
+                case KEY_R :
+                    specConfig.specTurbo = 3;
+                    Spectrum_UpdateConfig();
+                    //SaveConfig();
+                    break;
             }
         }
         else

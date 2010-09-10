@@ -69,7 +69,8 @@ dword ReadDword( byte *header )
 
 dword Convert( dword ticks )
 {
-    return ( ticks * 10 + 437 ) / ( 35 * 25 );
+    //return ( ticks * 10 + 437 ) / ( 35 * 25 );
+    return ticks;
 }
 
 void CTapeBlock::ParseHeader( byte *header )
@@ -404,8 +405,146 @@ void Tape_Routine()
             f_lseek( &tapeFile, tapeFile.fptr + temp.data_size );
         }
     }
+
+    while( tapeStarted && SystemBus_Read( 0xc00015 ) == 0 )
+    {
+        if( Tape_FillBuffer() == false ) break;
+    }
 }
 
+void Tape_Send( word pulseLength, bool pulse = true )
+{
+    pulseLength &= 0x7fff ;
+    if( pulse ) pulseLength |= 0x8000;
+    SystemBus_Write( 0xc00015, pulseLength );
+}
+
+bool Tape_FillBuffer()
+{
+    bool result = false;
+
+    static byte tape_header[ 0x20 ];
+    static byte tape_headerPos = 0;
+    static byte tape_headerSize = 2;
+
+    static byte tape_bit = 0;
+    static byte tape_byte = 0;
+
+    if( !currentBlock.tape_pilot && !currentBlock.tape_sync && !currentBlock.tape_pause && !currentBlock.data_size )
+    {
+        while( tapeFifo.GetCntr() > 0 && ( tape_headerPos == 0 || tape_headerPos < tape_headerSize ) )
+        {
+            tape_header[ tape_headerPos++ ] = tapeFifo.ReadByte();
+            if( tape_headerPos == 1 ) tape_headerSize = GetHeaderSize( tape_header[0] );
+        }
+
+        if( tape_headerSize != 0 && tape_headerPos == tape_headerSize )
+        {
+            currentBlock.ParseHeader( tape_header );
+
+            tape_bit = 0;
+            tape_headerPos = 0;
+            tape_headerSize = 0;
+        }
+        else
+        {
+            if( tapeFinished )
+            {
+                tapeFinished = false;
+                tapeStarted = false;
+            }
+        }
+    }
+
+    if ( currentBlock.tape_pilot > 0 )
+	{
+	    //tape_delay = currentBlock.pulse_pilot;
+	    Tape_Send( currentBlock.pulse_pilot );
+	    currentBlock.tape_pilot--;
+
+	    result = true;
+	}
+	else if ( currentBlock.tape_sync >= 2 )
+	{
+	    //tape_delay = currentBlock.pulse_sync1;
+	    Tape_Send( currentBlock.pulse_sync1 );
+		currentBlock.tape_sync--;
+
+		result = true;
+	}
+	else if ( currentBlock.tape_sync == 1 )
+	{
+	    //tape_delay = currentBlock.pulse_sync2;
+	    Tape_Send( currentBlock.pulse_sync2 );
+		currentBlock.tape_sync--;
+
+		result = true;
+	}
+	else if ( currentBlock.data_size > 0 )
+	{
+	    if( currentBlock.data_type == BLOCK_DATA )
+        {
+            if ( tape_bit == 0 )
+            {
+                if ( tapeFifo.GetCntr() > 0 )
+                {
+                    tape_byte = tapeFifo.ReadByte();
+                    tape_bit = 16;
+                }
+            }
+
+            if ( tape_bit != 0 )
+            {
+                if ( ( tape_byte & 0x80 ) != 0 ) Tape_Send( currentBlock.pulse_one );
+                else Tape_Send( currentBlock.pulse_zero );
+
+                if ( tape_bit & 1 ) tape_byte <<= 1;
+                tape_bit--;
+
+                if ( tape_bit == 0 ) currentBlock.data_size--;
+                else if( currentBlock.data_size == 1 && tape_bit == currentBlock.block_lastbit )
+                {
+                    currentBlock.data_size = 0;
+                    tape_bit = 0;
+                }
+
+                result = true;
+            }
+        }
+        else if ( currentBlock.data_type == SEQUENCE_DATA )
+        {
+            if ( tapeFifo.GetCntr() >= 2 )
+            {
+                word next;
+                tapeFifo.ReadFile( (byte*) &next, 2 );
+
+                Tape_Send( Convert( next ) );
+                currentBlock.data_size -= 2;
+
+                result = true;
+            }
+        }
+        else
+        {
+            while ( tapeFifo.GetCntr() > 0 && currentBlock.data_size > 0 )
+            {
+                tapeFifo.ReadByte();
+                currentBlock.data_size--;
+            }
+        }
+	}
+	else if ( currentBlock.tape_pause > 0 )
+	{
+	    Tape_Send( 3500, false );
+		currentBlock.tape_pause--;
+
+		result = true;
+	}
+
+	return result;
+}
+
+/*
 void Tape_TimerHandler()
 {
     if( !tapeStarted || CPU_Stopped() ) return;
@@ -550,5 +689,5 @@ void Tape_TimerHandler()
 		if ( currentBlock.tape_pause == 0 ) tape_pause_flag = false;
 		else tape_pause_flag = true;
 	}
-}
+}*/
 

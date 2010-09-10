@@ -11,7 +11,7 @@ void Tape_Restart();
 bool Tape_Started();
 
 void Tape_Routine();
-void Tape_TimerHandler();
+bool Tape_FillBuffer();
 
 #endif
 

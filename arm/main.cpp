@@ -19,7 +19,7 @@
 
 const int VER_MAJOR = 1;
 const int VER_MINIR = 0;
-const int REV = 32;
+const int REV = 33;
 
 byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
@@ -778,6 +778,8 @@ void Keyboard_Reset()
     SystemBus_Write( 0xc00032, 0xff );
 
     kbdResetTimer = 0;
+    keybordSendPos = 0;
+    keybordSendSize = 0;
 }
 void Keyboard_Send( const byte *data, int size )
 {
@@ -788,14 +790,18 @@ void Keyboard_Send( const byte *data, int size )
     keybordSendPos = 0;
 
     SystemBus_Write( 0xc00032, keybordSend[ keybordSendPos ] );
+    __TRACE( "Keyboard_Send : 0x%.2x\n", keybordSend[ keybordSendPos ] );
 }
 
 void Keyboard_SendNext( byte code )
 {
+    __TRACE( "Keyboard_Received : 0x%.2x\n", code );
+
     if( code == 0xfa ) keybordSendPos++;
     if( keybordSendPos >= keybordSendSize ) return;
 
     SystemBus_Write( 0xc00032, keybordSend[ keybordSendPos ] );
+    __TRACE( "Keyboard_SendNext : 0x%.2x\n", keybordSend[ keybordSendPos ] );
 }
 
 void Timer_Routine()
@@ -1434,10 +1440,6 @@ volatile dword tapeTimer = 0;
 
 void TIM0_UP_IRQHandler()       //40kHz
 {
-    Tape_TimerHandler();
-
-	//---------------------------------------------------
-
 	static dword tick = 0;
 
 	if( delayTimer >= 25 ) delayTimer -= 25;

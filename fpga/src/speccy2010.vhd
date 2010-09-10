@@ -252,191 +252,23 @@ architecture rtl of speccy2010_top is
 	signal cpuRestoreINT  : std_logic_vector(7 downto 0);		
 	signal cpuRestorePC_n : std_logic := '1';
 	
-	component pll
-		port(
-			inclk0 : in std_logic;
-			c0     : out std_logic;
-			c2     : out std_logic
-		);
-	end component;	
-
-	component T80s
-		port(
-			RESET_n		: in std_logic;
-			CLK_n		: in std_logic;
-			WAIT_n		: in std_logic;
-			INT_n		: in std_logic;
-			NMI_n		: in std_logic;
-			BUSRQ_n		: in std_logic;
-			M1_n		: out std_logic;
-			MREQ_n		: out std_logic;
-			IORQ_n		: out std_logic;
-			RD_n		: out std_logic;
-			WR_n		: out std_logic;
-			RFSH_n		: out std_logic;
-			HALT_n		: out std_logic;
-			BUSAK_n		: out std_logic;
-			A			: out std_logic_vector(15 downto 0);
-			DI			: in std_logic_vector(7 downto 0);
-			DO			: out std_logic_vector(7 downto 0);
-			
-			SavePC      : out std_logic_vector(15 downto 0);
-			SaveINT     : out std_logic_vector(7 downto 0);
-			RestorePC   : in std_logic_vector(15 downto 0);
-			RestoreINT  : in std_logic_vector(7 downto 0);
-		
-			RestorePC_n : in std_logic			
-		);
-	end component;	
-
-	component T80a
-		port(
-			RESET_n		: in std_logic;
-			CLK_n		: in std_logic;
-			WAIT_n		: in std_logic;
-			INT_n		: in std_logic;
-			NMI_n		: in std_logic;
-			BUSRQ_n		: in std_logic;
-			M1_n		: out std_logic;
-			MREQ_n		: out std_logic;
-			IORQ_n		: out std_logic;
-			RD_n		: out std_logic;
-			WR_n		: out std_logic;
-			RFSH_n		: out std_logic;
-			HALT_n		: out std_logic;
-			BUSAK_n		: out std_logic;
-			A			: out std_logic_vector(15 downto 0);
-			D			: inout std_logic_vector(7 downto 0);
-			
-			SavePC      : out std_logic_vector(15 downto 0);
-			SaveINT     : out std_logic_vector(7 downto 0);
-			RestorePC   : in std_logic_vector(15 downto 0);
-			RestoreINT  : in std_logic_vector(7 downto 0);
-		
-			RestorePC_n : in std_logic			
-		);
-	end component;	
-
-		component vencode
-		port(
-			clk84m    : in std_logic;
-			reset     : in std_logic;
-			videoR    : in std_logic_vector(5 downto 0);
-			videoG    : in std_logic_vector(5 downto 0);
-			videoB    : in std_logic_vector(5 downto 0);
-			videoHS_n : in std_logic;
-			videoVS_n : in std_logic;
-			videoPS_n : in std_logic;
-			videoY    : out std_logic_vector(7 downto 0);
-			videoC    : out std_logic_vector(7 downto 0);
-			videoV    : out std_logic_vector(7 downto 0);
-			subcarrierDelta : unsigned( 23 downto 0 )
-		);
-	end component;
-
-	component YM2149 is
-		port (
-			-- data bus
-			  I_DA                : in  std_logic_vector(7 downto 0);
-			  O_DA                : out std_logic_vector(7 downto 0);
-			  O_DA_OE_L           : out std_logic;
-			  
-			-- control
-			  I_A9_L              : in  std_logic;
-			  I_A8                : in  std_logic;
-			  I_BDIR              : in  std_logic;
-			  I_BC2               : in  std_logic;
-			  I_BC1               : in  std_logic;
-			  I_SEL_L             : in  std_logic;
-
-			  O_AUDIO             : out std_logic_vector(7 downto 0);
-			  O_AUDIO_A           : out std_logic_vector(7 downto 0);
-              O_AUDIO_B           : out std_logic_vector(7 downto 0);
-              O_AUDIO_C           : out std_logic_vector(7 downto 0);			  
-			  
-			-- port a
-			  I_IOA               : in  std_logic_vector(7 downto 0);
-			  O_IOA               : out std_logic_vector(7 downto 0);
-			  O_IOA_OE_L          : out std_logic;
-			-- port b
-			  I_IOB               : in  std_logic_vector(7 downto 0);
-			  O_IOB               : out std_logic_vector(7 downto 0);
-			  O_IOB_OE_L          : out std_logic;
-
-			  ENA                 : in  std_logic; -- clock enable for higher speed operation
-			  RESET_L             : in  std_logic;
-			  CLK                 : in  std_logic  -- note 6 Mhz
-			);
-	end component;
-
-	component sdram is
-		generic(
-			freq : integer
-		);
-
-		port(
-			clk			 : in std_logic;		
-			reset		 : in std_logic;
-			
-			memAddress  : in std_logic_vector(23 downto 0);
-			memDataIn   : in std_logic_vector(15 downto 0);
-			memDataOut  : out std_logic_vector(15 downto 0);
-			memDataMask : in std_logic_vector(1 downto 0);
-			memWr       : in std_logic;
-			memReq      : in std_logic;
-			memAck      : out std_logic;
-
-			memAddress2  : in std_logic_vector(23 downto 0);
-			memDataIn2   : in std_logic_vector(15 downto 0);
-			memDataOut2  : out std_logic_vector(15 downto 0);
-			memDataMask2 : in std_logic_vector(1 downto 0);
-			memWr2       : in std_logic;
-			memReq2      : in std_logic;
-			memAck2      : out std_logic;
-
-			-- SD-RAM ports
-			pMemClk     : out std_logic;                        -- SD-RAM Clock
-			pMemCke     : out std_logic;                        -- SD-RAM Clock enable
-			pMemCs_n    : out std_logic;                        -- SD-RAM Chip select
-			pMemRas_n   : out std_logic;                        -- SD-RAM Row/RAS
-			pMemCas_n   : out std_logic;                        -- SD-RAM /CAS
-			pMemWe_n    : out std_logic;                        -- SD-RAM /WE
-			pMemUdq     : out std_logic;                        -- SD-RAM UDQM
-			pMemLdq     : out std_logic;                        -- SD-RAM LDQM
-			pMemBa1     : out std_logic;                        -- SD-RAM Bank select address 1
-			pMemBa0     : out std_logic;                        -- SD-RAM Bank select address 0
-			pMemAdr     : out std_logic_vector(12 downto 0);    -- SD-RAM Address
-			pMemDat     : inout std_logic_vector(15 downto 0)   -- SD-RAM Data
-		);
-				
-	end component;
+	signal vgaHSync		: std_logic;
+	signal vgaVSync		: std_logic;
+	signal vgaR			: std_logic_vector(7 downto 0);
+	signal vgaG			: std_logic_vector(7 downto 0);
+	signal vgaB			: std_logic_vector(7 downto 0);	
 	
-	component ps2fifo is
+	signal tapeFifoWrTmp 	: std_logic_vector( 15 downto 0 );
+	signal tapeFifoWr		: std_logic;
+	signal tapeFifoRdTmp 	: std_logic_vector( 15 downto 0 );
+	signal tapeFifoRd		: std_logic;
 	
-		port (
-			clk_i 		: in std_logic;   -- Global clk
-			rst_i 		: in std_logic;   -- GLobal Asinchronous reset
-
-			data_o		: out std_logic_vector(7 downto 0);  -- Data in
-			data_i		: in  std_logic_vector(7 downto 0);  -- Data out
-			
-			rd_i		: in  std_logic;
-			wr_i		: in  std_logic;
-			
-			out_ready_o : out std_logic;
-			out_full_o	: out std_logic;		
-
-			in_full_o   : out std_logic;
-
-			ps2_clk_io  : inout std_logic;   -- PS2 Clock line
-			ps2_data_io : inout std_logic
-		);	
-		
-	end component;
-
+	signal tapeFifoReady	: std_logic;
+	signal tapeFifoFull		: std_logic;
+	
 begin
 
-	U00 : pll
+	U00 : entity work.pll
 		port map(
 			inclk0 => CLK_20,
 			c0     => memclk,
@@ -444,7 +276,7 @@ begin
 		
 		);
 		
-	U01 : t80a
+	U01 : entity work.t80a
 		port map(
 			RESET_n => not ( cpuReset or reset ),
 			CLK_n   => cpuCLK,
@@ -473,7 +305,7 @@ begin
 			RestorePC_n => cpuRestorePC_n
 		);				
 		
-	U02 : YM2149
+	U02 : entity work.YM2149
 		port map(
 			RESET_L => not ( cpuReset or reset ),
 			CLK     => ayCLK,
@@ -500,13 +332,23 @@ begin
 			O_AUDIO_C	=> ayOUT_C
 		);				
 		
-	U03 : vencode
+	U03 : entity work.vencode
 		port map(
-			memclk, '0', rgbR( 7 downto 2 ), rgbG( 7 downto 2 ), rgbB( 7 downto 2 ), 
-			VideoHS_n, VideoVS_n, palSync, videoY, videoC, videoV, subcarrierDelta
+			clk84m => memclk,
+			reset => '0',
+			subcarrierDelta => subcarrierDelta,
+			videoR => rgbR(7 downto 2),
+			videoG => rgbG(7 downto 2),
+			videoB => rgbB(7 downto 2),
+			videoHS_n => VideoHS_n,
+			videoVS_n => VideoVS_n,
+			videoPS_n => palSync,
+			videoY => videoY,
+			videoC => videoC,
+			videoV => videoV
 		);
 		
-	U04 : sdram
+	U04 : entity work.sdram
 		generic map(
 			freq => freq
 		)
@@ -545,7 +387,7 @@ begin
 			pMemDat => pMemDat
 		);
 		
-	U05: ps2fifo
+	U05: entity work.ps2fifo
 		port map(
 			clk_i => memclk,
 			rst_i => reset,
@@ -565,7 +407,7 @@ begin
 			ps2_data_io => KEYS_DATA
 		);
 			
-	U06: ps2fifo
+	U06: entity work.ps2fifo
 		port map(
 			clk_i => memclk,
 			rst_i => reset,
@@ -584,6 +426,27 @@ begin
 			ps2_clk_io => MOUSE_CLK,
 			ps2_data_io => MOUSE_DATA
 		);
+		
+	U07 : entity work.fifo
+		generic map(
+			fifo_width => 16,
+			fifo_depth => 1024 
+		)
+		
+		port map(
+			clk_i => memclk,
+			rst_i => reset,
+
+			data_o => tapeFifoRdTmp,
+			data_i => tapeFifoWrTmp,
+
+			wr_i => tapeFifoWr,
+			rd_i => tapeFifoRd,
+
+			out_ready_o => tapeFifoReady,
+			in_full_o => tapeFifoFull
+		);
+
 
 	process( CLK_20 )
 		
@@ -744,8 +607,11 @@ begin
 		variable iCpuClk	: std_logic_vector(1 downto 0);
 		
 		variable kbdTmp : std_logic_vector(4 downto 0);
-		variable cpuReq : std_logic;
+		variable cpuReq : std_logic;		
 		
+		variable tapeCounter		: unsigned( 14 downto 0 ) := "000000000000000";
+		variable tapePulse			: std_logic := '1';
+
 		
     begin
 
@@ -823,6 +689,8 @@ begin
 			keysWr <= '0';			        
 			mouseRd <= '0';
 			mouseWr <= '0';
+			tapeFifoRd <= '0';
+			tapeFifoWr <= '0';
 			
 			if ( ArmAle = "10" ) then
 				addressReg := unsigned( ARM_A ) & unsigned( ARM_AD );
@@ -878,8 +746,10 @@ begin
 							keyboard( 39 downto 30 ) <= ARM_AD( 12 downto 8 ) & ARM_AD( 4 downto 0 );
 						elsif addressReg( 7 downto 0 ) = x"14" then
 							joystick <= ARM_AD(7 downto 0);
-						elsif addressReg( 7 downto 0 ) = x"15" then
-							tapeIn <= ARM_AD(0);
+						elsif addressReg( 7 downto 0 ) = x"15" then						
+							tapeFifoWrTmp <= ARM_AD;
+							tapeFifoWr <= '1';
+							
 						elsif addressReg( 7 downto 0 ) = x"16" then
 							specPortFe <= ARM_AD(7 downto 0);
 						elsif addressReg( 7 downto 0 ) = x"17" then
@@ -969,6 +839,9 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"02" then
 							ARM_AD <= x"00" & cpuSaveINT;
 							
+						elsif addressReg( 7 downto 0 ) = x"15" then
+							ARM_AD <= x"00" & "0000000" & tapeFifoFull;
+							
 						elsif addressReg( 7 downto 0 ) = x"16" then
 							ARM_AD <= x"00" & specPortFe;
 						elsif addressReg( 7 downto 0 ) = x"17" then
@@ -1035,6 +908,25 @@ begin
 			
 			iCpuClk := iCpuClk(0) & cpuCLK;
 			
+			if iCpuClk = "10" then
+				
+				if tapeCounter > 0 then
+		
+					tapeCounter := tapeCounter - 1;
+					
+					if tapeCounter = 0 and tapePulse = '1' then
+						tapeIn <= not tapeIn;
+					end if;
+					
+				elsif tapeFifoReady = '1' then
+					
+					tapeCounter := unsigned( tapeFifoRdTmp( 14 downto 0 ) );
+					tapePulse := tapeFifoRdTmp( 15 );
+					tapeFifoRd <= '1';
+						
+				end if;
+			
+			end if;
 			
 			--if specTrdosToggleFlag = '0' then 			
 			iCpuWr := iCpuWr(0) & cpuWR;
@@ -1136,6 +1028,12 @@ begin
 							cpuDin <= "0" & tapeIn & "0" & kbdTmp;
 						elsif cpuA( 7 downto 0 ) = x"1F" then
 							cpuDin <= joystick;
+						elsif cpuA( 7 downto 0 ) = x"FF" then
+							if Paper = '0' then
+								cpuDin <= Attr;
+							else
+								cpuDin <= x"FF";
+							end if;
 						elsif cpuA( 15 downto 0 ) = x"FADF" then
 							cpuDin <= mouseButtons;
 						elsif cpuA( 15 downto 0 ) = x"FBDF" then
@@ -1392,7 +1290,7 @@ begin
 				Attr_r <= Attr;
 				Shift_r <= Shift;
 				
-				if Hor_Cnt(5 downto 2) = 10 or Hor_Cnt(5 downto 2) = 11 or Ver_Cnt = 31 then
+				if ( Hor_Cnt >= 38 and Hor_Cnt < 50 ) or ( Ver_Cnt >= 31 and Ver_Cnt < 34 ) then
 					blank_r <= '0';
 				else 
 					blank_r <= '1';
@@ -1549,6 +1447,84 @@ begin
 	end process;
 	
 	------------------------------------------------------------------------------------------------
+	
+	process( memclk )
+		variable vgaHCounter : unsigned(15 downto 0) := x"0000";
+		variable vgaVCounter : unsigned(15 downto 0) := x"0000";
+		variable vgaHPorch	: std_logic;
+		variable vgaVPorch	: std_logic;
+		
+		type doubleByfferType is array ( 0 to 1023 ) of std_logic_vector( 23 downto 0 );
+		variable doubleByffer : doubleByfferType;
+		
+		variable bufferReadAddress : unsigned(9 downto 0) := "0000000000";
+		variable bufferWriteAddress : unsigned(9 downto 0) := "0000000000";
+		
+		variable temp : std_logic_vector(23 downto 0) := x"000000";
+		
+		variable prevH : std_logic := '0';
+		variable prevV : std_logic := '0';
+		
+	begin
+		if memclk'event and memclk = '1' and clk14m = '1' then
+		
+			vgaHCounter := vgaHCounter + 1;
+			
+			if vgaHCounter >= 448 then
+			
+				vgaHCounter := x"0000";				
+				vgaVCounter := vgaVCounter + 1;				
+				
+				if ( vgaVCounter >= ( 312 * 2 ) and syncMode = 0 ) or ( vgaVCounter >= ( 320 * 2 ) and syncMode = 1 ) then
+					vgaVCounter := x"0000";										
+				end if;
+			
+			end if;
+			
+			if prevH = '1' and VideoHS_n = '0' then
+				vgaHCounter := x"0000";
+			end if;
+			
+			if vgaHCounter < 48 then
+				vgaHSync <= '0';
+			else
+				vgaHSync <= '1';			
+			end if;
+			
+			if prevV = '1' and VideoVS_n = '0' then
+				vgaVCounter := x"0000";
+			end if;
+
+			if vgaVCounter < 2 then
+				vgaVSync <= '0';
+			else
+				vgaVSync <= '1';			
+			end if;			
+			
+			vgaR <= temp( 23 downto 16 );
+			vgaG <= temp( 15 downto 8 );
+			vgaB <= temp( 7 downto 0 );
+			
+			if vgaHCounter = 0 and vgaVCounter( 0 ) = '0' then
+				bufferWriteAddress := vgaVCounter( 1 ) & "000000000";
+			elsif vgaHCounter( 0 ) = '0' then
+				bufferWriteAddress := bufferWriteAddress + 1;
+			end if;
+			
+			if vgaHCounter = 0 then
+				bufferReadAddress := ( vgaVCounter( 1 ) & "000000000" ) xor "1000000000";
+			else
+				bufferReadAddress := bufferReadAddress + 1;
+			end if;
+			
+			temp := doubleByffer( to_integer( bufferReadAddress ) );
+			doubleByffer( to_integer( bufferWriteAddress ) ) := rgbR & rgbG & rgbB;
+			
+			prevH := VideoHS_n;
+			prevV := VideoVS_n;
+			
+		end if;
+	end process;
 
 	rgbR <= specR & specR & "0" & "0" & "0" & "0" & "0" & "0" when specY = '0' else
 		specR & specR & specR & specR & specR & specR & specR & specR;
@@ -1559,14 +1535,19 @@ begin
 	rgbB <= specB & specB & "0" & "0" & "0" & "0" & "0" & "0" when specY = '0' else
 		specB & specB & specB & specB & specB & specB & specB & specB;
 
-	VIDEO_R <= videoV when videoMode = 0 else -- ( Composite --> SCART 20, 17 )
-			"0" & rgbR( 7 downto 1 );		-- ( VGA 1, 6  --> SCART 15, 13 )
-	VIDEO_G <= "0" & videoC( 7 downto 1 ) when videoMode = 0 else -- ( S-Video 4, 2 --> SCART 15, 13 )
-			"0" & rgbG( 7 downto 1 );      -- ( VGA 2, 7  --> SCART 11, 9 )
-	VIDEO_B <= videoY when videoMode = 0 else -- ( S-Video 3, 1 --> SCART 20, 17 )
-			"0" & rgbB( 7 downto 1 );      -- ( VGA 3, 8  --> SCART 7, 5 )
-	
-	VIDEO_HSYNC <= '1'; -- VGA 13 --> SCART 16
-	VIDEO_VSYNC <= palSync;  -- VGA 14 --> SCART 20
+	VIDEO_R <= videoV when videoMode = 0 else 						-- ( Composite --> SCART 20, 17 )
+			"0" & rgbR( 7 downto 1 ) when videoMode = 1 else		-- ( VGA 1, 6  --> SCART 15, 13 )
+			"0" & vgaR( 7 downto 1 );
+	VIDEO_G <= "0" & videoC( 7 downto 1 ) when videoMode = 0 else 	-- ( S-Video 4, 2 --> SCART 15, 13 )
+			"0" & rgbG( 7 downto 1 ) when videoMode = 1 else      	-- ( VGA 2, 7  --> SCART 11, 9 )
+			"0" & vgaG( 7 downto 1 );
+	VIDEO_B <= videoY when videoMode = 0 else 						-- ( S-Video 3, 1 --> SCART 20, 17 )
+			"0" & rgbB( 7 downto 1 ) when videoMode = 1 else      	-- ( VGA 3, 8  --> SCART 7, 5 )
+			"0" & vgaB( 7 downto 1 );
+			
+	VIDEO_HSYNC <= '1' when videoMode = 0 or videoMode = 1 else 	-- VGA 13 --> SCART 16
+					vgaHSync;
+	VIDEO_VSYNC <= palSync when videoMode = 0 or videoMode = 1 else -- VGA 14 --> SCART 20
+					vgaVSync;
 
 end rtl;
