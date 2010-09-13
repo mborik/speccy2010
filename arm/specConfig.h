@@ -16,9 +16,11 @@ enum SpecJoy_Type { SpecJoy_Kempston, SpecJoy_Sinclair1, SpecJoy_Sinclair2, Spec
 struct CSpecConfig
 {
 	int specRom;
+	int specUseBank0;
 	int specSync;
 	int specTurbo;
 	int specVideoMode;
+	int specVideoAspectRatio;
 	int specVideoSubcarrierDelta;
 	int specDacMode;
 	int specAyMode;

@@ -155,6 +155,7 @@ architecture rtl of speccy2010_top is
     signal subcarrierDelta : unsigned( 23 downto 0 ) := to_unsigned( 885662, 24 ); -- 885521
 	signal dacMode		: unsigned(15 downto 0) := x"0000";
 	signal ayMode		: unsigned(15 downto 0) := x"0000";
+	signal videoAspectRatio	: unsigned(15 downto 0) := x"0000";
 	
 	signal borderAttr	: std_logic_vector(2 downto 0);
 	signal speaker 		: std_logic;
@@ -580,14 +581,15 @@ begin
 						   '1' when specTrdosFlag = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuA( 15 downto 14 ) /= "00" else
 						   '0';
 
-	romPage <= 	"010" when ( specTrdosFlag xor specTrdosToggleFlag ) = '1' else
-					"001" when specPort7ffd(4) = '1' else
-					"000";
+--	romPage <= 	"010" when ( specTrdosFlag xor specTrdosToggleFlag ) = '1' else
+--					"001" when specPort7ffd(4) = '1' else
+--					"000";
+	romPage <= 	"0" & not ( specTrdosFlag xor specTrdosToggleFlag ) & specPort7ffd(4);
 
 	ramPage <= 	"00000101" when cpuA( 15 downto 14 ) = "01" else
-					"00000010" when cpuA( 15 downto 14 ) = "10" else
-					"00" & specPort7ffd( 7 downto 5 ) & specPort7ffd( 2 downto 0 ) when specMode = 2 else
-					"00000" & specPort7ffd( 2 downto 0 );
+				"00000010" when cpuA( 15 downto 14 ) = "10" else
+				"00" & specPort7ffd( 7 downto 5 ) & specPort7ffd( 2 downto 0 ) when specMode = 2 else
+				"00000" & specPort7ffd( 2 downto 0 );
 					
 				
 	ayDin <= cpuDout;
@@ -624,13 +626,6 @@ begin
         
 			if cpuReset = '1' then
 			
-				if specMode = 0 then
-					specPort7ffd <= x"30";
-				else
-					specPort7ffd <= x"00";
-				end if;
-				
-				specTrdosFlag <= '0';
 				specTrdosWait <= '0';
 				
 			end if;
@@ -799,6 +794,8 @@ begin
 							dacMode <= unsigned( ARM_AD );
 						elsif addressReg( 7 downto 0 ) = x"47" then
 							ayMode <= unsigned( ARM_AD );
+						elsif addressReg( 7 downto 0 ) = x"48" then
+							videoAspectRatio <= unsigned( ARM_AD );
 
 						elsif addressReg( 7 downto 0 ) = x"50" then
 							counter20_en <= ARM_AD(0);
@@ -1000,7 +997,28 @@ begin
 					
 				elsif cpuIORQ = '0' and cpuM1 = '1' then
 
-					if specTrdosFlag = '1' then
+					if cpuA( 7 downto 0 ) = x"FE" then
+						kbdTmp := ( keyboard(  4 downto  0 ) or ( cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) ) )
+								and ( keyboard(  9 downto  5 ) or ( cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) ) )
+								and ( keyboard( 14 downto 10 ) or ( cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) ) )
+								and ( keyboard( 19 downto 15 ) or ( cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) ) )
+								and ( keyboard( 24 downto 20 ) or ( cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) ) )
+								and ( keyboard( 29 downto 25 ) or ( cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) ) )
+								and ( keyboard( 34 downto 30 ) or ( cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) ) )
+								and ( keyboard( 39 downto 35 ) or ( cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) ) );
+						cpuDin <= "0" & tapeIn & "0" & kbdTmp;
+						
+					elsif cpuA( 15 downto 0 ) = x"FADF" then
+						cpuDin <= mouseButtons;
+					elsif cpuA( 15 downto 0 ) = x"FBDF" then
+						cpuDin <= mouseX;
+					elsif cpuA( 15 downto 0 ) = x"FFDF" then
+						cpuDin <= mouseY;
+					--elsif cpuA = x"7ffd" then
+						--cpuDin <= specPort7ffd;
+						
+					elsif specTrdosFlag = '1' then
+
 						if cpuA( 7 downto 0 ) = x"1F" or
 							cpuA( 7 downto 0 ) = x"3F" or
 							cpuA( 7 downto 0 ) = x"5F" or
@@ -1014,19 +1032,7 @@ begin
 						
 					else
 					
-						if cpuA( 7 downto 0 ) = x"FE" then
-											
-							kbdTmp := ( keyboard(  4 downto  0 ) or ( cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) ) )
-									and ( keyboard(  9 downto  5 ) or ( cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) ) )
-									and ( keyboard( 14 downto 10 ) or ( cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) ) )
-									and ( keyboard( 19 downto 15 ) or ( cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) ) )
-									and ( keyboard( 24 downto 20 ) or ( cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) ) )
-									and ( keyboard( 29 downto 25 ) or ( cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) ) )
-									and ( keyboard( 34 downto 30 ) or ( cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) ) )
-									and ( keyboard( 39 downto 35 ) or ( cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) ) );
-											
-							cpuDin <= "0" & tapeIn & "0" & kbdTmp;
-						elsif cpuA( 7 downto 0 ) = x"1F" then
+						if cpuA( 7 downto 0 ) = x"1F" then
 							cpuDin <= joystick;
 						elsif cpuA( 7 downto 0 ) = x"FF" then
 							if Paper = '0' then
@@ -1034,14 +1040,6 @@ begin
 							else
 								cpuDin <= x"FF";
 							end if;
-						elsif cpuA( 15 downto 0 ) = x"FADF" then
-							cpuDin <= mouseButtons;
-						elsif cpuA( 15 downto 0 ) = x"FBDF" then
-							cpuDin <= mouseX;
-						elsif cpuA( 15 downto 0 ) = x"FFDF" then
-							cpuDin <= mouseY;
-						--elsif cpuA = x"7ffd" then
-							--cpuDin <= specPort7ffd;
 						else
 							cpuDin <= x"FF";
 						end if;
@@ -1283,6 +1281,9 @@ begin
 	end process;
 	
 	process( memclk )
+	
+		variable verMax : integer := 0;
+		
 	begin
 		if memclk'event and memclk = '1' and clk7m = '1' then
 			if ChrC_Cnt = 7 then
@@ -1290,8 +1291,24 @@ begin
 				Attr_r <= Attr;
 				Shift_r <= Shift;
 				
-				if ( Hor_Cnt >= 38 and Hor_Cnt < 50 ) or ( Ver_Cnt >= 31 and Ver_Cnt < 34 ) then
-					blank_r <= '0';
+				if syncMode = 0 then
+					verMax := 34;
+				else
+					verMax := 35;
+				end if;
+				
+				if videoAspectRatio = 0 and 
+					( ( Hor_Cnt >= 38 and Hor_Cnt < 50 ) or 
+						( Ver_Cnt >= 29 and Ver_Cnt < verMax ) ) then
+							blank_r <= '0';
+				elsif videoAspectRatio = 1 and 
+					( ( Hor_Cnt >= 38 and Hor_Cnt < 50 ) or 
+						( Ver_Cnt >= 30 and Ver_Cnt < ( verMax - 1 ) ) ) then
+							blank_r <= '0';
+				elsif videoAspectRatio = 2 and 
+					( ( Hor_Cnt >= 40 and Hor_Cnt < 48 ) or 
+						( Ver_Cnt >= 26 and Ver_Cnt < ( verMax + 3 ) ) ) then
+							blank_r <= '0';
 				else 
 					blank_r <= '1';
 				end if;
@@ -1482,10 +1499,10 @@ begin
 			end if;
 			
 			if prevH = '1' and VideoHS_n = '0' then
-				vgaHCounter := x"0000";
+				vgaHCounter := to_unsigned( 440, 16 );
 			end if;
 			
-			if vgaHCounter < 48 then
+			if vgaHCounter < 40 then
 				vgaHSync <= '0';
 			else
 				vgaHSync <= '1';			
@@ -1505,7 +1522,7 @@ begin
 			vgaG <= temp( 15 downto 8 );
 			vgaB <= temp( 7 downto 0 );
 			
-			if vgaHCounter = 0 and vgaVCounter( 0 ) = '0' then
+			if vgaHCounter = 0 and vgaVCounter( 0 ) = '1' then
 				bufferWriteAddress := vgaVCounter( 1 ) & "000000000";
 			elsif vgaHCounter( 0 ) = '0' then
 				bufferWriteAddress := bufferWriteAddress + 1;

@@ -153,6 +153,8 @@ begin
   begin
     if (RESET_L = '0') then
       reg <= (others => (others => '0'));
+      reg(7) <= x"ff";
+      
     elsif falling_edge(busctrl_we) then
         case addr(3 downto 0) is
           when x"0" => reg(0)  <= I_DA;

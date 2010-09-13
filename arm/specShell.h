@@ -11,6 +11,7 @@ void CPU_Reset( bool res );
 void CPU_ModifyPC( word pc, byte istate );
 
 void Shell_Enter();
+void Debugger_Enter();
 const char *Shell_GetPath();
 
 #endif

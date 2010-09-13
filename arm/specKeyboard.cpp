@@ -143,67 +143,78 @@ void DecodeKey( word keyCode, word keyFlags )
                     Spectrum_UpdateConfig();
                     SaveConfig();
                     break;
-
-                case KEY_Q :
-                    specConfig.specTurbo = 0;
-                    Spectrum_UpdateConfig();
-                    //SaveConfig();
-                    break;
-                case KEY_W :
-                    specConfig.specTurbo = 1;
-                    Spectrum_UpdateConfig();
-                    //SaveConfig();
-                    break;
-                case KEY_E :
-                    specConfig.specTurbo = 2;
-                    Spectrum_UpdateConfig();
-                    //SaveConfig();
-                    break;
-                case KEY_R :
-                    specConfig.specTurbo = 3;
-                    Spectrum_UpdateConfig();
-                    //SaveConfig();
-                    break;
             }
         }
         else
         {
-            if( keyCode == KEY_F12 ) Shell_Enter();
-            if( keyCode == KEY_F11 ) SaveSnapshot( Shell_GetPath(), 0 );
-
-            if ( keyCode == KEY_EQUALS || keyCode == KEY_KP_PLUS )
+            switch( keyCode )
             {
-                if( !Tape_Started() ) Tape_Restart();
-            }
+                case KEY_ESC :
+                    Debugger_Enter();
+                    break;
 
-            if ( keyCode == KEY_MINUS || keyCode == KEY_KP_MINUS )
-            {
-                if( !Tape_Started() ) Tape_Start();
-                else Tape_Stop();
-            }
+                case KEY_F1 :
+                    specConfig.specTurbo = 0;
+                    Spectrum_UpdateConfig();
+                    //SaveConfig();
+                    break;
+                case KEY_F2 :
+                    specConfig.specTurbo = 1;
+                    Spectrum_UpdateConfig();
+                    //SaveConfig();
+                    break;
+                case KEY_F3 :
+                    specConfig.specTurbo = 2;
+                    Spectrum_UpdateConfig();
+                    //SaveConfig();
+                    break;
+                case KEY_F4 :
+                    specConfig.specTurbo = 3;
+                    Spectrum_UpdateConfig();
+                    //SaveConfig();
+                    break;
 
-            if ( keyCode == KEY_F1 )
-            {
-                SystemBus_Write( 0xc00000, 0x00004 );
-            }
+                case KEY_F5 :
+                    SystemBus_Write( 0xc00000, 0x00004 );
+                    break;
+                case KEY_F6 :
+                    {
+                        CPU_Stop();
 
-            if( keyCode == KEY_F2 )
-            {
-                CPU_Stop();
+                        byte specPort7ffd = SystemBus_Read( 0xc00017 );
 
-                byte specPort7ffd = SystemBus_Read( 0xc00017 );
+                        byte page = ( specPort7ffd & ( 1 << 3 ) ) != 0 ? 7 : 5;
+                        dword addr = 0x800000 | ( page << 13 );
 
-                byte page = ( specPort7ffd & ( 1 << 3 ) ) != 0 ? 7 : 5;
-                dword addr = 0x800000 | ( page << 13 );
+                        SystemBus_Write( 0xc00020, 0 );  // use bank 0
 
-                SystemBus_Write( 0xc00020, 0 );  // use bank 0
+                        for( int i = 0x1800; i < 0x1b00; i += 2 )
+                        {
+                            SystemBus_Write( addr + ( i >> 1 ), 0x3838 );
+                        }
 
-                for( int i = 0x1800; i < 0x1b00; i += 2 )
-                {
-                    SystemBus_Write( addr + ( i >> 1 ), 0x3838 );
-                }
+                        CPU_Start();
+                    }
+                    break;
 
-                CPU_Start();
+                case KEY_F11 :
+                    SaveSnapshot( Shell_GetPath(), 0 );
+                    break;
+
+                case KEY_F12 :
+                    Shell_Enter();
+                    break;
+
+                case KEY_EQUALS :
+                case KEY_KP_PLUS :
+                    if( !Tape_Started() ) Tape_Restart();
+                    break;
+
+                case KEY_MINUS :
+                case KEY_KP_MINUS :
+                    if( !Tape_Started() ) Tape_Start();
+                    else Tape_Stop();
+                    break;
             }
         }
     }

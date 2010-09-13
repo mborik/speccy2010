@@ -19,7 +19,7 @@
 
 const int VER_MAJOR = 1;
 const int VER_MINIR = 0;
-const int REV = 33;
+const int REV = 35;
 
 byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
@@ -40,7 +40,7 @@ bool MRCC_Config(void)
 		/* Set PCLK to 30 MHz */
 		MRCC_PCLKConfig(MRCC_CKTIM_Div2);
 
-	    CFG_FLASHBurstConfig(CFG_FLASHBurst_Enable);
+		CFG_FLASHBurstConfig(CFG_FLASHBurst_Enable);
 		MRCC_CKSYSConfig(MRCC_CKSYS_OSC4MPLL, MRCC_PLL_Mul_15);
 	}
 
@@ -675,9 +675,11 @@ void Spectrum_InitRom()
 {
     UART0_WriteText( "ROM configuration started...\n" );
 
-    if( specConfig.specRom == SpecRom_Classic48 ) Spectrum_LoadRomPage( 1, "roms/48.rom" );
-    else Spectrum_LoadRomPage( 0, "roms/pentagon.rom" );
-    Spectrum_LoadRomPage( 2, "roms/trdos.rom" );
+    specConfig.specUseBank0 = Spectrum_LoadRomPage( 0, "roms/system.rom" );
+    Spectrum_LoadRomPage( 1, "roms/trdos.rom" );
+
+    if( specConfig.specRom == SpecRom_Classic48 ) Spectrum_LoadRomPage( 3, "roms/48.rom" );
+    else Spectrum_LoadRomPage( 2, "roms/pentagon.rom" );
 
     UART0_WriteText( "ROM configuration finished...\n" );
 
@@ -701,6 +703,8 @@ void Spectrum_UpdateConfig()
     SystemBus_Write( 0xc00042, specConfig.specTurbo );
 
     SystemBus_Write( 0xc00043, specConfig.specVideoMode );
+    SystemBus_Write( 0xc00048, specConfig.specVideoAspectRatio );
+
     SystemBus_Write( 0xc00046, specConfig.specDacMode );
     SystemBus_Write( 0xc00047, specConfig.specAyMode );
 

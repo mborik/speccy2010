@@ -110,12 +110,6 @@ byte GetKey( bool wait = true )
     {
         Timer_Routine();
 
-        //for( dword i = 0xc00100; i < 0xc02000; i++ )
-        //{
-            //SystemBus_Write( i, 0x1234 ^ ( i & 0xffff ) );
-            //SystemBus_Read( i );
-        //}
-
         while( ReadKey( keyCode, keyFlags ) )
         {
             if( ( keyFlags & fKeyRelease ) == 0 )
@@ -151,7 +145,7 @@ byte GetKey( bool wait = true )
         case KEY_ESC : return 0x1b;
         case KEY_F12 : return 0x1c;
 
-        case KEY_LCTRL : return 0x0d;
+//        case KEY_LCTRL : return 0x0d; // !!! зачем это !!!
         case KEY_RETURN : return 0x0d;
         case KEY_SPACE : return ' ';
 
@@ -160,10 +154,42 @@ byte GetKey( bool wait = true )
         case KEY_LEFT : return 0x08;
         case KEY_RIGHT : return 0x09;
 
+        case KEY_0 : return '0'; // западло бля !
         case KEY_1 : return '1';
         case KEY_2 : return '2';
         case KEY_3 : return '3';
         case KEY_4 : return '4';
+        case KEY_5 : return '5';
+        case KEY_6 : return '6';
+        case KEY_7 : return '7';
+        case KEY_8 : return '8';
+        case KEY_9 : return '9';
+        case KEY_A : return 'a';
+        case KEY_B : return 'b';
+        case KEY_C : return 'c';
+        case KEY_D : return 'd';
+        case KEY_E : return 'e';
+        case KEY_F : return 'f';
+        case KEY_G : return 'g';
+        case KEY_H : return 'h';
+        case KEY_I : return 'i';
+        case KEY_J : return 'j';
+        case KEY_K : return 'k';
+        case KEY_L : return 'l';
+        case KEY_M : return 'm';
+        case KEY_N : return 'n';
+        case KEY_O : return 'o';
+        case KEY_P : return 'p';
+        case KEY_Q : return 'q';
+        case KEY_R : return 'r';
+        case KEY_S : return 's';
+        case KEY_T : return 't';
+        case KEY_U : return 'u';
+        case KEY_V : return 'v';
+        case KEY_W : return 'w';
+        case KEY_X : return 'x';
+        case KEY_Y : return 'y';
+        case KEY_Z : return 'z';
     }
 
     return 0;
@@ -539,6 +565,27 @@ bool CPU_Stopped()
 
 void CPU_Reset( bool res )
 {
+    if( res == false )
+    {
+        if( specConfig.specUseBank0 && specConfig.specRom != SpecRom_Classic48 )
+        {
+            SystemBus_Write( 0xC00018, 0x01 ); //specTrdosFlag
+        }
+        else
+        {
+            SystemBus_Write( 0xC00018, 0x00 ); //specTrdosFlag
+        }
+
+        if( specConfig.specRom == SpecRom_Classic48 )
+        {
+            SystemBus_Write( 0xC00017, 0x30 ); //specPort7ffd
+        }
+        else
+        {
+            SystemBus_Write( 0xC00017, 0x00 ); //specPort7ffd
+        }
+    }
+
     if( !CPU_Stopped() )
     {
         if( res ) SystemBus_Write( 0xc00000, 0x0008 );
@@ -926,7 +973,8 @@ CMenuItem mainMenu[] = {
     CMenuItem( 1, 13, "Mouse Sensitivity: ", GetParam( iniParameters, "Mouse Sensitivity" ) ),
 
     CMenuItem( 1, 15, "Video mode: ", GetParam( iniParameters, "Video mode" ) ),
-    CMenuItem( 1, 16, "Audio DAC mode: ", GetParam( iniParameters, "Audio DAC mode" ) ),
+    CMenuItem( 1, 16, "Video aspect ratio: ", GetParam( iniParameters, "Video aspect ratio" ) ),
+    CMenuItem( 1, 17, "Audio DAC mode: ", GetParam( iniParameters, "Audio DAC mode" ) ),
 };
 
 const int mainMenuSize = sizeof( mainMenu ) / sizeof( CMenuItem );
@@ -1093,4 +1141,228 @@ void Shell_Enter()
 
     SystemBus_Write( 0xc00021, 0 );            // Enable Video
     SystemBus_Write( 0xc00022, 0 );
+}
+
+//============================================================================================
+
+void Debugger_Screen0() //disasm
+{
+    ClrScr( 0x07 );
+
+    char str[ 0x20 ];
+
+    word pc = SystemBus_Read( 0xc00001 );
+    sniprintf( str, sizeof(str), "pc #%.4x", pc );
+    WriteStr( 0, 1, str );
+}
+
+dword CalculateAddrAtCursor(word addr, byte CurX, byte CurY)
+{
+    byte specPort7ffd = SystemBus_Read( 0xC00017 );
+    byte specTrdosFlag = SystemBus_Read( 0xC00018 );
+
+    byte ROMpage = 0;
+    if( ( specPort7ffd & 0x10 ) != 0 ) ROMpage |= 0x01;
+    if( ( specTrdosFlag & 0x01 ) == 0 ) ROMpage |= 0x02;
+
+    byte RAMpage = specPort7ffd & 0b00000111;
+
+    dword lineAddr = ( ( addr & 0xFFF8 ) + ( CurY * 8 ) + CurX );
+    int page;
+
+    if( lineAddr < 0x4000 ) page = 0x100 + ROMpage;
+    else if( lineAddr < 0x8000 ) page = 0x05;
+    else if( lineAddr < 0xc000 ) page = 0x02;
+    else page = RAMpage;
+
+    return page * 0x4000 + ( lineAddr & 0x3fff );
+}
+
+byte ReadByteAtCursor(word addr, byte CurX, byte CurY)
+{
+    return (byte) SystemBus_Read( CalculateAddrAtCursor( addr, CurX, CurY ) );
+}
+
+void WriteByteAtCursor(word addr, byte data, byte CurX, byte CurY)
+{
+    SystemBus_Write( CalculateAddrAtCursor( addr, CurX, CurY ), data );
+}
+
+void Debugger_Screen1( word addr, byte CurX, byte CurY) //hex editor
+{
+    char str[ 0x20 ];
+    for( int i = 0; i < 23; i++)
+    {
+        sniprintf( str, sizeof(str), "%.4X", (addr & 0xFFF8) + (i << 3) );
+        WriteStr( 0, i, str );
+        for( int j = 0; j < 8; j++)
+        {
+            sniprintf( str, sizeof(str), "%.2X ", ReadByteAtCursor( addr, j, i ) );
+            WriteStr( 5 + j * 3, i, str );
+        }
+    }
+}
+
+void Debugger_Enter()
+{
+    CPU_Stop();
+
+    ClrScr( 0x07 );
+
+    char str[ 0x20 ];
+    byte CurX = 0, CurY = 0, CurXold, CurYold, half = 0, editAddr = 0, editAddrPos = 3;
+
+    word addr = SystemBus_Read( 0xC00001 );
+    Debugger_Screen1( addr, CurX, CurY );
+    WriteAttr( 5, 0, 0x17, 2 );
+
+    while( true )
+    {
+        byte key = GetKey( true );
+
+        if( key == 0x1B ) break;
+
+        CurXold = CurX;
+        CurYold = CurY;
+
+        if( !editAddr )
+        {
+            if( key == 0x0B ) //KEY_UP
+            {
+                half = 0;
+                if( CurY == 0)
+                    if( addr > 8 ) addr -= 8;
+                    else addr = 0;
+                else
+                    CurY--;
+            }
+            if( key == 0x0A ) //KEY_DOWN
+            {
+                half = 0;
+                if( CurY == 22)
+                    if( addr < 0xFF48 ) addr += 8;
+                    else addr = 0xFF48;
+                else
+                    CurY++;
+            }
+            if( key == 0x08 ) //KEY_LEFT
+            {
+                half = 0;
+                if( CurX > 0 ) CurX--;
+            }
+            if( key == 0x09 ) //KEY_RIGHT
+            {
+                half = 0;
+                if( CurX < 7 ) CurX++;
+            }
+        }
+        if( (key >= '0') && (key <='9') )
+        {
+            if( !editAddr)
+            {
+                if( !half )
+                {
+                    WriteByteAtCursor( addr, ( ReadByteAtCursor( addr, CurX, CurY ) & 0x0F) | (( key - '0' ) << 4), CurX, CurY );
+                    half = 1;
+                }
+                else
+                {
+                    WriteByteAtCursor( addr, ( ReadByteAtCursor( addr, CurX, CurY ) & 0xF0) | ( key - '0' ), CurX, CurY );
+                    half = 0;
+                    if( CurX < 7 )
+                        CurX++;
+                    else
+                    {
+                        CurX = 0;
+                        if( CurY == 22)
+                            if( addr < 0xFF48 ) addr += 8;
+                            else addr = 0xFF48;
+                        else
+                            CurY++;
+                    }
+                }
+            }
+            else
+            {
+                addr = ( addr & ~(0x0F << ( editAddrPos * 4) ) ) | ( ( key - '0' ) << ( editAddrPos * 4) );
+                editAddrPos--;
+                if( editAddrPos == 0xFF)
+                {
+                    if( addr > 0xFF48 ) addr = 0xFF48;
+                    editAddr = 0;
+                    editAddrPos = 3;
+                    WriteAttr( 0, 0, 0x07, 4);
+                    WriteAttr( 5 + CurX * 3, CurY, 0x17, 2 );
+                }
+            }
+        }
+        if( (key >= 'a') && (key <='f') )
+        {
+            if( !editAddr )
+            {
+                if( !half )
+                {
+                    WriteByteAtCursor( addr, ( ReadByteAtCursor( addr, CurX, CurY ) & 0x0F) | (( key - 'a' + 0x0A ) << 4), CurX, CurY );
+                    half = 1;
+                }
+                else
+                {
+                    WriteByteAtCursor( addr, ( ReadByteAtCursor( addr, CurX, CurY ) & 0xF0) | ( key - 'a' + 0x0A ), CurX, CurY );
+                    half = 0;
+                    if( CurX < 7 )
+                        CurX++;
+                    else
+                    {
+                        CurX = 0;
+                        if( CurY == 22)
+                            if( addr < 0xFF48 ) addr += 8;
+                            else addr = 0xFF48;
+                        else
+                            CurY++;
+                    }
+                }
+            }
+            else
+            {
+                addr = ( addr & ~(0x0F << ( editAddrPos * 4) ) ) | ( ( key - 'a' + 0x0A ) << ( editAddrPos * 4) );
+                editAddrPos--;
+                if( editAddrPos == 0xFF)
+                {
+                    if( addr > 0xFF48 ) addr = 0xFF48;
+                    editAddr = 0;
+                    editAddrPos = 3;
+                    WriteAttr( 0, 0, 0x07, 4);
+                    WriteAttr( 5 + CurX * 3, CurY, 0x17, 2 );
+                }
+            }
+        }
+//        if( key == 'z' )  //one step
+//        {
+//            SystemBus_Write( 0xc00008, 0x01 );
+//            DelayMs( 1 );
+//        }
+//        if( key == 's' ) SaveSnapshot( Shell_GetPath(), 0 );
+        if( key == 'm' ) editAddr = 1;
+        if( key != 0)
+        {
+            if( editAddr )
+            {
+                sniprintf( str, sizeof(str), "%.4X", addr & 0xFFF8);
+                WriteStr( 0, 0, str );
+                WriteAttr( 0, 0, 0x17, 4);
+                WriteAttr( 3 - editAddrPos, 0, 0x57, 1);
+            }
+            else
+                Debugger_Screen1( addr, CurX, CurY);
+                WriteAttr( 5 + CurXold * 3, CurYold, 0x07, 2 );
+                WriteAttr( 5 + CurX * 3, CurY, 0x17, 2 );
+        }
+    }
+
+    DelayMs( 100 );
+
+    CPU_Start();
+
+    SystemBus_Write( 0xc00021, 0 ); //armVideoPage
+    SystemBus_Write( 0xc00022, 0 ); //armBorder
 }
