@@ -287,6 +287,8 @@ void qsort( int l, int h )
 
 		if ( i == k ) k = j;
 		else if ( j == k ) k = i;
+
+		WDT_Kick();
 	}
 
 	if ( l < k - 1 ) qsort( l, k - 1 );
@@ -1065,7 +1067,7 @@ bool Shell_SettingsMenu()
                 if( editMode ) mainMenu[ menuPos ].UpdateState( 2 );
                 else mainMenu[ menuPos ].UpdateState( 1 );
             }
-            else if( menuPos >= 6 && menuPos <= 15 )
+            else
             {
                 const CParameter *param = mainMenu[ menuPos ].GetParam();
                 if( param != 0 )
@@ -1206,6 +1208,7 @@ void Debugger_Screen1( word addr, byte CurX, byte CurY) //hex editor
 void Debugger_Enter()
 {
     CPU_Stop();
+    SystemBus_Write( 0xc00020, 0 );  // use bank 0
 
     ClrScr( 0x07 );
 

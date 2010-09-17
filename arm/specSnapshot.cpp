@@ -62,7 +62,6 @@ bool LoadSnapshot( const char *fileName )
             CPU_Stop();
 
             dword addr;
-            word data;
             word i;
 
             byte header[ 0x1c ];
@@ -125,15 +124,20 @@ bool LoadSnapshot( const char *fileName )
 
             if( snaFile.fsize == 0xc01b )
             {
-                addr = 0x800000 | ( ( 0x100 * 0x4000 ) >> 1 );
-                if( ( specPort7ffd & ( 1 << 4 ) ) != 0 ) addr |= 0x4000 >> 1;
+                byte ROMpage = 0;
+                if( ( specPort7ffd & 0x10 ) != 0 ) ROMpage |= 0x01;
+                if( ( specTrdosFlag & 0x01 ) == 0 ) ROMpage |= 0x02;
 
-                for( i = 0; i < 0x4000; i += 2 )
+                addr = ( 0x100 + ROMpage ) * 0x4000;
+
+                for( i = 0; i < 0x4000; i++ )
                 {
-                    data = SystemBus_Read( addr++ );
-
-                    if( ( data & 0xff ) == 0xc9 ) specPc = i;
-                    else if( ( data & 0xff00 ) == 0xc900 ) specPc = i + 1;
+                    byte data = SystemBus_Read( addr++ );
+                    if( data == 0xc9 )
+                    {
+                        specPc = i;
+                        break;
+                    }
                 }
             }
 

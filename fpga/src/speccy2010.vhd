@@ -1482,9 +1482,17 @@ begin
 		variable prevH : std_logic := '0';
 		variable prevV : std_logic := '0';
 		
+		variable vgaVSize : integer;
+		
 	begin
 		if memclk'event and memclk = '1' and clk14m = '1' then
 		
+			if syncMode = 1 then
+				vgaVSize := 320 * 2;
+			else
+				vgaVSize := 312 * 2;
+			end if;
+			
 			vgaHCounter := vgaHCounter + 1;
 			
 			if vgaHCounter >= 448 then
@@ -1492,7 +1500,7 @@ begin
 				vgaHCounter := x"0000";				
 				vgaVCounter := vgaVCounter + 1;				
 				
-				if ( vgaVCounter >= ( 312 * 2 ) and syncMode = 0 ) or ( vgaVCounter >= ( 320 * 2 ) and syncMode = 1 ) then
+				if vgaVCounter >= vgaVSize then
 					vgaVCounter := x"0000";										
 				end if;
 			
@@ -1509,7 +1517,13 @@ begin
 			end if;
 			
 			if prevV = '1' and VideoVS_n = '0' then
-				vgaVCounter := x"0000";
+				if videoAspectRatio = 0 then
+					vgaVCounter := to_unsigned( vgaVSize - 16, 16 );
+				elsif videoAspectRatio = 1 then
+					vgaVCounter := to_unsigned( 0, 16 );
+				else
+					vgaVCounter := to_unsigned( vgaVSize - 64, 16 );
+				end if;
 			end if;
 
 			if vgaVCounter < 2 then
