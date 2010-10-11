@@ -81,8 +81,6 @@ architecture rtl of speccy2010_top is
 	signal cpuBP0 	: std_logic_vector(15 downto 0) := x"0000";
 	signal cpuBP0_en : std_logic := '0';
 
-    signal cpuTurbo : std_logic_vector( 1 downto 0 ) := "00";
-    
     signal activeBank : unsigned( 1 downto 0 ) := "00";
 	signal armVideoPage	: std_logic_vector(15 downto 0) := x"0000";
 	signal armBorder	: std_logic_vector(15 downto 0) := x"0000";
@@ -113,6 +111,7 @@ architecture rtl of speccy2010_top is
 	signal joyCode1 : std_logic_vector(15 downto 0) := x"0000";
 
 --	-- SD-RAM control signals
+	signal refresh	   : std_logic;
 	signal memAddress  : std_logic_vector(23 downto 0);
 	signal memDataIn   : std_logic_vector(15 downto 0);
 	signal memDataOut  : std_logic_vector(15 downto 0);
@@ -131,6 +130,11 @@ architecture rtl of speccy2010_top is
 
 	signal Invert		: unsigned(3 downto 0) := "0000";
 
+	signal hCnt			: unsigned(15 downto 0) := x"0000";
+	signal vCnt			: unsigned(15 downto 0) := x"0000";
+	signal hSize 		: integer;
+	signal vSize 		: integer;
+	
 	signal ChrC_Cnt		: unsigned(2 downto 0) := "000";	-- Character column counter
 	signal ChrR_Cnt		: unsigned(2 downto 0) := "000";	-- Character row counter
 	signal Hor_Cnt		: unsigned(5 downto 0) := "000000";	-- Horizontal counter
@@ -138,9 +142,19 @@ architecture rtl of speccy2010_top is
 	
 	signal specIntCounter : unsigned(31 downto 0) := x"00000000";
     signal cpuMemoryWait : std_logic := '0';
+    
+    signal ulaContendentMem : std_logic := '0';
+    signal ulaWaitMem : std_logic := '0';
+    signal ulaWaitIo : std_logic := '0';
+    signal ulaWaitCancel : std_logic := '0';
+    signal ulaWait : std_logic := '0';
 
 	signal specPortFe	: std_logic_vector(7 downto 0);
+	signal specPortFf	: std_logic_vector(7 downto 0);
 	signal specPort7ffd	: std_logic_vector(7 downto 0);
+	
+	signal specPortEff7	: std_logic_vector(7 downto 0);
+	signal specPortDff7	: std_logic_vector(7 downto 0);	
 	
 	signal specTrdosToggleFlag : std_logic := '0';
 	signal specTrdosFlag : std_logic := '0';
@@ -151,6 +165,7 @@ architecture rtl of speccy2010_top is
 	
 	signal specMode		: unsigned(15 downto 0) := x"0000";
 	signal syncMode		: unsigned(15 downto 0) := x"0000";
+    signal cpuTurbo 	: unsigned( 1 downto 0 ) := "00";
 	signal videoMode	: unsigned(15 downto 0) := x"0000";
     signal subcarrierDelta : unsigned( 23 downto 0 ) := to_unsigned( 885662, 24 ); -- 885521
 	signal dacMode		: unsigned(15 downto 0) := x"0000";
@@ -175,8 +190,8 @@ architecture rtl of speccy2010_top is
 	signal ramPage		: std_logic_vector(7 downto 0);
 	signal vramPage		: std_logic_vector(7 downto 0);
 	
-	signal attr			: std_logic_vector(7 downto 0) := "00000111";
-	signal shift		: std_logic_vector(7 downto 0) := "00110011";
+	signal attr			: std_logic_vector(15 downto 0);
+	signal shift		: std_logic_vector(15 downto 0);
 	
 	signal Paper_r 		: std_logic;
 	signal Blank_r 		: std_logic;
@@ -232,11 +247,14 @@ architecture rtl of speccy2010_top is
 	signal tdaBck		: std_logic := '1';
 	
 	signal cpuCLK		: std_logic;
+	signal cpuCLK_nowait	: std_logic;
+	
 	signal cpuWait		: std_logic;
 	signal cpuReset		: std_logic := '0';
 	
 	signal cpuINT		: std_logic;
 	signal cpuM1		: std_logic;
+	signal cpuRFSH		: std_logic;
 	signal cpuMREQ		: std_logic;
 	signal cpuIORQ		: std_logic;
 	signal cpuRD		: std_logic;
@@ -290,7 +308,7 @@ begin
 			IORQ_n  => cpuIORQ,
 			RD_n    => cpuRD,
 			WR_n    => cpuWR,
-			RFSH_n  => open,
+			RFSH_n  => cpuRFSH,
 			HALT_n  => open,
 			BUSAK_n => open,
 			A       => cpuA,
@@ -357,6 +375,7 @@ begin
 		port map(
 			clk => memclk,
 			reset => reset,
+			refresh	=> refresh,
 			
 			memAddress => memAddress,
 			memDataIn => memDataIn,
@@ -473,10 +492,12 @@ begin
 				
     process( memclk )
     
-		variable divCounter28 : unsigned(7 downto 0) := x"00";
+		variable divCounter28 : unsigned(15 downto 0) := x"0000";
 		variable mulCounter28 : unsigned(7 downto 0) := x"00";
 		
 		variable counterMem_en_prev : std_logic := '0';
+		
+		variable freqDiv : integer;
 		
     begin
     
@@ -492,7 +513,7 @@ begin
 			
 			counterMem_en_prev := counterMem_en;
 			
-			divCounter28 := divCounter28 + 28;
+			divCounter28 := divCounter28 + 2;
 			
 			clk28m <= '0';
 			clk14m <= '0';
@@ -500,9 +521,17 @@ begin
 			clk35m <= '0';
 			ayCLK <= '0';
 			
-			if divCounter28 >= freq then
+			freqDiv := 6;
 			
-				divCounter28 := divCounter28 - freq;
+			if videoMode = 3 then
+				freqDiv := 5;
+			elsif videoMode = 4 then
+				freqDiv := 4;				
+			end if;
+			
+			if divCounter28 >= freqDiv then
+			
+				divCounter28 := divCounter28 - freqDiv;
 				mulCounter28 := mulCounter28 + 1;
 				
 				clk28m <= '1';
@@ -604,16 +633,17 @@ begin
 		variable ArmRd	: std_logic_vector(1 downto 0);
 		variable ArmAle	: std_logic_vector(1 downto 0);
 		    
+		variable armReq : std_logic := '0';
+		variable rtcRamReq : std_logic := '0';
+		
 		variable iCpuWr	: std_logic_vector(1 downto 0);
 		variable iCpuRd	: std_logic_vector(1 downto 0);
-		variable iCpuClk	: std_logic_vector(1 downto 0);
 		
 		variable kbdTmp : std_logic_vector(4 downto 0);
 		variable cpuReq : std_logic;		
 		
-		variable tapeCounter		: unsigned( 14 downto 0 ) := "000000000000000";
-		variable tapePulse			: std_logic := '1';
-
+		type rtcRamType is array ( 0 to 63 ) of std_logic_vector( 7 downto 0 );
+		variable rtcRam : rtcRamType;
 		
     begin
 
@@ -674,24 +704,160 @@ begin
 				
 			end if;
 			
+			if rtcRamReq = '1' then
+        
+				ARM_AD <= x"00" & rtcRam( to_integer( addressReg( 5 downto 0 ) ) );
+				ARM_WAIT <= '1';
+								
+				rtcRamReq := '0';
+				
+			end if;
+
+			
 			if ayDoutLe = '0' and ayMode /= 0 then
 				cpuDin <= ayDout;
 			end if;
 			
+			if specTrdosFlag = '0' and cpuA( 7 downto 0 ) = x"FF" and cpuIORQ = '0' and cpuRD = '0' then
+				cpuDin <= specPortFf;
+			end if;
+			
+			if cpuA = x"bff7" and specPortEff7(7) = '1' and cpuIORQ = '0' and cpuRD = '0' then
+				cpuDin <= rtcRam( to_integer( unsigned( specPortDff7( 5 downto 0 ) ) ) );
+			end if;
 			------------------------------------------------------------------------
 			
 			keysRd <= '0';
 			keysWr <= '0';			        
 			mouseRd <= '0';
 			mouseWr <= '0';
-			tapeFifoRd <= '0';
 			tapeFifoWr <= '0';
 			
-			if ( ArmAle = "10" ) then
-				addressReg := unsigned( ARM_A ) & unsigned( ARM_AD );
-			end if;
+			----------------------------------------------------------------------------------
+			
+
+			iCpuWr := iCpuWr(0) & cpuWR;
+			iCpuRd := iCpuRd(0) & cpuRD;				
+
+			if ( iCpuWr = "10" ) then
+				if cpuMREQ = '0' then
+					
+					if cpuA( 15 downto 14 ) /= "00" then
+						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );
+					
+						memDataIn <= cpuDout & cpuDout;
+						memDataMask(0) <= not cpuA(0);
+						memDataMask(1) <= cpuA(0);
+						memWr <= '1';
+						
+						cpuReq := '1';
+						memReq <= '1';
+						
+						cpuMemoryWait <= '1';
+						
+					end if;
+					
+				elsif cpuIORQ = '0' and cpuM1 = '1' then
 				
-			if ( ArmWr = "10" ) then
+					if specTrdosFlag = '1' and ( 
+						cpuA( 7 downto 0 ) = x"1F" or
+						cpuA( 7 downto 0 ) = x"3F" or
+						cpuA( 7 downto 0 ) = x"5F" or
+						cpuA( 7 downto 0 ) = x"7F" or
+						cpuA( 7 downto 0 ) = x"FF" 	) then 
+						
+						specTrdosWait <= '1';
+						specTrdosWr <= '1';
+						
+					else
+					
+						if cpuA( 7 downto 0 ) = x"FE" then
+							specPortFe <= cpuDout;
+						elsif cpuA( 15 ) = '0' and cpuA( 7 downto 0 ) = x"fd" then
+							if specMode = 2 or specPort7ffd(5) = '0' then
+								specPort7ffd <= cpuDout;
+							end if;
+						elsif cpuA = x"eff7" then	
+							specPortEff7 <= cpuDout;
+						elsif cpuA = x"dff7" and specPortEff7(7) = '1' then	
+							specPortDff7 <= cpuDout;
+						elsif cpuA = x"bff7" and specPortEff7(7) = '1' then	
+							rtcRam( to_integer( unsigned( specPortDff7 ) ) ) := cpuDout;
+						end if;
+						
+					end if;
+					
+				end if;
+				
+			elsif ( iCpuRd = "10" ) then
+				if cpuMREQ = '0' then
+					
+					if cpuA( 15 downto 14 ) = "00" then
+						memAddress <= "001" & "00000" & romPage & cpuA( 13 downto 1 );
+					else
+						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );
+					end if;						
+					
+					memWr <= '0';
+					
+					cpuReq := '1';
+					memReq <= '1';
+					
+					cpuMemoryWait <= '1';
+					
+				elsif cpuIORQ = '0' and cpuM1 = '1' then
+
+					if cpuA( 7 downto 0 ) = x"FE" then
+						kbdTmp := ( keyboard(  4 downto  0 ) or ( cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) ) )
+								and ( keyboard(  9 downto  5 ) or ( cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) ) )
+								and ( keyboard( 14 downto 10 ) or ( cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) ) )
+								and ( keyboard( 19 downto 15 ) or ( cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) ) )
+								and ( keyboard( 24 downto 20 ) or ( cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) ) )
+								and ( keyboard( 29 downto 25 ) or ( cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) ) )
+								and ( keyboard( 34 downto 30 ) or ( cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) ) )
+								and ( keyboard( 39 downto 35 ) or ( cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) ) );
+						cpuDin <= "0" & tapeIn & "0" & kbdTmp;
+						
+					elsif cpuA( 15 downto 0 ) = x"FADF" then
+						cpuDin <= mouseButtons;
+					elsif cpuA( 15 downto 0 ) = x"FBDF" then
+						cpuDin <= mouseX;
+					elsif cpuA( 15 downto 0 ) = x"FFDF" then
+						cpuDin <= mouseY;
+					--elsif cpuA = x"7ffd" then
+						--cpuDin <= specPort7ffd;						
+					--elsif cpuA = x"bff7" and specPortEff7(7) = '1' then
+						--cpuDin <= rtcRam( to_integer( unsigned( specPortDff7( 5 downto 0 ) ) ) );
+						
+					elsif specTrdosFlag = '1' then
+
+						if cpuA( 7 downto 0 ) = x"1F" or
+							cpuA( 7 downto 0 ) = x"3F" or
+							cpuA( 7 downto 0 ) = x"5F" or
+							cpuA( 7 downto 0 ) = x"7F" or
+							cpuA( 7 downto 0 ) = x"FF" then
+						
+							specTrdosWait <= '1';
+							specTrdosWr <= '0';
+							
+						end if;
+						
+					else
+					
+						if cpuA( 7 downto 0 ) = x"1F" then
+							cpuDin <= joystick;
+						else
+							cpuDin <= x"FF";
+						end if;
+											
+					end if;
+					
+				end if;
+				
+			elsif armReq = '1' and ARM_WR = '0' then
+				
+				armReq := '0';
+				
 				if addressReg( 23 ) = '0' and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
 					memAddress <= std_logic_vector( activeBank & addressReg( 22 downto 1 ) );
 					memDataIn <= ARM_AD( 7 downto 0 ) & ARM_AD( 7 downto 0 );
@@ -783,7 +949,7 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"41" then
 							syncMode <= unsigned( ARM_AD );
 						elsif addressReg( 7 downto 0 ) = x"42" then
-							cpuTurbo <= ARM_AD( 1 downto 0 );
+							cpuTurbo <= unsigned( ARM_AD( 1 downto 0 ) );
 						elsif addressReg( 7 downto 0 ) = x"43" then
 							videoMode <= unsigned( ARM_AD );
 						elsif addressReg( 7 downto 0 ) = x"44" then
@@ -803,17 +969,18 @@ begin
 							
 						end if;
 						
+					elsif addressReg( 23 downto 8 ) = x"c001" then																	
+						rtcRam( to_integer( addressReg( 7 downto 0 ) ) ) := ARM_AD( 7 downto 0 );
+						
 					end if;
 					
 					ARM_WAIT <= '1';
 				end if;
 				
-			elsif ( ArmWr = "01" ) then
-				addressReg := addressReg + 1;
-				ARM_WAIT <= '0';
-			end if;
+			elsif armReq = '1' and ARM_RD = '0' then
 				
-			if ( ArmRd = "10" ) then
+				armReq := '0';
+
 				if addressReg( 23 ) = '0' and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
 					memAddress <= std_logic_vector( activeBank & addressReg( 22 downto 1 ) );
 					memWr <= '0';
@@ -879,15 +1046,48 @@ begin
 							ARM_AD <= std_logic_vector( counterMem( 31 downto 16 ) );
 							
 						else
-							ARM_AD <= x"ffff";
-							
+							ARM_AD <= x"ffff";							
 						end if;					
+						
+						ARM_WAIT <= '1';
+						
+					elsif addressReg( 23 downto 8 ) = x"c001" then
+						
+						rtcRamReq := '1';						
+						
 					else
-						ARM_AD <= x"ffff";					
-					end if;
 					
-					ARM_WAIT <= '1';
+						ARM_AD <= x"ffff";
+						ARM_WAIT <= '1';
+						
+					end if;					
+					
 				end if;
+				
+			end if;
+
+			
+			if cpuHaltReq = '1' then
+				specTrdosWait <= '0';
+			end if;
+			
+			---------------------------------------------------------
+
+			if ( ArmAle = "10" ) then
+				addressReg := unsigned( ARM_A ) & unsigned( ARM_AD );
+			end if;
+				
+			if ( ArmWr = "10" ) then
+				armReq := '1';
+			
+			elsif ( ArmWr = "01" ) then
+				addressReg := addressReg + 1;
+				ARM_WAIT <= '0';
+				
+			end if;
+				
+			if ( ArmRd = "10" ) then
+				armReq := '1';
 				
 			elsif ( ArmRd = "01" ) then
 			
@@ -900,159 +1100,7 @@ begin
 			ArmAle := ArmAle(0) & ARM_ALE;
 			ArmWr := ArmWr(0) & ARM_WR;
 			ArmRd := ArmRd(0) & ARM_RD;
-			
-			----------------------------------------------------------------------------------
-			
-			iCpuClk := iCpuClk(0) & cpuCLK;
-			
-			if iCpuClk = "10" then
-				
-				if tapeCounter > 0 then
-		
-					tapeCounter := tapeCounter - 1;
-					
-					if tapeCounter = 0 and tapePulse = '1' then
-						tapeIn <= not tapeIn;
-					end if;
-					
-				elsif tapeFifoReady = '1' then
-					
-					tapeCounter := unsigned( tapeFifoRdTmp( 14 downto 0 ) );
-					tapePulse := tapeFifoRdTmp( 15 );
-					tapeFifoRd <= '1';
-						
-				end if;
-			
-			end if;
-			
-			--if specTrdosToggleFlag = '0' then 			
-			iCpuWr := iCpuWr(0) & cpuWR;
-			iCpuRd := iCpuRd(0) & cpuRD;				
-			--end if;
 
-			if ( iCpuWr = "10" ) then
-				if cpuMREQ = '0' then
-					
-					if cpuA( 15 downto 14 ) /= "00" then
-						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );
-					
-						memDataIn <= cpuDout & cpuDout;
-						memDataMask(0) <= not cpuA(0);
-						memDataMask(1) <= cpuA(0);
-						memWr <= '1';
-						
-						cpuReq := '1';
-						memReq <= '1';
-						
-						if cpuTurbo /= "00" then
-							cpuMemoryWait <= '1';
-						end if;
-						
-					end if;
-					
-				elsif cpuIORQ = '0' and cpuM1 = '1' then
-				
-					if specTrdosFlag = '1' and ( 
-						cpuA( 7 downto 0 ) = x"1F" or
-						cpuA( 7 downto 0 ) = x"3F" or
-						cpuA( 7 downto 0 ) = x"5F" or
-						cpuA( 7 downto 0 ) = x"7F" or
-						cpuA( 7 downto 0 ) = x"FF" 	) then 
-						
-						specTrdosWait <= '1';
-						specTrdosWr <= '1';
-						
-					else
-					
-						if cpuA( 7 downto 0 ) = x"FE" then
-							specPortFe <= cpuDout;
-						elsif cpuA( 15 ) = '0' and cpuA( 7 downto 0 ) = x"fd" then
-							if specMode = 2 or specPort7ffd(5) = '0' then
-								specPort7ffd <= cpuDout;
-							end if;
-						end if;
-						
-					end if;
-					
-				end if;				
-			end if;
-
-			if ( iCpuRd = "10" ) then
-				if cpuMREQ = '0' then
-					
-					if cpuA( 15 downto 14 ) = "00" then
-						memAddress <= "001" & "00000" & romPage & cpuA( 13 downto 1 );
-					else
-						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );
-					end if;						
-					
-					memWr <= '0';
-					
-					cpuReq := '1';
-					memReq <= '1';
-					
-					if cpuTurbo /= "00" then
-						cpuMemoryWait <= '1';
-					end if;
-					
-				elsif cpuIORQ = '0' and cpuM1 = '1' then
-
-					if cpuA( 7 downto 0 ) = x"FE" then
-						kbdTmp := ( keyboard(  4 downto  0 ) or ( cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) ) )
-								and ( keyboard(  9 downto  5 ) or ( cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) ) )
-								and ( keyboard( 14 downto 10 ) or ( cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) ) )
-								and ( keyboard( 19 downto 15 ) or ( cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) ) )
-								and ( keyboard( 24 downto 20 ) or ( cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) ) )
-								and ( keyboard( 29 downto 25 ) or ( cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) ) )
-								and ( keyboard( 34 downto 30 ) or ( cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) ) )
-								and ( keyboard( 39 downto 35 ) or ( cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) ) );
-						cpuDin <= "0" & tapeIn & "0" & kbdTmp;
-						
-					elsif cpuA( 15 downto 0 ) = x"FADF" then
-						cpuDin <= mouseButtons;
-					elsif cpuA( 15 downto 0 ) = x"FBDF" then
-						cpuDin <= mouseX;
-					elsif cpuA( 15 downto 0 ) = x"FFDF" then
-						cpuDin <= mouseY;
-					--elsif cpuA = x"7ffd" then
-						--cpuDin <= specPort7ffd;
-						
-					elsif specTrdosFlag = '1' then
-
-						if cpuA( 7 downto 0 ) = x"1F" or
-							cpuA( 7 downto 0 ) = x"3F" or
-							cpuA( 7 downto 0 ) = x"5F" or
-							cpuA( 7 downto 0 ) = x"7F" or
-							cpuA( 7 downto 0 ) = x"FF" then
-						
-							specTrdosWait <= '1';
-							specTrdosWr <= '0';
-							
-						end if;
-						
-					else
-					
-						if cpuA( 7 downto 0 ) = x"1F" then
-							cpuDin <= joystick;
-						elsif cpuA( 7 downto 0 ) = x"FF" then
-							if Paper = '0' then
-								cpuDin <= Attr;
-							else
-								cpuDin <= x"FF";
-							end if;
-						else
-							cpuDin <= x"FF";
-						end if;
-											
-					end if;
-					
-				end if;				
-			end if;
-			
-			if cpuHaltReq = '1' then
-				specTrdosWait <= '0';
-			end if;
-			
         end if;
         
     end process;
@@ -1122,12 +1170,74 @@ begin
 	
 	---------------------------------------------------------------------------------------
 
+    process( memclk )
+    
+		variable tapeCounter		: unsigned( 14 downto 0 ) := "000000000000000";
+		variable tapePulse			: std_logic := '1';
+		
+    begin
+
+		if memclk'event and memclk = '1' then
+		
+			tapeFifoRd <= '0';
+			
+			if cpuCLK_nowait = '0' and cpuHaltAck = '0' and cpuMemoryWait = '0' then
+				
+				if tapeCounter > 0 then
+		
+					tapeCounter := tapeCounter - 1;
+					
+					if tapeCounter = 0 and tapePulse = '1' then
+						tapeIn <= not tapeIn;
+					end if;
+					
+				elsif tapeFifoReady = '1' then
+					
+					tapeCounter := unsigned( tapeFifoRdTmp( 14 downto 0 ) );
+					tapePulse := tapeFifoRdTmp( 15 );
+					tapeFifoRd <= '1';
+						
+				end if;
+			
+			end if;
+			
+		end if;
+		
+	end process;
+		
+	---------------------------------------------------------------------------------------
+
     paper <= '0' when Hor_Cnt(5) = '0' and Ver_Cnt(5) = '0' and ( Ver_Cnt(4) = '0' or Ver_Cnt(3) = '0' ) else '1';      
 	hsync <= '0' when Hor_Cnt(5 downto 2) = "1010" else '1';
 	vsync1 <= '0' when Hor_Cnt(5 downto 1) = "00110" or Hor_Cnt(5 downto 1) = "10100" else '1';
 	vsync2 <= '1' when Hor_Cnt(5 downto 2) = "0010" or Hor_Cnt(5 downto 2) = "1001" else '0';
 	
-	cpuWait <= cpuHaltAck or cpuMemoryWait or specTrdosWait or cpuOneCycleWaitReq;
+	--ulaWaitMem <= '1' when ( Hor_Cnt(0) = '0' and ChrC_Cnt >= 0 ) or ( Hor_Cnt(0) = '1' and ChrC_Cnt < 4 ) else '0';
+	--ulaWaitIo <= '0' when Hor_Cnt(0) = '1' and ChrC_Cnt >= 2 and ChrC_Cnt < 6 else '1';
+	
+	ulaWaitMem <= '1' when ( Hor_Cnt(0) = '0' and ChrC_Cnt >= 2 ) or ( Hor_Cnt(0) = '1' and ChrC_Cnt < 6 ) else '0';
+	ulaWaitIo <= '1' when ( Hor_Cnt(0) = '0' and ChrC_Cnt >= 0 ) or ( Hor_Cnt(0) = '1' and ChrC_Cnt < 4 ) else '0';
+	
+	ulaContendentMem <= '1' when cpuA( 15 downto 14 ) = "01" or ( cpuA( 15 downto 14 ) = "11" and specPort7ffd( 0 ) = '1' ) else '0';
+
+	ulaWait <= '1' when ( cpuTurbo = 0 and syncMode <= 1 ) and 
+		paper = '0' and
+		(
+			( cpuMREQ = '0' and ulaContendentMem = '1' and ulaWaitMem = '1' and ulaWaitCancel ='0' )
+			or 
+			( cpuMREQ = '1' and ( cpuA( 15 downto 14 ) = "01" ) and ulaWaitIo = '1' and ulaWaitCancel ='0' )
+			or 
+			( ( cpuIORQ = '0' and cpuA( 0 ) = '0' ) and ulaWaitIo = '1' and ulaWaitCancel ='0' )
+			
+		) else '0';
+		
+	cpuWait <= cpuHaltAck or cpuMemoryWait or specTrdosWait or cpuOneCycleWaitReq or ulaWait;
+	
+	ChrC_Cnt <= hCnt( 2 downto 0 );
+	Hor_Cnt <= hCnt( 8 downto 3 );
+	
+	ChrR_Cnt <= vCnt( 2 downto 0 );
+	Ver_Cnt <= vCnt( 8 downto 3 );
 
 	process( memclk )
 	
@@ -1136,10 +1246,17 @@ begin
 	begin
 		if memclk'event and memclk = '1' then
 		
-			if ( cpuTurbo = "00" and clk7m = '1' and ChrC_Cnt(0) = '0' ) or
-				( cpuTurbo = "01" and clk7m = '1' ) or
-				( cpuTurbo = "10" and clk14m = '1' ) or
-				( cpuTurbo = "11" and clk28m = '1' ) then
+			refresh <= '0';
+				
+			if cpuHaltAck = '1' or specTrdosWait = '1' or ( cpuMREQ = '0' and cpuRFSH = '0') then
+				refresh <= '1';
+			end if;
+
+		
+			if ( cpuTurbo = 0 and clk7m = '1' and ChrC_Cnt(0) = '0' ) or
+				( cpuTurbo = 1 and clk7m = '1' ) or
+				( cpuTurbo = 2 and clk14m = '1' ) or
+				( cpuTurbo = 3 and clk28m = '1' ) then
 				
 				if specIntCounter = 32 then
 					cpuINT <= '1';
@@ -1148,38 +1265,55 @@ begin
 				specIntCounter <= specIntCounter + 1;
 				cpuOneCycleWaitAck <= cpuOneCycleWaitReq;
 				
+				cpuCLK_nowait <= '0';			
+				
 				if cpuWait = '0' then
 					cpuCLK <= '0';
+					
+					if ( cpuIORQ = '0' and cpuA( 0 ) = '0' ) or cpuMREQ = '0' then
+						ulaWaitCancel <= '1';
+					else
+						ulaWaitCancel <= '0';
+					end if;
+					
 					cpuTraceAck <= cpuTraceReq;
 				end if;
 				
 			else
+			
+				cpuCLK_nowait <= '1';
 				cpuCLK <= '1';
+				
+			end if;
+
+			if syncMode = 0 then
+				hSize <= 448;
+				vSize <= 312;
+			elsif syncMode = 1 then
+				hSize <= 456;
+				vSize <= 311;
+			else
+				hSize <= 448;
+				vSize <= 320;
 			end if;
 
 			if clk7m = '1' then
 			
-				if ChrC_Cnt = 7 then
+				if hCnt >= hSize - 1 then
+					hCnt <= x"0000";
+				else
+					hCnt <= hCnt + 1;
+				end if;				
+					
+				if hCnt = 319 then					
 				
-					if Hor_Cnt = 55 then
-						Hor_Cnt <= (others => '0');
+					if vCnt >= vSize - 1 then
+						vCnt <= x"0000";
+						Invert <= Invert + 1;
 					else
-						Hor_Cnt <= Hor_Cnt + 1;
+						vCnt <= vCnt + 1;
 					end if;
 					
-					if Hor_Cnt = 39 then					
-						if ChrR_Cnt = 7 then
-							if ( Ver_Cnt = 38 and syncMode = 0 ) or ( Ver_Cnt = 39 and syncMode = 1 ) then
-								Ver_Cnt <= (others => '0');
-								Invert <= Invert + 1;
-							else
-								Ver_Cnt <= Ver_Cnt + 1;
-							end if;							
-						end if;
-						
-						ChrR_Cnt <= ChrR_Cnt + 1;
-						
-					end if;
 				end if;
 				
 				if ChrC_Cnt = 7 then
@@ -1199,8 +1333,10 @@ begin
 					
 				end if;
 				
-				if syncMode = 0 then
-					if Ver_Cnt = 31 and ChrR_Cnt = 0 and Hor_Cnt = 0 and ChrC_Cnt = 0 then
+				if syncMode <= 1 then
+					if Ver_Cnt = 31 and ChrR_Cnt = 0 and Hor_Cnt = 55 and ChrC_Cnt = 6 then
+					--if Ver_Cnt = 31 and ChrR_Cnt = 0 and Hor_Cnt = 0 and ChrC_Cnt = 0 then
+					--if Ver_Cnt = 31 and ChrR_Cnt = 0 and Hor_Cnt = 0 and ChrC_Cnt = 2 then
 						cpuINT <= cpuIntSkip;
 						specIntCounter <= x"00000000";
 						cpuIntSkip := '0';
@@ -1216,9 +1352,7 @@ begin
 				if cpuHaltAck = '1' or specTrdosWait = '1' then
 					cpuINT <= '1';
 					cpuIntSkip := '1';
-				end if;			
-				
-				ChrC_Cnt <= ChrC_Cnt + 1;
+				end if;						
 
 			end if;
 			
@@ -1231,6 +1365,13 @@ begin
 		
 	process( memclk )
 		variable videoPage : std_logic_vector(10 downto 0);
+
+		variable iCpuClkNowait : std_logic_vector(1 downto 0) := "00";
+		variable portFfTemp : std_logic_vector(7 downto 0) := x"FF";
+		
+		variable vidReadPos : integer := 0;
+		variable vidReq : std_logic := '0';		
+		
 	begin
 		if (memclk'event and memclk = '1') then
 		
@@ -1238,79 +1379,94 @@ begin
 				videoPage := armVideoPage( 10 downto 0 );
 			else
 				videoPage := "000" & vramPage;
-			end if;				
-		
-			if Paper = '0' then
+			end if;
 			
-				if memAck2 = '1' then
-				
-					if ChrC_Cnt < 4 then
-						if Hor_Cnt(0) = '0' then
-							Shift <= memDataOut2( 7 downto 0 );
-						else
-							Shift <= memDataOut2( 15 downto 8 );
-						end if;
-					else
-						if Hor_Cnt(0) = '0' then
-							Attr <= memDataOut2( 7 downto 0 );
-						else
-							Attr <= memDataOut2( 15 downto 8 );
-						end if;
-					end if;
-					
-					memReq2 <= '0';
+			if Paper = '0' then
 
-				elsif memReq2 = '0' and clk7m = '1' then
+				if clk7m = '1' and Hor_Cnt(0) = '0' and 
+						( ( ChrC_Cnt = 2 and syncMode <= 1 ) or ( ChrC_Cnt = 0 and syncMode = 2 ) ) then
+					vidReadPos := 0;
+					vidReq := '1';					
+				end if;
+				
+				iCpuClkNowait := iCpuClkNowait( 0 ) & cpuCLK_nowait;
+				
+				if iCpuClkNowait = "01" then
+					--specPortFf <= x"ff";
+					--specPortFf <= std_logic_vector( Hor_Cnt( 3 downto 0) & "0" & ChrC_Cnt );
+					specPortFf <= portFfTemp;
+					portFfTemp := x"ff";
+				end if;
+			
+				if memReq2 = '0' and vidReq = '1' and iCpuClkNowait = "01" then
 					
-					if ChrC_Cnt = 0 then
+					if vidReadPos = 0 or vidReadPos = 2 then
 						memAddress2 <= videoPage & std_logic_vector( "0" & Ver_Cnt(4 downto 3) & ChrR_Cnt & Ver_Cnt(2 downto 0) & Hor_Cnt(4 downto 1) );
 						memWr2 <= '0';
 						memReq2 <= '1';
 						
-					elsif ChrC_Cnt = 4 then
+					else
 						memAddress2 <= videoPage & std_logic_vector( "0110" & Ver_Cnt(4 downto 0) & Hor_Cnt(4 downto 1) );
 						memWr2 <= '0';
 						memReq2 <= '1';
 					end if;
 
-				end if;
+				end if;			
+			
+				if memAck2 = '1' then
+				
+					memReq2 <= '0';
+
+					if vidReadPos = 0  then
+						Shift <= memDataOut2;
+						portFfTemp := memDataOut2( 7 downto 0 );
+					elsif vidReadPos = 1  then
+						Attr <= memDataOut2;
+						portFfTemp := memDataOut2( 7 downto 0 );
+						
+					elsif vidReadPos = 2  then
+						Shift( 15 downto 8 ) <= memDataOut2( 15 downto 8 );
+						portFfTemp := memDataOut2( 15 downto 8 );
+					else
+						Attr( 15 downto 8 ) <= memDataOut2( 15 downto 8 );
+						portFfTemp := memDataOut2( 15 downto 8 );
+					end if;
 					
-			end if;				
+					vidReadPos := vidReadPos + 1;
+					
+					if vidReadPos < 2 or ( vidReadPos < 4 and cpuTurbo = 0 ) then
+						vidReq := '1';
+					else
+						vidReq := '0';
+					end if;
+										
+				end if;					
+					
+			end if;							
 
 		end if;
 	end process;
 	
 	process( memclk )
 	
-		variable verMax : integer := 0;
+		variable hBorderSize : integer := 0;
+		variable vBorderSize : integer := 0;
+		
+		variable hPosBegin : integer := 0;
+		variable hPosEnd : integer := 0;
+		variable vPosBegin : integer := 0;
+		variable vPosEnd : integer := 0;
 		
 	begin
 		if memclk'event and memclk = '1' and clk7m = '1' then
 			if ChrC_Cnt = 7 then
 				
-				Attr_r <= Attr;
-				Shift_r <= Shift;
-				
-				if syncMode = 0 then
-					verMax := 34;
+				if Hor_Cnt(0) = '0' then
+					Attr_r <= Attr( 7 downto 0 );
+					Shift_r <= Shift( 7 downto 0 );
 				else
-					verMax := 35;
-				end if;
-				
-				if videoAspectRatio = 0 and 
-					( ( Hor_Cnt >= 38 and Hor_Cnt < 50 ) or 
-						( Ver_Cnt >= 29 and Ver_Cnt < verMax ) ) then
-							blank_r <= '0';
-				elsif videoAspectRatio = 1 and 
-					( ( Hor_Cnt >= 38 and Hor_Cnt < 50 ) or 
-						( Ver_Cnt >= 30 and Ver_Cnt < ( verMax - 1 ) ) ) then
-							blank_r <= '0';
-				elsif videoAspectRatio = 2 and 
-					( ( Hor_Cnt >= 40 and Hor_Cnt < 48 ) or 
-						( Ver_Cnt >= 26 and Ver_Cnt < ( verMax + 3 ) ) ) then
-							blank_r <= '0';
-				else 
-					blank_r <= '1';
+					Attr_r <= Attr( 15 downto 8 );
+					Shift_r <= Shift( 15 downto 8 );
 				end if;
 				
 				paper_r <= paper;
@@ -1318,6 +1474,36 @@ begin
 			else
 				Shift_r <= Shift_r(6 downto 0) & "0";					
 			end if;
+			
+				
+			if ChrC_Cnt = 7 then
+				if videoMode >= 3 then
+					hBorderSize := 48;
+					vBorderSize := 54;
+				elsif videoAspectRatio = 0 then 
+					hBorderSize := 6 * 8;
+					vBorderSize := 5 * 8;
+				elsif videoAspectRatio = 1 then 
+					hBorderSize := 6 * 8;
+					vBorderSize := 6 * 8;
+				else 
+					hBorderSize := 8 * 8;
+					vBorderSize := 2 * 8;
+				end if;
+
+				hPosBegin := hSize - hBorderSize;
+				hPosEnd := 256 + hBorderSize;
+				vPosBegin := vSize - vBorderSize;
+				vPosEnd := 192 + vBorderSize;
+
+				if ( ( hCnt >= hPosEnd and hCnt < hPosBegin ) or 
+						( vCnt >= vPosEnd and vCnt < vPosBegin ) ) then
+							blank_r <= '0';
+				else 
+					blank_r <= '1';
+				end if;
+			end if;
+				
 		end if;
 	end process;
 	
@@ -1437,9 +1623,9 @@ begin
 				if dacMode = 1 then
 			
 					if tdaCounter( 7 downto 1 ) = 7 then
-						tdaWs <= '0';
-					elsif tdaCounter( 7 downto 1 ) = 24 + 7 then
 						tdaWs <= '1';
+					elsif tdaCounter( 7 downto 1 ) = 24 + 7 then
+						tdaWs <= '0';
 					end if;
 					
 				else
@@ -1482,20 +1668,18 @@ begin
 		variable prevH : std_logic := '0';
 		variable prevV : std_logic := '0';
 		
+		variable vgaHSize : integer;
 		variable vgaVSize : integer;
 		
 	begin
 		if memclk'event and memclk = '1' and clk14m = '1' then
 		
-			if syncMode = 1 then
-				vgaVSize := 320 * 2;
-			else
-				vgaVSize := 312 * 2;
-			end if;
+			vgaHSize := hSize;
+			vgaVSize := vSize * 2;
 			
 			vgaHCounter := vgaHCounter + 1;
 			
-			if vgaHCounter >= 448 then
+			if vgaHCounter >= vgaHSize then
 			
 				vgaHCounter := x"0000";				
 				vgaVCounter := vgaVCounter + 1;				
@@ -1507,7 +1691,7 @@ begin
 			end if;
 			
 			if prevH = '1' and VideoHS_n = '0' then
-				vgaHCounter := to_unsigned( 440, 16 );
+				vgaHCounter := to_unsigned( vgaHSize - 8, 16 );
 			end if;
 			
 			if vgaHCounter < 40 then
@@ -1517,10 +1701,10 @@ begin
 			end if;
 			
 			if prevV = '1' and VideoVS_n = '0' then
-				if videoAspectRatio = 0 then
-					vgaVCounter := to_unsigned( vgaVSize - 16, 16 );
-				elsif videoAspectRatio = 1 then
+				if videoAspectRatio = 1 or videoMode /= 2 then
 					vgaVCounter := to_unsigned( 0, 16 );
+				elsif videoAspectRatio = 0 then
+					vgaVCounter := to_unsigned( vgaVSize - 16, 16 );
 				else
 					vgaVCounter := to_unsigned( vgaVSize - 64, 16 );
 				end if;

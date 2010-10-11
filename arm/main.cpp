@@ -14,12 +14,13 @@
 #include "specShell.h"
 #include "specConfig.h"
 #include "specBetadisk.h"
+#include "specRtc.h"
 
 #include "ramFile.h"
 
 const int VER_MAJOR = 1;
 const int VER_MINIR = 0;
-const int REV = 36;
+const int REV = 37;
 
 byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
@@ -222,6 +223,7 @@ void GetTime( tm *time )
     currentTime.tm_min = ( data[1] >> 4 ) * 10 + ( data[1] & 0x0f );
     currentTime.tm_hour = ( data[2] >> 4 ) * 10 + ( data[2] & 0x0f );
 
+    currentTime.tm_wday  = ( data[3] & 0x0f );
     currentTime.tm_mday = ( data[4] >> 4 ) * 10 + ( data[4] & 0x0f );
     currentTime.tm_mon = ( data[5] >> 4 ) * 10 + ( data[5] & 0x0f ) - 1;
     currentTime.tm_year = 100 + ( data[6] >> 4 ) * 10 + ( data[6] & 0x0f );
@@ -256,6 +258,8 @@ void SetTime( tm *newTime )
         time.tm_mday = 1 + ( mdayMax + time.tm_mday - 1 ) % mdayMax;
     }
 
+    mktime( &time );
+
     time.tm_mon += 1;
     time.tm_year %= 100;
 
@@ -263,7 +267,7 @@ void SetTime( tm *newTime )
     data[0] = ( ( time.tm_sec / 10 ) << 4 ) | ( time.tm_sec % 10 );
     data[1] = ( ( time.tm_min / 10 ) << 4 ) | ( time.tm_min % 10 );
     data[2] = ( ( time.tm_hour / 10 ) << 4 ) | ( time.tm_hour % 10 );
-    data[3] = 0;
+    data[3] = time.tm_wday;
     data[4] = ( ( time.tm_mday / 10 ) << 4 ) | ( time.tm_mday % 10 );
     data[5] = ( ( time.tm_mon / 10 ) << 4 ) | ( time.tm_mon % 10 );
     data[6] = ( ( time.tm_year / 10 ) << 4 ) | ( time.tm_year % 10 );
@@ -635,6 +639,9 @@ bool Spectrum_LoadRomPage( int page, const char *romFileName )
 
 	bool result = true;
 
+	int writeErrors = 0;
+	int readErrors = 0;
+
     CPU_Stop();
     SystemBus_Write( 0xc00020, 0 );  // use bank 0
     dword addr = 0x800000 | ( ( ( 0x100 + page ) * 0x4000 ) >> 1 );
@@ -653,15 +660,28 @@ bool Spectrum_LoadRomPage( int page, const char *romFileName )
         SystemBus_Write( addr, data );
         word temp = SystemBus_Read( addr );
 
-        if( temp != data ) break;
+        if( temp != data )
+        {
+            for( int i = 0; i < 3; i++ )
+            {
+                temp = SystemBus_Read( addr );
+                if( temp == data ) break;
+            }
+
+            if( temp == data ) readErrors++;
+            else writeErrors++;
+        }
 
         addr++;
         if( ( addr & 0x0fff ) == 0 ) WDT_Kick();
 	}
 
-    if( pos < romImage.fsize )
+    if( readErrors > 0 ||  writeErrors > 0 )
     {
-        UART0_WriteText( "Memory write error !\n" );
+        __TRACE( "Memory errors !\n" );
+        __TRACE( " - read errors : %d\n", readErrors );
+        __TRACE( " - write errors : %d\n", writeErrors );
+
         result = false;
     }
 
@@ -685,6 +705,9 @@ void Spectrum_InitRom()
 
     SystemBus_Write( 0xc00021, 0x0000 );
     SystemBus_Write( 0xc00022, 0x0000 );
+
+    ResetKeyboard();
+    RTC_Update();
 
     CPU_Reset( true );
     CPU_Reset( false );
@@ -794,18 +817,18 @@ void Keyboard_Send( const byte *data, int size )
     keybordSendPos = 0;
 
     SystemBus_Write( 0xc00032, keybordSend[ keybordSendPos ] );
-    __TRACE( "Keyboard_Send : 0x%.2x\n", keybordSend[ keybordSendPos ] );
+    //__TRACE( "Keyboard_Send : 0x%.2x\n", keybordSend[ keybordSendPos ] );
 }
 
 void Keyboard_SendNext( byte code )
 {
-    __TRACE( "Keyboard_Received : 0x%.2x\n", code );
+    //__TRACE( "Keyboard_Received : 0x%.2x\n", code );
 
     if( code == 0xfa ) keybordSendPos++;
     if( keybordSendPos >= keybordSendSize ) return;
 
     SystemBus_Write( 0xc00032, keybordSend[ keybordSendPos ] );
-    __TRACE( "Keyboard_SendNext : 0x%.2x\n", keybordSend[ keybordSendPos ] );
+    //__TRACE( "Keyboard_SendNext : 0x%.2x\n", keybordSend[ keybordSendPos ] );
 }
 
 void Timer_Routine()
@@ -1016,6 +1039,8 @@ void Timer_Routine()
             RestreConfig();
             Spectrum_UpdateConfig();
         }
+
+        RTC_Update();
 
         portENTER_CRITICAL();
         timer_flag_1Hz--;

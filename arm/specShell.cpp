@@ -533,7 +533,7 @@ void CPU_Start()
     {
         if( cpuStopNesting == 1 && ( SystemBus_Read( 0xc00019 ) & 0x0001 ) == 0 )
         {
-            ResetKeyboard();
+            //ResetKeyboard();
             SystemBus_Write( 0xc00000, 0x0000 );
             SystemBus_Write( 0xc00008, 0x0001 );
         }

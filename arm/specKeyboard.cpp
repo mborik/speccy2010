@@ -115,8 +115,6 @@ void DecodeKey( word keyCode, word keyFlags )
     if( ( reset1 || reset2 ) != resetState )
     {
         resetState = reset1 || reset2;
-
-        if( resetState ) ResetKeyboard();
         CPU_Reset( resetState );
     }
 
@@ -140,6 +138,16 @@ void DecodeKey( word keyCode, word keyFlags )
                     break;
                 case KEY_3 :
                     specConfig.specVideoMode = 2;
+                    Spectrum_UpdateConfig();
+                    SaveConfig();
+                    break;
+                case KEY_4 :
+                    specConfig.specVideoMode = 3;
+                    Spectrum_UpdateConfig();
+                    SaveConfig();
+                    break;
+                case KEY_5 :
+                    specConfig.specVideoMode = 4;
                     Spectrum_UpdateConfig();
                     SaveConfig();
                     break;

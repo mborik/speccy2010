@@ -319,6 +319,8 @@
 		<Unit filename="specKeyboard.cpp" />
 		<Unit filename="specKeyboard.h" />
 		<Unit filename="specLoader.h" />
+		<Unit filename="specRtc.cpp" />
+		<Unit filename="specRtc.h" />
 		<Unit filename="specShell.cpp" />
 		<Unit filename="specShell.h" />
 		<Unit filename="specSnapshot.cpp" />

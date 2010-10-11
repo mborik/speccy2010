@@ -10,6 +10,7 @@ entity sdram is
 	port(
 		clk			 : in std_logic;		
 		reset		 : in std_logic;
+		refresh		 : in std_logic;
 		
 		memAddress  : in std_logic_vector(23 downto 0);
 		memDataIn   : in std_logic_vector(15 downto 0);
@@ -131,17 +132,7 @@ begin
 					SdrCmd <= SdrCmd_xx;
 					SdrDat <= (others => 'Z');
 					
-					if memReq2 = '1' then
-						SdrPort := '1';
-						SdrAddress := memAddress2;
-						
-						if( memWr2 = '1' ) then
-							SdrRoutine := SdrRoutine_WriteOne;
-						else
-							SdrRoutine := SdrRoutine_ReadOne;
-						end if;							
-
-					elsif memReq = '1' then
+					if memReq = '1' then
 						SdrPort := '0';
 						SdrAddress := memAddress;
 						
@@ -151,8 +142,18 @@ begin
 							SdrRoutine := SdrRoutine_ReadOne;
 						end if;
 
+					elsif memReq2 = '1' then
+						SdrPort := '1';
+						SdrAddress := memAddress2;
+						
+						if( memWr2 = '1' ) then
+							SdrRoutine := SdrRoutine_WriteOne;
+						else
+							SdrRoutine := SdrRoutine_ReadOne;
+						end if;							
 
-					elsif SdrRefreshCounter < 4096 then
+
+					elsif SdrRefreshCounter < 4096 and refresh = '1' then
 						SdrRoutine := SdrRoutine_RefreshAll;
 						SdrRefreshCounter := SdrRefreshCounter + 1;
 					end if;
