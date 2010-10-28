@@ -12,6 +12,7 @@ You can use, modify and distribute thisfile freely, but without any waranty.
 SECTIONS
 {
     /* the program code is stored in the .text section, which goes to Flash */
+
     .text :
     {
 	    KEEP (*crt0.o(.text))
@@ -120,6 +121,8 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
 
+        KEEP( *(.vectorsTableRam) )
+        KEEP( *(.jcr) )
         *(.data)
         *(.data*)
 
@@ -180,44 +183,6 @@ SECTIONS
         *(.b1rodata)                 /* read-only data (constants) */
         *(.b1rodata*)
     } >FLASHB1
-
-    /* this is the EXTMEM */
-    /* the C or assembly source must explicitly place the code or data there
-    using the "section" attribute */
-
-    /* EXTMEM Bank0 */
-    .eb0text :
-    {
-        *(.eb0text)                   /* remaining code */
-        *(.eb0rodata)                 /* read-only data (constants) */
-        *(.eb0rodata*)
-    } >EXTMEMB0
-
-    /* EXTMEM Bank1 */
-    .eb1text :
-    {
-        *(.eb1text)                   /* remaining code */
-        *(.eb1rodata)                 /* read-only data (constants) */
-        *(.eb1rodata*)
-    } >EXTMEMB1
-
-    /* EXTMEM Bank2 */
-    .eb2text :
-    {
-        *(.eb2text)                   /* remaining code */
-        *(.eb2rodata)                 /* read-only data (constants) */
-        *(.eb2rodata*)
-    } >EXTMEMB2
-
-    /* EXTMEM Bank0 */
-    .eb3text :
-    {
-        *(.eb3text)                   /* remaining code */
-        *(.eb3rodata)                 /* read-only data (constants) */
-        *(.eb3rodata*)
-    } >EXTMEMB3
-
-
 
     /* after that it's only debugging information. */
 

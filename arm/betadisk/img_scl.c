@@ -105,7 +105,7 @@ static int scl_open(struct flp_image *img, dword size)
 		i = 8;
 	}
 
-	SCL_TRACE(("scl: image to open %s\n", img->fname[i]));
+	SCL_TRACE(( "scl: image to open %s\n", img->fname ));
 
 	sys_area = &FLP_PRIV(img, struct scl_priv)->sys_sec;
 	memcpy(sys_area, &scl_sys_sec_def, 32);

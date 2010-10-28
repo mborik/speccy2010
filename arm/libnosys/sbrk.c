@@ -2,6 +2,8 @@
 
 #include <_syslist.h>
 
+#include "../system.h"
+
 //#include "gui_config.h"
 
 #ifdef USE_FREE_RTOS_CRITICAL_SECTION
@@ -40,12 +42,14 @@ void *_sbrk( int incr )
 	char *prev_heap_end;
 
 	if( current_heap_end == 0 ) current_heap_end = &heap_start;
+	char *new_heap_end = current_heap_end + incr;
 
-	if( ( current_heap_end + incr ) <= &heap_end )
+	if( new_heap_end >= &heap_start && new_heap_end <= &heap_end )
 	{
 		prev_heap_end = current_heap_end;
-		current_heap_end += incr;
+		current_heap_end = new_heap_end;
 
+		//AddMallocRecord( 0, (dword) prev_heap_end, incr );
 		return (void *) prev_heap_end;
 	}
 

@@ -20,7 +20,7 @@ You can use it, modify it, distribute it freely but without any waranty.
 /*; ----------------------------------------------------------------------------
   ;                      Memory remapping
 ; ----------------------------------------------------------------------------*/
-.set Remap_SRAM, 0   /* remap SRAM at address 0x00 if 1 */
+.set Remap_SRAM, 1   /* remap SRAM at address 0x00 if 1 */
 
 /*  ; ----------------------------------------------------------------------------
   ;                      EIC initialization
@@ -109,6 +109,64 @@ SIR0_off_addr       =    0x60               /*; Source Interrupt Register 0*/
 
 /***************************************************************************************/
 
+.section .vectorsTableRam
+
+        LDR     PC, Reset_Addr_RAM
+        LDR     PC, Undefined_Addr_RAM
+        LDR     PC, SWI_Addr_RAM
+        LDR     PC, Prefetch_Addr_RAM
+        LDR     PC, Abort_Addr_RAM
+        NOP                          /*; Reserved vector*/
+        LDR     PC, IRQ_Addr_RAM
+        LDR     PC, FIQ_Addr_RAM
+
+
+Reset_Addr_RAM      : .long     Reset_Handler
+Undefined_Addr_RAM  : .long     UndefinedHandler
+SWI_Addr_RAM        : .long     SWIHandler
+Prefetch_Addr_RAM   : .long     PrefetchAbortHandler
+Abort_Addr_RAM      : .long     DataAbortHandler
+                  .long 0      /*; Reserved vector*/
+IRQ_Addr_RAM        : .long     IRQHandler
+FIQ_Addr_RAM        : .long     FIQHandler
+
+__wrongvector_RAM:
+	ldr     PC, __wrongvector_Addr_RAM
+__wrongvector_Addr_RAM:
+	.long 0
+
+WAKUP_Addr_RAM         :.long	WAKUPIRQHandler
+TIM2_OC2_Addr_RAM      :.long	TIM2_OC2IRQHandler
+TIM2_OC1_Addr_RAM      :.long	TIM2_OC1IRQHandler
+TIM2_IC12_Addr_RAM     :.long	TIM2_IC12IRQHandler
+TIM2_UP_Addr_RAM       :.long	TIM2_UPIRQHandler
+TIM1_OC2_Addr_RAM      :.long	TIM1_OC2IRQHandler
+TIM1_OC1_Addr_RAM      :.long	TIM1_OC1IRQHandler
+TIM1_IC12_Addr_RAM     :.long	TIM1_IC12IRQHandler
+TIM1_UP_Addr_RAM       :.long	TIM1_UPIRQHandler
+TIM0_OC2_Addr_RAM      :.long	TIM0_OC2IRQHandler
+TIM0_OC1_Addr_RAM      :.long	TIM0_OC1IRQHandler
+TIM0_IC12_Addr_RAM     :.long	TIM0_IC12IRQHandler
+TIM0_UP_Addr_RAM       :.long	TIM0_UPIRQHandler
+PWM_OC123_Addr_RAM     :.long	PWM_OC123IRQHandler
+PWM_EM_Addr_RAM        :.long	PWM_EMIRQHandler
+PWM_UP_Addr_RAM        :.long	PWM_UPIRQHandler
+I2C_Addr_RAM           :.long	I2CIRQHandler
+SSP1_Addr_RAM          :.long	SSP1IRQHandler
+SSP0_Addr_RAM          :.long	SSP0IRQHandler
+UART2_Addr_RAM         :.long	UART2IRQHandler
+UART1_Addr_RAM         :.long	UART1IRQHandler
+UART0_Addr_RAM         :.long	UART0IRQHandler
+CAN_Addr_RAM           :.long	CANIRQHandler
+USB_LP_Addr_RAM        :.long	USB_LPIRQHandler
+USB_HP_Addr_RAM        :.long	USB_HPIRQHandler
+ADC_Addr_RAM           :.long	ADCIRQHandler
+DMA_Addr_RAM           :.long	DMAIRQHandler
+EXTIT_Addr_RAM         :.long	EXTITIRQHandler
+MRCC_Addr_RAM          :.long	MRCCIRQHandler
+FLASHSMI_Addr_RAM      :.long	FLASHSMIIRQHandler
+RTC_Addr_RAM           :.long	RTCIRQHandler
+TB_Addr_RAM            :.long	TBIRQHandler
 
 .globl _start
 .globl _startup
@@ -118,71 +176,7 @@ SIR0_off_addr       =    0x60               /*; Source Interrupt Register 0*/
 _startup:
 _start:
         LDR     PC, Reset_Addr
-        LDR     PC, Undefined_Addr
-        LDR     PC, SWI_Addr
-        LDR     PC, Prefetch_Addr
-        LDR     PC, Abort_Addr
-        NOP                          /*; Reserved vector*/
-        LDR     PC, IRQ_Addr
-        LDR     PC, FIQ_Addr
-
-
-
-
-
 Reset_Addr      : .long     Reset_Handler
-Undefined_Addr  : .long     UndefinedHandler
-SWI_Addr        : .long     SWIHandler
-Prefetch_Addr   : .long     PrefetchAbortHandler
-Abort_Addr      : .long     DataAbortHandler
-                  .long 0      /*; Reserved vector*/
-IRQ_Addr        : .long     IRQHandler
-FIQ_Addr        : .long     FIQHandler
-
-.section .text
-/*;*******************************************************************************
-;              Peripherals IRQ handlers address table
-;********************************************************************************/
-
-/* execution goes there when an interrupt occurs and there is no associated ISR */
-.globl __wrongvector
-__wrongvector:
-	ldr     PC, __wrongvector_Addr
-__wrongvector_Addr:
-	.long 0
-
-WAKUP_Addr         :.long	WAKUPIRQHandler
-TIM2_OC2_Addr      :.long	TIM2_OC2IRQHandler
-TIM2_OC1_Addr      :.long	TIM2_OC1IRQHandler
-TIM2_IC12_Addr     :.long	TIM2_IC12IRQHandler
-TIM2_UP_Addr       :.long	TIM2_UPIRQHandler
-TIM1_OC2_Addr      :.long	TIM1_OC2IRQHandler
-TIM1_OC1_Addr      :.long	TIM1_OC1IRQHandler
-TIM1_IC12_Addr     :.long	TIM1_IC12IRQHandler
-TIM1_UP_Addr       :.long	TIM1_UPIRQHandler
-TIM0_OC2_Addr      :.long	TIM0_OC2IRQHandler
-TIM0_OC1_Addr      :.long	TIM0_OC1IRQHandler
-TIM0_IC12_Addr     :.long	TIM0_IC12IRQHandler
-TIM0_UP_Addr       :.long	TIM0_UPIRQHandler
-PWM_OC123_Addr     :.long	PWM_OC123IRQHandler
-PWM_EM_Addr        :.long	PWM_EMIRQHandler
-PWM_UP_Addr        :.long	PWM_UPIRQHandler
-I2C_Addr           :.long	I2CIRQHandler
-SSP1_Addr          :.long	SSP1IRQHandler
-SSP0_Addr          :.long	SSP0IRQHandler
-UART2_Addr         :.long	UART2IRQHandler
-UART1_Addr         :.long	UART1IRQHandler
-UART0_Addr         :.long	UART0IRQHandler
-CAN_Addr           :.long	CANIRQHandler
-USB_LP_Addr        :.long	USB_LPIRQHandler
-USB_HP_Addr        :.long	USB_HPIRQHandler
-ADC_Addr           :.long	ADCIRQHandler
-DMA_Addr           :.long	DMAIRQHandler
-EXTIT_Addr         :.long	EXTITIRQHandler
-MRCC_Addr          :.long	MRCCIRQHandler
-FLASHSMI_Addr      :.long	FLASHSMIIRQHandler
-RTC_Addr           :.long	RTCIRQHandler
-TB_Addr            :.long	TBIRQHandler
 
 /*;*******************************************************************************
 ;                         Exception Handlers
@@ -916,7 +910,7 @@ NextInst:
 
 
         LDR     r2,= 32                   /*; 32 Channel to initialize*/
-        LDR     r0, =WAKUP_Addr           /*; Read the address of the IRQs address table*/
+        LDR     r0, =WAKUP_Addr_RAM           /*; Read the address of the IRQs address table*/
         LDR     r1, =0x00000FFF
         AND     r0,r0,r1
         LDR     r5,=SIR0_off_addr         /*; Read SIR0 address*/
@@ -957,12 +951,6 @@ _reset_inibss_loop:
 	cmp   r1,r2						;/* check if some data remains to clear */
 	strlo r0,[r1],#4				;/* clear 4 bytes */
 	blo   _reset_inibss_loop	;/* loop until done */
-
-/*
-    ldr r0, =__libc_init_array
-    ldr lr, =main
-    bx r0
-*/
 
 	bl __libc_init_array
     b main

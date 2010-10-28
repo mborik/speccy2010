@@ -316,6 +316,9 @@ int open_dsk_image( byte drv_id, const char *filename )
 	FIL f;
 	FILINFO fi;
 
+    fi.lfsize = 0;
+    fi.lfname = 0;
+
 	const char *p_ext;
 	const char *p_name;
 
@@ -616,7 +619,8 @@ byte update_fdi_sec_cache( void )
 		}
 		cur_drv->fdi_sec_id[sec_id] = s;
 		shift = ( sec_id & 3 ) << 1;
-		cur_drv->fdi_sec_sz[sec_id >> 2] = ( cur_drv->fdi_sec_sz[sec_id >> 2] &= ~( 3 << shift ) ) | (( sz & 3 ) << shift );
+		cur_drv->fdi_sec_sz[sec_id >> 2] &= ~( 3 << shift );
+		cur_drv->fdi_sec_sz[sec_id >> 2] |= ( sz & 3 ) << shift;
 		TRACE(( "update_fdi_sec_cache: %u, %u, %x\n", sec_id, s, sz ) );
 	}
 	return 1;

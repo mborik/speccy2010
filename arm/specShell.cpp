@@ -5,7 +5,6 @@
 
 #include "system.h"
 #include "uarts.h"
-#include "ps2port.h"
 #include "fifo.h"
 
 #include "specTape.h"
@@ -42,7 +41,7 @@ void WriteChar( byte x, byte y, char c )
         else c -= 0x20;
 
         word address = x + ( y & 0x07 ) * 32 + ( y & 0x18 ) * 32 * 8;
-        byte *tablePos = &specChars[ (byte) c * 8 ];
+        const byte *tablePos = &specChars[ (byte) c * 8 ];
 
         for( byte i = 0; i < 8; i++ )
         {
@@ -837,14 +836,12 @@ bool Shell_Browser()
 
 class CMenuItem
 {
-    int x, y;
-
-    const CParameter *param;
+    int x, y, state;
 
     const char *name;
     CString data;
 
-    int state;
+    const CParameter *param;
 
 public:
     CMenuItem( int _x, int _y, const char *_name, const CParameter *_param );
@@ -947,22 +944,14 @@ void CMenuItem::UpdateState( int _state )
     }
 }
 
-char day[] = "00";
-char month[] = "00";
-char year[] = "0000";
-
-char hour[] = "00";
-char min[] = "00";
-char sec[] = "00";
-
 CMenuItem mainMenu[] = {
-    CMenuItem( 1, 3, "Date: ", day ),
-    CMenuItem( 9, 3, ".", month ),
-    CMenuItem( 12, 3, ".", year ),
+    CMenuItem( 1, 3, "Date: ", "00" ),
+    CMenuItem( 9, 3, ".", "00" ),
+    CMenuItem( 12, 3, ".", "00" ),
 
-    CMenuItem( 1, 4, "Time: ", hour ),
-    CMenuItem( 9, 4, ":", min ),
-    CMenuItem( 12, 4, ":", sec ),
+    CMenuItem( 1, 4, "Time: ", "00" ),
+    CMenuItem( 9, 4, ":", "00" ),
+    CMenuItem( 12, 4, ":", "0000" ),
 
     CMenuItem( 1, 6, "ROM/RAM: ", GetParam( iniParameters, "ROM/RAM" ) ),
     CMenuItem( 1, 7, "Timings: ", GetParam( iniParameters, "Timings" ) ),

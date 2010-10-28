@@ -5,7 +5,6 @@
 
 #include "system.h"
 #include "uarts.h"
-#include "ps2port.h"
 #include "fifo.h"
 
 #include "specLoader.h"

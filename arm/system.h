@@ -34,6 +34,9 @@ extern "C"
     void FPGA_Config();
     void Spectrum_UpdateConfig();
 
+    //void AddMallocRecord( dword type, dword address, dword size );
+    //void TestHeap();
+
     void WDT_Kick();
 
     void DelayUs( dword );
@@ -52,7 +55,7 @@ extern "C"
 }
 #endif
 
-#define PATH_SIZE 0x100
+#define PATH_SIZE 0x80
 
 #ifdef __cplusplus
     #include "string.h"

@@ -128,7 +128,7 @@ architecture rtl of speccy2010_top is
 	signal memReq2      : std_logic := '0';
 	signal memAck2      : std_logic := '0';
 
-	signal Invert		: unsigned(3 downto 0) := "0000";
+	signal Invert		: unsigned(4 downto 0) := "00000";
 
 	signal hCnt			: unsigned(15 downto 0) := x"0000";
 	signal vCnt			: unsigned(15 downto 0) := x"0000";
@@ -1516,7 +1516,7 @@ begin
 	begin
 		if memclk'event and memclk = '1' and clk7m = '1' then
 			if paper_r = '0' then
-				if( Shift_r(7) xor ( Attr_r(7) and Invert(3) ) ) = '1' then
+				if( Shift_r(7) xor ( Attr_r(7) and Invert(4) ) ) = '1' then
 					specB <= Attr_r(0);
 					specR <= Attr_r(1);
 					specG <= Attr_r(2);

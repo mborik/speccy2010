@@ -17,7 +17,7 @@ CUart::CUart( UART_TypeDef *_uart, dword _uart_periph, word _uart_itline, dword 
 	tx_Buffer = new byte[ _tx_size ];
 	if( tx_Buffer != 0 ) tx_size = _tx_size;
 
-	rx_Buffer = new byte[ rx_size ];
+	rx_Buffer = new byte[ _rx_size ];
 	if( rx_Buffer != 0 ) rx_size = _rx_size;
 }
 

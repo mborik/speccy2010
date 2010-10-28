@@ -22,8 +22,7 @@
 					<Add option="-mthumb-interwork" />
 				</Linker>
 				<ExtraCommands>
-					<Add after="arm-none-eabi-objcopy.exe -O ihex _release/speccy2010.elf _release/speccy2010.hex" />
-					<Add after="hex2bin _release/speccy2010.hex" />
+					<Add after="arm-none-eabi-objcopy.exe -O binary _release/speccy2010.elf _release/speccy2010.bin" />
 				</ExtraCommands>
 			</Target>
 			<Target title="Debug">
@@ -39,8 +38,7 @@
 					<Add option="-Wl,-Map=_debug/speccy2010.map" />
 				</Linker>
 				<ExtraCommands>
-					<Add after="objcopy.exe -O ihex _debug/speccy2010.elf _debug/speccy2010.hex" />
-					<Add after="hex2bin _debug/speccy2010.hex" />
+					<Add after="arm-none-eabi-objcopy.exe -O binary _debug/speccy2010.elf _debug/speccy2010.bin" />
 				</ExtraCommands>
 			</Target>
 		</Build>
@@ -151,6 +149,9 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="libnosys\lseek.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libnosys\mallocr.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="libnosys\open.c">
@@ -301,8 +302,6 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="main.cpp" />
-		<Unit filename="ps2port.cpp" />
-		<Unit filename="ps2port.h" />
 		<Unit filename="ps2scancodes.h" />
 		<Unit filename="ramFile.cpp" />
 		<Unit filename="ramFile.h" />
@@ -310,7 +309,6 @@
 		<Unit filename="settings.h" />
 		<Unit filename="specBetadisk.cpp" />
 		<Unit filename="specBetadisk.h" />
-		<Unit filename="specChars.cpp" />
 		<Unit filename="specChars.h" />
 		<Unit filename="specConfig.cpp" />
 		<Unit filename="specConfig.h" />

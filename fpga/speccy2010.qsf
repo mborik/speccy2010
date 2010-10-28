@@ -195,6 +195,7 @@ set_location_assignment PIN_82 -to JOY0[5]
 set_location_assignment PIN_14 -to MOUSE_DATA
 set_location_assignment PIN_15 -to MOUSE_CLK
 set_global_assignment -name MISC_FILE "D:/workGit/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
+set_global_assignment -name SDC_FILE speccy2010.sdc
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2fifo.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/fifo.vhd

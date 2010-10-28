@@ -215,18 +215,18 @@ void Tape_SelectFile( const char *name )
 void Tape_Start()
 {
     tapeStarted = true;
-    //UART0_WriteText( "Tape start...\n" );
+    //__TRACE( "Tape start...\n" );
 }
 
 void Tape_Stop()
 {
     tapeStarted = false;
-    //UART0_WriteText( "Tape stop...\n" );
+    //__TRACE( "Tape stop...\n" );
 }
 
 void Tape_Restart()
 {
-    //UART0_WriteText( "Tape restart...\n" );
+    //__TRACE( "Tape restart...\n" );
 
     currentBlock.Clean();
     tapeFifo.Clean();
@@ -288,7 +288,7 @@ void Tape_Routine()
     {
         if( f_open( &tapeFile, tapePath, FA_READ ) == FR_OK )
         {
-            UART0_WriteText( "Tape openned...\n" );
+            //__TRACE( "Tape openned...\n" );
             f_lseek( &tapeFile, 0 );
             tapeTzx = false;
 
@@ -308,7 +308,7 @@ void Tape_Routine()
         }
         else
         {
-            UART0_WriteText( "Cannot open tape file...\n" );
+            __TRACE( "Cannot open tape file %s...\n", tapePath );
             tapeStarted = false;
         }
 
@@ -398,10 +398,7 @@ void Tape_Routine()
         }
         else
         {
-            //char str[ 0x20 ];
-            //sniprintf( str, sizeof(str), "0x%.4x - 0x%.2x - skip\n", tapeFile.fptr - hs, header[0] );
-            //UART0_WriteText( str );
-
+            //__TRACE( "0x%.4x - 0x%.2x - skip\n", tapeFile.fptr - hs, header[0] );
             f_lseek( &tapeFile, tapeFile.fptr + temp.data_size );
         }
     }

@@ -6,7 +6,6 @@
 
 #include "system.h"
 #include "uarts.h"
-#include "ps2port.h"
 #include "fifo.h"
 
 #include "specTape.h"
@@ -20,7 +19,7 @@
 
 const int VER_MAJOR = 1;
 const int VER_MINIR = 0;
-const int REV = 37;
+const int REV = 39;
 
 byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
@@ -52,7 +51,6 @@ bool MRCC_Config(void)
 	MRCC_PeripheralClockConfig( MRCC_Peripheral_TIM0, ENABLE );
 	MRCC_PeripheralClockConfig( MRCC_Peripheral_I2C, ENABLE );
 	MRCC_PeripheralClockConfig( MRCC_Peripheral_SSP0, ENABLE );
-	//**USB MRCC_PeripheralClockConfig( MRCC_Peripheral_USB, ENABLE );
 
 	return i > 0;
 }
@@ -76,26 +74,6 @@ void TIM0_Config()
 
 	EIC_IRQInitStructure.EIC_IRQChannel = TIM0_UP_IRQChannel;
 	EIC_IRQInitStructure.EIC_IRQChannelPriority = 1;
-	EIC_IRQInitStructure.EIC_IRQChannelCmd = ENABLE;
-	EIC_IRQInit(&EIC_IRQInitStructure);
-
-	EIC_IRQCmd( ENABLE );
-}
-
-void USB_Config()
-{
-	MRCC_CKUSBConfig (MRCC_CKUSB_Internal);
-    CFG_USBFilterConfig(CFG_USBFilter_Enable);
-
-	EIC_IRQInitTypeDef EIC_IRQInitStructure;
-
-	EIC_IRQInitStructure.EIC_IRQChannel = USB_HP_IRQChannel;
-	EIC_IRQInitStructure.EIC_IRQChannelPriority = 3;
-	EIC_IRQInitStructure.EIC_IRQChannelCmd = ENABLE;
-	EIC_IRQInit(&EIC_IRQInitStructure);
-
-	EIC_IRQInitStructure.EIC_IRQChannel = USB_LP_IRQChannel;
-	EIC_IRQInitStructure.EIC_IRQChannelPriority = 4;
 	EIC_IRQInitStructure.EIC_IRQChannelCmd = ENABLE;
 	EIC_IRQInit(&EIC_IRQInitStructure);
 
@@ -381,18 +359,17 @@ void FPGA_Config()
 {
     if( ( disk_status(0) & STA_NOINIT ) != 0 )
     {
-        UART0_WriteText( "Cannot init SD card...\n" );
+        __TRACE( "Cannot init SD card...\n" );
         return;
     }
 
     FILINFO fpgaConfigInfo;
-    char lfn[ _MAX_LFN * 2 + 1 ];
-    fpgaConfigInfo.lfname = lfn;
-    fpgaConfigInfo.lfsize = sizeof( lfn );
+    fpgaConfigInfo.lfname = 0;
+    fpgaConfigInfo.lfsize = 0;
 
     if( f_stat( "speccy2010.rbf", &fpgaConfigInfo ) != FR_OK )
     {
-        UART0_WriteText( "Cannot open speccy2010.rbf...\n" );
+        __TRACE( "Cannot open speccy2010.rbf...\n" );
         return;
     }
 
@@ -406,20 +383,20 @@ void FPGA_Config()
 
     if( fpgaConfigVersionPrev >= fpgaConfigVersion )
     {
-        UART0_WriteText( "The version of speccy2010.rbf is match...\n" );
+        __TRACE( "The version of speccy2010.rbf is match...\n" );
         return;
     }
 
     FIL fpgaConfig;
     if( f_open( &fpgaConfig, "speccy2010.rbf", FA_READ ) != FR_OK )
     {
-        UART0_WriteText( "Cannot open speccy2010.rbf...\n" );
+        __TRACE( "Cannot open speccy2010.rbf...\n" );
         return;
     }
 
     //--------------------------------------------------------------------------
 
-    UART0_WriteText( "FPGA configuration started...\n" );
+    __TRACE( "FPGA configuration started...\n" );
 
     GPIO_InitTypeDef  GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -443,7 +420,7 @@ void FPGA_Config()
 
     if( nSTATUS() == Bit_RESET )
     {
-        UART0_WriteText( "FPGA configuration status OK...\n" );
+        __TRACE( "FPGA configuration status OK...\n" );
 
         for( dword pos = 0; pos < fpgaConfig.fsize; pos++ )
         {
@@ -466,13 +443,13 @@ void FPGA_Config()
             if( ( pos & 0xfff ) == 0 )
             {
                 WDT_Kick();
-                UART0_WriteText( "." );
+                __TRACE( "." );
             }
         }
     }
 
     f_close( &fpgaConfig );
-    UART0_WriteText( "FPGA configuration conf done...\n" );
+    __TRACE( "FPGA configuration conf done...\n" );
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_9;
@@ -483,12 +460,12 @@ void FPGA_Config()
 
 	if( CONFIG_DONE() )
 	{
-	    UART0_WriteText( "FPGA configuration finished...\n" );
+	    __TRACE( "FPGA configuration finished...\n" );
 	    fpgaConfigVersionPrev = fpgaConfigVersion;
 	}
 	else
 	{
-	    UART0_WriteText( "FPGA configuration failed...\n" );
+	    __TRACE( "FPGA configuration failed...\n" );
 	    fpgaConfigVersionPrev = 0;
 	}
 
@@ -499,7 +476,7 @@ void FPGA_Config()
     DelayMs( 1 );
     if( SystemBus_TestConfiguration() == false )
     {
-        UART0_WriteText( "Wrong FPGA configuration...\n" );
+        __TRACE( "Wrong FPGA configuration...\n" );
         fpgaConfigVersionPrev = 0;
     }
 
@@ -631,9 +608,7 @@ bool Spectrum_LoadRomPage( int page, const char *romFileName )
     FIL romImage;
     if( f_open( &romImage, romFileName, FA_READ ) != FR_OK )
     {
-        UART0_WriteText( "Cannot open rom image " );
-        UART0_WriteText( romFileName );
-        UART0_WriteText( "\n" );
+        __TRACE( "Cannot open rom image %s \n", romFileName );
         return false;
     }
 
@@ -693,7 +668,7 @@ bool Spectrum_LoadRomPage( int page, const char *romFileName )
 
 void Spectrum_InitRom()
 {
-    UART0_WriteText( "ROM configuration started...\n" );
+    __TRACE( "ROM configuration started...\n" );
 
     specConfig.specUseBank0 = Spectrum_LoadRomPage( 0, "roms/system.rom" );
     Spectrum_LoadRomPage( 1, "roms/trdos.rom" );
@@ -701,7 +676,7 @@ void Spectrum_InitRom()
     if( specConfig.specRom == SpecRom_Classic48 ) Spectrum_LoadRomPage( 3, "roms/48.rom" );
     else Spectrum_LoadRomPage( 2, "roms/pentagon.rom" );
 
-    UART0_WriteText( "ROM configuration finished...\n" );
+    __TRACE( "ROM configuration finished...\n" );
 
     SystemBus_Write( 0xc00021, 0x0000 );
     SystemBus_Write( 0xc00022, 0x0000 );
@@ -746,11 +721,11 @@ void SD_Init()
 
         if( ( disk_status(0) & STA_NOINIT ) != 0 )
         {
-            UART0_WriteText( "SD card init error :(\n" );
+            __TRACE( "SD card init error :(\n" );
         }
         else
         {
-            UART0_WriteText( "SD card init OK..\n" );
+            __TRACE( "SD card init OK..\n" );
             //MassStorage_UpdateCharacteristics();
 
             static FATFS fatfs;
@@ -1066,7 +1041,7 @@ void Timer_Routine()
                 {
                     if( trdosAddr == 0x7f )
                     {
-                        if( counter == 0 ) UART0_WriteText( "Data write : " );
+                        if( counter == 0 ) __TRACE( "Data write : " );
 
                         __TRACE( "%.2x.", trdosData );
 
@@ -1074,7 +1049,7 @@ void Timer_Routine()
                         if( counter == 16 )
                         {
                             counter = 0;
-                            UART0_WriteText( "\n" );
+                            __TRACE( "\n" );
                         }
                     }
                     else //if( trdosAddr != 0xff )
@@ -1082,7 +1057,7 @@ void Timer_Routine()
                         if( counter != 0 )
                         {
                             counter = 0;
-                            UART0_WriteText( "\n" );
+                            __TRACE( "\n" );
                         }
 
                         word specPc = SystemBus_Read( 0xc00001 );
@@ -1099,7 +1074,7 @@ void Timer_Routine()
                 {
                     if( trdosAddr == 0x7f )
                     {
-                        if( counter == 0 ) UART0_WriteText( "Data read : " );
+                        if( counter == 0 ) __TRACE( "Data read : " );
 
                         __TRACE( "%.2x.", trdosData );
 
@@ -1107,7 +1082,7 @@ void Timer_Routine()
                         if( counter == 16 )
                         {
                             counter = 0;
-                            UART0_WriteText( "\n" );
+                            __TRACE( "\n" );
                         }
                     }
                     else if( trdosAddr != 0xff )
@@ -1115,7 +1090,7 @@ void Timer_Routine()
                         if( counter != 0 )
                         {
                             counter = 0;
-                            UART0_WriteText( "\n" );
+                            __TRACE( "\n" );
                         }
 
                         word specPc = SystemBus_Read( 0xc00001 );
@@ -1306,9 +1281,9 @@ extern char *current_heap_end;
 
 void InitStack()
 {
-    dword *stackPos;
+    volatile dword *stackPos;
     {
-        dword stackStart;
+        volatile dword stackStart;
 
         stackPos = &stackStart;
         while( (void*) stackPos >= (void*) current_heap_end )
@@ -1323,10 +1298,10 @@ void TestStack()
 {
     dword stackCurrent;
     dword stackMin;
-    dword *stackPos;
+    volatile dword *stackPos;
 
     {
-        dword stackStart;
+        volatile dword stackStart;
 
         stackCurrent = (dword) &stackStart;
         stackMin = (dword) &stackStart;
@@ -1341,7 +1316,76 @@ void TestStack()
 
     __TRACE( "stack current - 0x%.8x\n", stackCurrent );
     __TRACE( "stack max - 0x%.8x\n", stackMin );
-    __TRACE( "heap max - 0x%.8x\n\n", (dword) current_heap_end );
+    __TRACE( "heap max - 0x%.8x\n", (dword) current_heap_end );
+}
+
+const int MAX_CMD_SIZE = 0x20;
+static char cmd[ MAX_CMD_SIZE + 1 ];
+static int cmdSize = 0;
+static bool traceNewLine = false;
+
+void Serial_Routine()
+{
+    while( uart0.GetRxCntr() > 0  )
+    {
+        char temp = uart0.ReadByte();
+
+        if( temp == 0x0a )
+        {
+            cmd[ cmdSize ] = 0;
+            cmdSize = 0;
+
+            if( strcmp( cmd, "test stack" ) == 0 ) TestStack();
+            //else if( strcmp( cmd, "test heap" ) == 0 ) TestHeap();
+            else if( strcmp( cmd, "reset" ) == 0 ) while( true );
+            else
+            {
+                __TRACE( "cmd: %s\n", cmd );
+            }
+        }
+        else if( temp == 0x08 )
+        {
+            if( cmdSize > 0 )
+            {
+                cmdSize--;
+
+                const char delStr[2] = { 0x20, 0x08 };
+                uart0.WriteFile( (byte*) delStr, 2 );
+            }
+        }
+        else if( temp != 0x0d && cmdSize < MAX_CMD_SIZE )
+        {
+            cmd[ cmdSize++ ] = temp;
+        }
+    }
+}
+
+void __TRACE( const char *str, ... )
+{
+    static char fullStr[ 0x80 ];
+
+    va_list ap;
+    va_start( ap, str );
+    vsniprintf( fullStr, sizeof( fullStr ), str, ap );
+    va_end(ap);
+
+    if( traceNewLine )
+    {
+        Serial_Routine();
+        const char delChar = 0x08;
+        for( int i = 0; i <= cmdSize; i++ ) uart0.WriteFile( (byte*) &delChar, 1 );
+    }
+
+    UART0_WriteText( fullStr );
+    traceNewLine = fullStr[ strlen( fullStr ) - 1 ] == '\n';
+
+    if( traceNewLine )
+    {
+        UART0_WriteText( ">" );
+
+        Serial_Routine();
+        if( cmdSize > 0 ) uart0.WriteFile( (byte*) cmd, cmdSize );
+    }
 }
 
 int main()
@@ -1359,8 +1403,6 @@ int main()
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Pin = 1 << 14;
 	GPIO_Init( GPIO2, &GPIO_InitStructure );
-
-	//**USB GPIO2->PD |= ( 1 << 14 );           // USB power on
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Pin = 0xffff0000;
@@ -1381,86 +1423,18 @@ int main()
 	InitStack();
 
     __TRACE( "Speccy2010, ver %d.%d, rev %d !\n", VER_MAJOR, VER_MINIR, REV );
-    if( !pllStatusOK ) UART0_WriteText( "PLL initialization error !\n" );
+    if( !pllStatusOK ) __TRACE( "PLL initialization error !\n" );
     DelayMs( 100 );
 
-    //**USB USB_Config();
-	//**USB USB_Init();
     fdc_init();
 
     while( true )
     {
         Timer_Routine();
-        //**USB MassStorage_Routine();
+        Serial_Routine();
         Keyboard_Routine();
         Tape_Routine();
-
         fdc_dispatch();
-        SystemBus_Write( 0xc0001d, (word) fdc_read( 0xff ) );
-
-        //------------------------------------------------------------------------------
-
-        /*
-        static bool traceMode = false;
-
-        if( traceMode )
-        {
-            char str[ 0x20 ];
-
-            static word pcPrev = 0;
-            word pc = SystemBus_Read( 0xc00001 );
-
-            //if( pc < pcPrev || pc > ( pcPrev + 0x10 ) )
-            if( pc != 0 )
-            {
-                sniprintf( str, sizeof(str), "pc - 0x%.4x, ", pc );
-                UART0_WriteText( str );
-                sniprintf( str, sizeof(str), "tick - %d\n", SystemBus_Read( 0xc00008 ) | ( SystemBus_Read( 0xc00009 ) << 16 ) );
-                UART0_WriteText( str );
-            }
-
-            pcPrev = pc;
-        }*/
-
-        if( uart0.GetRxCntr() > 0  )
-        {
-            uart0.ReadByte();
-
-            /*
-            if( b == 'z' )
-            {
-                CPU_Stop();
-                sniprintf( str, sizeof(str), "PC = 0x%x\n", SystemBus_Read( 0xc00001 ) );
-                UART0_WriteText( str );
-            }
-            else if( b == 'x' )
-            {
-                CPU_Start();
-            }
-            else if( b == 'c' )
-            {
-                if( !CPU_Stopped() ) CPU_Stop();
-                SystemBus_Write( 0xc00008, 0x01 );
-                DelayMs( 1 );
-
-                sniprintf( str, sizeof(str), "PC = 0x%x\n", SystemBus_Read( 0xc00001 ) );
-                UART0_WriteText( str );
-            }
-            else if( b == 'v' )
-            {
-                sniprintf( str, sizeof(str), "PC = 0x%x\n", SystemBus_Read( 0xc00001 ) );
-                UART0_WriteText( str );
-            }
-            else if( b == 'b' )
-            {
-                SystemBus_Write( 0xc0000a, 0x6e5f );
-                SystemBus_Write( 0xc00009, 0x01 );
-            }
-            else if( b == 't' )
-            {
-                TestStack();
-            }*/
-        }
     }
 }
 
@@ -1555,14 +1529,48 @@ void portEXIT_CRITICAL()
 
 //---------------------------------------------------------------------------------------------
 
+struct CMallocRecord
+{
+    dword type;
+    dword address;
+    dword size;
+};
+
+/*
+CMallocRecord mallocRecords[ 0x100 ];
+int mallocRecordsNumber = 0;
+
+void AddMallocRecord( dword type, dword address, dword size )
+{
+    if( mallocRecordsNumber < 0x80 )
+    {
+        mallocRecords[mallocRecordsNumber].type = type;
+        mallocRecords[mallocRecordsNumber].address = address;
+        mallocRecords[mallocRecordsNumber].size = size;
+        mallocRecordsNumber++;
+    }
+}
+
+void TestHeap()
+{
+    for( int i = 0; i < mallocRecordsNumber; i++ )
+    {
+        if( mallocRecords[i].type == 0 ) __TRACE( "[%d] sbrk - 0x%.8x, 0x%.8x\n", i, mallocRecords[i].address, mallocRecords[i].size );
+        else __TRACE( "[%d] new - 0x%.8x, 0x%.8x\n", i, mallocRecords[i].address, mallocRecords[i].size );
+    }
+}*/
+
 void *operator new( std::size_t size )
 {
-    return malloc( size );
+    void *ptr = malloc( size );
+    //AddMallocRecord( 1, (dword) ptr, size );
+    return ptr;
 }
 
 void *operator new[](std::size_t size)
 {
     void *ptr = malloc( size );
+    //AddMallocRecord( 1, (dword) ptr, size );
     return ptr;
 }
 
@@ -1582,17 +1590,5 @@ extern "C" void __cxa_guard_acquire()
 
 extern "C" void __cxa_guard_release()
 {
-}
-
-void __TRACE( const char *str, ... )
-{
-    static char fullStr[ 0x80 ];
-
-    va_list ap;
-    va_start( ap, str );
-    vsniprintf( fullStr, sizeof( fullStr ), str, ap );
-    va_end(ap);
-
-    UART0_WriteText( fullStr );
 }
 

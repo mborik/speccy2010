@@ -46,7 +46,7 @@ create_clock -name {CLK_20} -period 50.000 -waveform { 0.000 25.000 } [get_ports
 #**************************************************************
 
 derive_pll_clocks -use_tan_name
-create_generated_clock -name {memclk} -source [get_ports {CLK_20}] -multiply_by 84 -divide_by 20 -master_clock {CLK_20} [get_ports {pMemClk}] 
+create_generated_clock -name {memclk_pin} -source [get_ports {CLK_20}] -multiply_by 84 -divide_by 20 -master_clock {CLK_20} [get_ports {pMemClk}] 
 
 
 #**************************************************************
@@ -71,45 +71,32 @@ create_generated_clock -name {memclk} -source [get_ports {CLK_20}] -multiply_by 
 # Set Output Delay
 #**************************************************************
 
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[0]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[1]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[2]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[3]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[4]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[5]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[6]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[7]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[8]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[9]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[10]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[11]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemAdr[12]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemBa0}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemBa1}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemCas_n}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemCke}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemCs_n}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[0]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[1]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[2]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[3]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[4]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[5]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[6]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[7]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[8]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[9]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[10]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[11]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[12]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[13]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[14]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemDat[15]}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemLdq}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemRas_n}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemUdq}]
-set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports {pMemWe_n}]
+set_input_delay -max -clock {memclk_pin}  6.200 [get_ports {pMemDat[*]}]
+set_input_delay -min -clock {memclk_pin}  2.500 [get_ports {pMemDat[*]}]
 
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemCs_n}]
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemCke}]
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemCas_n}]
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemRas_n}]
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemWe_n}]
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemLdq}]
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemUdq}]
+
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemBa*}]
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemAdr[*]}]
+set_output_delay -max -clock {memclk_pin}  2.000 [get_ports {pMemDat[*]}]
+
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemCs_n}]
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemCke}]
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemCas_n}]
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemRas_n}]
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemWe_n}]
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemLdq}]
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemUdq}]
+
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemBa*}]
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemAdr[*]}]
+set_output_delay -min -clock {memclk_pin}  -1.500 [get_ports {pMemDat[*]}]
 
 #**************************************************************
 # Set Clock Groups
@@ -121,6 +108,7 @@ set_output_delay -add_delay -max -clock [get_clocks {memclk}]  5.000 [get_ports 
 # Set False Path
 #**************************************************************
 
+set_false_path  -from  [get_clocks {CLK_20}]  -to  [get_clocks {pll:U00|altpll:altpll_component|_clk0}]
 
 
 #**************************************************************
