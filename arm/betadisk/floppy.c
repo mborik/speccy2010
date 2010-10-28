@@ -69,16 +69,20 @@ int floppy_open(int drv, const char *filename)
 {
 	FILINFO fi;
 	struct flp_ops *ops;
-	const char *p_ext, *p_file;
+	const char *p_ext;
 	byte open_mode;
 	int i;
 
+    fi.lfsize = 0;
+    fi.lfname = 0;
 	if (f_stat(filename, &fi) != FR_OK) {
+	    FLP_TRACE(("flp: FLPO_ERR_READ"));
 		return FLPO_ERR_READ;
 	}
 
-	p_ext = strchr(filename, '.');
+	p_ext = strchr(fi.fname, '.');
 	if (p_ext == 0 || strlen(p_ext) > 4) {
+	    FLP_TRACE(("flp: FLPO_ERR_FORMAT"));
 		return FLPO_ERR_FORMAT;
 	}
 
@@ -114,12 +118,16 @@ int floppy_open(int drv, const char *filename)
 
 	drives[drv].trk_sz = STD_TRK_SZ;
 
+    /*
 	p_file = strchr(filename, '/');
 	if (p_file == NULL && (p_file = strchr(filename, '\\')) == NULL) {
 		p_file = filename;
     }
     i = strlen(p_file) - (sizeof(drives[drv].fname) - 1);
 	strcpy(drives[drv].fname, p_file + (i < 0 ? 0 : i));
+	*/
+
+	strcpy( drives[drv].fname, fi.fname );
 	FLP_TRACE(("flp: filename = \"%s\"\n", drives[drv].fname));
 
 	drives[drv].img_wp = 0;
