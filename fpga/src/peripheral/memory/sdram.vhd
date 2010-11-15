@@ -55,6 +55,9 @@ architecture rtl of sdram is
 	signal SdrLdq      : std_logic;
 	signal SdrAdr      : std_logic_vector(12 downto 0);
 	signal SdrDat      : std_logic_vector(15 downto 0);
+	
+	signal iMemAck		: std_logic;
+	signal iMemAck2		: std_logic;
 
 	constant SdrCmd_de : std_logic_vector(3 downto 0) := "1111"; -- deselect
 	constant SdrCmd_pr : std_logic_vector(3 downto 0) := "0010"; -- precharge all
@@ -66,6 +69,9 @@ architecture rtl of sdram is
 	constant SdrCmd_wr : std_logic_vector(3 downto 0) := "0100"; -- write		
 
 begin
+
+	memAck <= iMemAck;
+	memAck2 <= iMemAck2;
 
 	process( clk )
 
@@ -83,15 +89,8 @@ begin
 	
 		if clk'event and clk = '1' then
 			
-			refreshDelayCounter := refreshDelayCounter + 1;
-			
-			if( refreshDelayCounter >= ( freq * 1000 * 64 ) ) then
-				refreshDelayCounter := x"000000";
-				SdrRefreshCounter := x"0000";
-			end if;
-	
-			memAck <= '0';
-			memAck2 <= '0';
+			iMemAck <= '0';
+			iMemAck2 <= '0';
 
 			case SdrRoutine is
 					
@@ -132,7 +131,7 @@ begin
 					SdrCmd <= SdrCmd_xx;
 					SdrDat <= (others => 'Z');
 					
-					if memReq = '1' then
+					if memReq = '1' and iMemAck = '0' then
 						SdrPort := '0';
 						SdrAddress := memAddress;
 						
@@ -142,7 +141,7 @@ begin
 							SdrRoutine := SdrRoutine_ReadOne;
 						end if;
 
-					elsif memReq2 = '1' then
+					elsif memReq2 = '1' and iMemAck2 = '0' then
 						SdrPort := '1';
 						SdrAddress := memAddress2;
 						
@@ -188,10 +187,10 @@ begin
 					elsif( SdrRoutineSeq = X"5" ) then
 						if( SdrPort = '0' ) then
 							memDataOut <= pMemDat;
-							memAck <= '1';
+							iMemAck <= '1';
 						else
 							memDataOut2 <= pMemDat;
-							memAck2 <= '1';
+							iMemAck2 <= '1';
 						end if;
 						SdrCmd <= SdrCmd_xx;
 						SdrRoutineSeq := SdrRoutineSeq + 1;					
@@ -226,9 +225,9 @@ begin
 						SdrRoutineSeq := SdrRoutineSeq + 1;
 					elsif( SdrRoutineSeq = X"3" ) then
 						if( SdrPort = '0' ) then
-							memAck <= '1';
+							iMemAck <= '1';
 						else
-							memAck2 <= '1';
+							iMemAck2 <= '1';
 						end if;
 						SdrCmd <= SdrCmd_xx;
 						SdrDat <= (others => 'Z');
@@ -242,6 +241,13 @@ begin
 					end if;
 					
 			end case;
+			
+			refreshDelayCounter := refreshDelayCounter + 1;
+			
+			if( refreshDelayCounter >= ( freq * 1000 * 64 ) ) then
+				refreshDelayCounter := x"000000";
+				SdrRefreshCounter := x"0000";
+			end if;
 			
 		end if;
 

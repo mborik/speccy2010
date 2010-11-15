@@ -49,6 +49,12 @@ begin
 		elsif clk_i'event and clk_i = '1' then
 		
 			data_o <= buff( readPtr );
+
+			if dataSize < fifo_depth then
+				in_full_o <= '0';
+			else 
+				in_full_o <= '1';
+			end if;
 			
 			if wr_i = '1' and dataSize < fifo_depth then
 				
@@ -61,34 +67,28 @@ begin
 				
 				if dataSize = 0 then							
 					data_o <= data_i;
+					out_ready_o <= '1';
 				end if;
-				
-				dataSize := dataSize + 1;				
 				
 			end if;
 			
 			if rd_i = '1' and dataSize > 0 then
 				
-				readPtr := readPtr + 1;
-				
+				readPtr := readPtr + 1;				
 				if readPtr = fifo_depth then
 					readPtr := 0;
 				end if;
 				
-				dataSize := dataSize - 1;
+				if dataSize = 1 then
+					out_ready_o <= '0';
+				end if;				
 				
 			end if;
 			
-			if dataSize > 0 and rd_i = '0' then
-				out_ready_o <= '1';
-			else 
-				out_ready_o <= '0';
-			end if;
-			
-			if dataSize < fifo_depth then
-				in_full_o <= '0';
-			else 
-				in_full_o <= '1';
+			if wr_i = '1' and rd_i = '0' then
+				dataSize := dataSize + 1;
+			elsif wr_i = '0' and rd_i = '1' then
+				dataSize := dataSize - 1;
 			end if;
 
 		end if;

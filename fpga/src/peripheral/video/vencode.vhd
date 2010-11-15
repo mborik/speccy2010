@@ -3,8 +3,13 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity vencode is
+	generic(
+		freq : integer := 84
+	);
+
 	port(
 		clk84m  : in std_logic;
+		clk_en  : in std_logic;
 		reset   : in std_logic;
 		
 		subcarrierDelta : in unsigned( 23 downto 0 );
@@ -28,7 +33,6 @@ end vencode;
 architecture rtl of vencode is
 
 	signal carrier : 	unsigned(23 downto 0);
-	signal clk_en  : std_logic;
 
 	signal vcounter : unsigned(8 downto 0);
 	signal hcounter : unsigned(12 downto 0);
@@ -110,9 +114,9 @@ architecture rtl of vencode is
 	
 begin
 
-	U00 : fir port map( clk84m, clk_en, reset, std_logic_vector( "0" & prevY( 13 downto 6 ) ), inY );	
-	U01 : fir port map( clk84m, clk_en, reset, std_logic_vector( prevU( 13 downto 13 ) & prevU( 13 downto 6 ) ), inU );	
-	U02 : fir port map( clk84m, clk_en, reset, std_logic_vector( prevV( 13 downto 13 ) & prevV( 13 downto 6 ) ), inV );	
+	--U00 : fir port map( clk84m, clk_en, reset, std_logic_vector( "0" & prevY( 13 downto 6 ) ), inY );	
+	--U01 : fir port map( clk84m, clk_en, reset, std_logic_vector( prevU( 13 downto 13 ) & prevU( 13 downto 6 ) ), inU );	
+	--U02 : fir port map( clk84m, clk_en, reset, std_logic_vector( prevV( 13 downto 13 ) & prevV( 13 downto 6 ) ), inV );	
 	
 	U03 : sinus port map( std_logic_vector( carrier( 23 downto 16 ) ), inSin );
 	U04 : sinus port map( std_logic_vector( carrier( 23 downto 16 ) + b"01000000" ), inCos );
@@ -123,7 +127,7 @@ begin
 
 	--clk_en <= '1';
 	--clk_en <= hcounter( 0 );
-	clk_en <= '1' when hcounter( 1 downto 0 ) = "00" else '0';
+	--clk_en <= '1' when hcounter( 1 downto 0 ) = "00" else '0';
 	
 	Y1 <= ( to_unsigned( 38, 8 ) * ivideoR );
 	Y2 <= ( to_unsigned( 75, 8 ) * ivideoG );
@@ -162,33 +166,41 @@ begin
 	prevV <= signed( V1 - V2 - V3 ) when ( window_h = '1' and window_v = '1' ) else
 		( burstUV );
 		
-	--Y <= prevY( 13 downto 6 );
-	--U <= prevU( 13 downto 6 );
-	--V <= prevV( 13 downto 6 );
+	Y <= prevY( 13 downto 6 );
+	U <= prevU( 13 downto 6 );
+	V <= prevV( 13 downto 6 );
 	
-    Y <= signed( inY( 7 downto 0 ) );
-    U <= signed( inU( 7 downto 0 ) );
-    V <= signed( inV( 7 downto 0 ) );
+    --Y <= signed( inY( 7 downto 0 ) );
+    --U <= signed( inU( 7 downto 0 ) );
+    --V <= signed( inV( 7 downto 0 ) );
     
     sin <= signed( inSin( 15 downto 0 ) );
     cos <= signed( inCos( 15 downto 0 ) );
     
     pcos <= cos when burphase = '0' else -cos;
     
-    Um <= U * sin;
-    Vm <= V * pcos;
-    
     prevC <= Um + Vm;
     C <= prevC( 22 downto 15 );
 
- process(clk84m)
+  process(clk84m, clk_en )
 
 	variable ivideoVS_n : std_logic;
 	variable ivideoHS_n : std_logic;
 
 	begin
 
-	if ( clk84m'event and clk84m = '1' ) then
+	if ( clk84m'event and clk84m = '1' and clk_en = '1' ) then
+	
+	    Um <= U * sin;
+		Vm <= V * pcos;
+
+		videoY <= std_logic_vector( Y );
+		videoC <= std_logic_vector( cent + C );
+		videoV <= std_logic_vector( Y + C );
+
+		ivideoR <= unsigned( videoR );
+		ivideoG <= unsigned( videoG );
+		ivideoB <= unsigned( videoB );
 
 		if ( videoHS_n = '0' and ivideoHS_n = '1' ) then
 			vcounter <= vcounter + 1;
@@ -213,29 +225,21 @@ begin
 			window_v <= '0';
 		end if;
 
-		if (hcounter = ( integer( 10.5 * 84 ) - 1 ) ) then
+		if (hcounter = ( integer( 10.5 * real( freq ) ) - 1 ) ) then
 			window_h <= '1';
-		elsif ( hcounter = ( integer( 62.5 * 84 ) - 1 ) ) then
+		elsif ( hcounter = ( integer( 62.5 * real( freq ) ) - 1 ) ) then
 			window_h <= '0';
 		end if;
 
-		if ( hcounter = ( integer( 5.6 * 84 ) - 1 ) ) then
+		if ( hcounter = ( integer( 5.6 * real( freq ) ) - 1 ) ) then
 			window_c <= '1';
-		elsif ( hcounter = ( integer( 8.1 * 84 ) - 1 ) ) then
+		elsif ( hcounter = ( integer( 8.1 * real( freq ) ) - 1 ) ) then
 			window_c <= '0';
 		end if;
 
-		videoY <= std_logic_vector( Y );
-		videoC <= std_logic_vector( cent + C );
-		videoV <= std_logic_vector( Y + C );
-
-		ivideoR <= unsigned( videoR );
-		ivideoG <= unsigned( videoG );
-		ivideoB <= unsigned( videoB );
-
 		ivideoVS_n := videoVS_n;
 		ivideoHS_n := videoHS_n;
-
+		
 	end if;
 	end process;
 

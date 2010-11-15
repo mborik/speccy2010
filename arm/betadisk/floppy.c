@@ -73,8 +73,10 @@ int floppy_open(int drv, const char *filename)
 	byte open_mode;
 	int i;
 
+    char lfn[1];
     fi.lfsize = 0;
-    fi.lfname = 0;
+    fi.lfname = lfn;
+
 	if (f_stat(filename, &fi) != FR_OK) {
 	    FLP_TRACE(("flp: FLPO_ERR_READ"));
 		return FLPO_ERR_READ;

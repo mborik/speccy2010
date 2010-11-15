@@ -7,8 +7,8 @@ const CParameter *GetIniParameters()
 {
     const static CParameter _iniParameters[] =
     {
-        CParameter( PTYPE_LIST, "ROM/RAM", "Classic48|Pentagon128|Pentagon1024", &specConfig.specRom ),
-        CParameter( PTYPE_LIST, "Timings", "Classic48|Classic128|Pentagon", &specConfig.specSync ),
+        CParameter( PTYPE_LIST, "ROM/RAM", "ZX Spectrum 48|Pentagon 128|Pentagon 1024", &specConfig.specRom ),
+        CParameter( PTYPE_LIST, "Timings", "ZX Spectrum 48|ZX Spectrum 128|Pentagon|Scorpion", &specConfig.specSync ),
         CParameter( PTYPE_LIST, "Turbo", "None|x2|x4|x8", &specConfig.specTurbo ),
         CParameter( PTYPE_LIST, "AY mode", "None|ABC|ACB|Mono", &specConfig.specAyMode ),
         CParameter( PTYPE_LIST, "Video mode", "Composite/S-Video|PAL RGB|VGA 50Hz|VGA 60Hz|VGA 75Hz", &specConfig.specVideoMode ),
@@ -19,6 +19,16 @@ const CParameter *GetIniParameters()
         CParameter( PTYPE_LIST, "Joystick 1", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode1 ),
         CParameter( PTYPE_LIST, "Joystick 2", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode2 ),
         CParameter( PTYPE_INT, "Mouse Sensitivity", "1|6|1", &specConfig.specMouseSensitivity ),
+
+        CParameter( PTYPE_STRING, "Disk A", (char*) sizeof(specConfig.specImages[0].name), &specConfig.specImages[0].name ),
+        CParameter( PTYPE_LIST, "Disk A read only", "No|Yes", &specConfig.specImages[0].readOnly ),
+        CParameter( PTYPE_STRING, "Disk B", (char*) sizeof(specConfig.specImages[1].name), &specConfig.specImages[1].name ),
+        CParameter( PTYPE_LIST, "Disk B read only", "No|Yes", &specConfig.specImages[1].readOnly ),
+        CParameter( PTYPE_STRING, "Disk C", (char*) sizeof(specConfig.specImages[2].name), &specConfig.specImages[2].name ),
+        CParameter( PTYPE_LIST, "Disk C read only", "No|Yes", &specConfig.specImages[2].readOnly ),
+        CParameter( PTYPE_STRING, "Disk D", (char*) sizeof(specConfig.specImages[3].name), &specConfig.specImages[3].name ),
+        CParameter( PTYPE_LIST, "Disk D read only", "No|Yes", &specConfig.specImages[3].readOnly ),
+
         CParameter( PTYPE_END )
     };
 
@@ -29,8 +39,14 @@ const CParameter *GetIniParameters()
 void RestreConfig()
 {
     specConfig.specVideoMode = 0;
-    specConfig.specVideoSubcarrierDelta = 885662;
+    specConfig.specVideoSubcarrierDelta = 885906;
     specConfig.specMouseSensitivity = 4;
+
+    for( int i = 0; i < 4; i++ )
+    {
+        strcpy( specConfig.specImages[i].name, "" );
+        specConfig.specImages[i].readOnly = false;
+    }
 
     CSettingsFile file( "speccy2010.ini" );
 

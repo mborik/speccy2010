@@ -141,6 +141,13 @@ void CParameter::GetValueText( CString &text ) const
             IntToStr( text, *(int*) data );
         }
     }
+    else if( type == PTYPE_STRING )
+    {
+        if( data != 0 )
+        {
+            text = (char*) data;
+        }
+    }
 }
 
 void CParameter::SetValueText( const char *text ) const
@@ -169,6 +176,13 @@ void CParameter::SetValueText( const char *text ) const
         if( data != 0 )
         {
             *(int*) data = StrToInt( text );
+        }
+    }
+    else if( type == PTYPE_STRING )
+    {
+        if( data != 0 )
+        {
+            sniprintf( (char*) data, (int) options, "%s", text );
         }
     }
 }

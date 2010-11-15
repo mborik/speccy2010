@@ -6,12 +6,17 @@
 #include "settings.h"
 
 #define ADVANCED_BETADISK 1
-#define LOG_BDI_PORTS 0
 
 enum SpecRom_Type { SpecRom_Classic48, SpecRom_Pentagon128, SpecRom_Pentagon1024 };
 enum SpecSync_Type { SpecSync_Classic48, SpecSync_Pentagon };
 enum SpecTurbo_Type { SpecTurbo_None, SpecTurbo_x2, SpecTurbo_x4, SpecTurbo_None_x8 };
 enum SpecJoy_Type { SpecJoy_Kempston, SpecJoy_Sinclair1, SpecJoy_Sinclair2, SpecJoy_Cursor, SpecJoy_Qaopm };
+
+struct CDiskImage
+{
+	char name[ PATH_SIZE ];
+	int readOnly;
+};
 
 struct CSpecConfig
 {
@@ -28,6 +33,8 @@ struct CSpecConfig
 	int specJoyMode1;
 	int specJoyMode2;
 	int specMouseSensitivity;
+
+	CDiskImage specImages[4];
 };
 
 extern CSpecConfig specConfig;

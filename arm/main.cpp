@@ -17,9 +17,7 @@
 
 #include "ramFile.h"
 
-const int VER_MAJOR = 1;
-const int VER_MINIR = 0;
-const int REV = 39;
+bool LOG_BDI_PORTS = false;
 
 byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
@@ -364,7 +362,8 @@ void FPGA_Config()
     }
 
     FILINFO fpgaConfigInfo;
-    fpgaConfigInfo.lfname = 0;
+    char lfn[1];
+    fpgaConfigInfo.lfname = lfn;
     fpgaConfigInfo.lfsize = 0;
 
     if( f_stat( "speccy2010.rbf", &fpgaConfigInfo ) != FR_OK )
@@ -706,10 +705,21 @@ void Spectrum_UpdateConfig()
     SystemBus_Write( 0xc00046, specConfig.specDacMode );
     SystemBus_Write( 0xc00047, specConfig.specAyMode );
 
+    SystemBus_Write( 0xc00044, (dword) specConfig.specVideoSubcarrierDelta & 0xffff );
+    SystemBus_Write( 0xc00045, (dword) specConfig.specVideoSubcarrierDelta >> 16 );
+
     if( fpgaConfigVersionPrev != 0 && romConfigPrev != (dword) specConfig.specRom )
     {
         Spectrum_InitRom();
         romConfigPrev = specConfig.specRom;
+    }
+}
+
+void Spectrum_UpdateDisks()
+{
+    for( int i = 0; i < 4; i++ )
+    {
+        fdc_open_image( i, specConfig.specImages[ i ].name );
     }
 }
 
@@ -734,6 +744,7 @@ void SD_Init()
             FPGA_Config();
             RestreConfig();
             Spectrum_UpdateConfig();
+            Spectrum_UpdateDisks();
         }
     }
 }
@@ -1013,6 +1024,7 @@ void Timer_Routine()
             FPGA_Config();
             RestreConfig();
             Spectrum_UpdateConfig();
+            Spectrum_UpdateDisks();
         }
 
         RTC_Update();
@@ -1336,11 +1348,13 @@ void Serial_Routine()
             cmdSize = 0;
 
             if( strcmp( cmd, "test stack" ) == 0 ) TestStack();
+            else if( strcmp( cmd, "log bdi" ) == 0 ) LOG_BDI_PORTS = true;
             //else if( strcmp( cmd, "test heap" ) == 0 ) TestHeap();
             else if( strcmp( cmd, "reset" ) == 0 ) while( true );
             else
             {
                 __TRACE( "cmd: %s\n", cmd );
+               LOG_BDI_PORTS = false;
             }
         }
         else if( temp == 0x08 )

@@ -316,8 +316,9 @@ int open_dsk_image( byte drv_id, const char *filename )
 	FIL f;
 	FILINFO fi;
 
+    char lfn[1];
+    fi.lfname = lfn;
     fi.lfsize = 0;
-    fi.lfname = 0;
 
 	const char *p_ext;
 	const char *p_name;

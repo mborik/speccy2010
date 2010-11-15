@@ -153,6 +153,9 @@ byte GetKey( bool wait = true )
         case KEY_LEFT : return 0x08;
         case KEY_RIGHT : return 0x09;
 
+        case KEY_LEFTBRACKET : return '[';
+        case KEY_RIGHTBRACKET : return ']';
+
         case KEY_0 : return '0'; // западло бля !
         case KEY_1 : return '1';
         case KEY_2 : return '2';
@@ -236,7 +239,7 @@ void ReadRecord( FRECORD &rec, int i )
 const int FILES_SIZE = 0x2000;
 //const int FILES_SIZE = ( 0x400000 - 0x201000 ) / ( sizeof( FRECORD ) / 2 );
 
-char path[ PATH_SIZE + 1 ] = "";
+char path[ PATH_SIZE ] = "";
 
 int files_size = 0;
 int files_table_start;
@@ -510,7 +513,9 @@ void InitScreen()
 {
     ClrScr( 0x07 );
 
-    const char *str = " -= Syd\'s Speccy2010, v1.00 =-";
+    char str[33];
+    sniprintf( str, sizeof(str), " -= Speccy2010, v%d.%.2d, r%.4d =-\n", VER_MAJOR, VER_MINIR, REV );
+
 
     WriteStr( 0, 0, str );
     WriteAttr( 0, 0, 0x44, strlen( str ) );
@@ -656,11 +661,20 @@ bool Shell_Browser()
             nextWindow = true;
             break;
         }
+        else if( key == '[' || key == ']' )
+        {
+            static byte testVideo = 0;
+
+            if( key == '[' ) testVideo++;
+            else testVideo--;
+
+            SystemBus_Write( 0xc00049, testVideo & 0x07 );
+        }
         else if( key >= '1' && key <= '4' )
         {
 			if ( ( fr.attr & AM_DIR ) == 0 )
 			{
-			    char fullName[ PATH_SIZE + 1 ];
+			    char fullName[ PATH_SIZE ];
 			    sniprintf( fullName, sizeof( fullName ), "%s%s", path, fr.name );
 
                 strlwr( fr.name );
@@ -672,6 +686,8 @@ bool Shell_Browser()
 				{
 				    if( fdc_open_image( key - '1', fullName ) )
 				    {
+				        strcpy( specConfig.specImages[ key - '1' ].name, fullName );
+				        SaveConfig();
 				    }
 				}
 			}
@@ -730,7 +746,7 @@ bool Shell_Browser()
 			}
 			else
 			{
-			    char fullName[ PATH_SIZE + 1 ];
+			    char fullName[ PATH_SIZE ];
 			    sniprintf( fullName, sizeof( fullName ), "%s%s", path, fr.name );
 
                 strlwr( fr.name );
@@ -761,6 +777,9 @@ bool Shell_Browser()
 				    //if( fdc_open_image( 0, fullName, false, true ) )
 				    if( fdc_open_image( 0, fullName ) )
 				    {
+				        strcpy( specConfig.specImages[ 0 ].name, fullName );
+				        SaveConfig();
+
                         CPU_Start();
                         CPU_Reset( true );
                         CPU_Reset( false );

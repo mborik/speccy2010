@@ -195,12 +195,12 @@ set_location_assignment PIN_82 -to JOY0[5]
 set_location_assignment PIN_14 -to MOUSE_DATA
 set_location_assignment PIN_15 -to MOUSE_CLK
 set_global_assignment -name MISC_FILE "D:/workGit/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
+set_global_assignment -name VHDL_FILE src/cpu/T80se.vhd
 set_global_assignment -name SDC_FILE speccy2010.sdc
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2fifo.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/fifo.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/memory/sdram.vhd
-set_global_assignment -name VHDL_FILE src/cpu/T80a.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/sound/vol_table_array.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/sound/YM2149_volmix.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80.vhd
@@ -213,4 +213,3 @@ set_global_assignment -name VHDL_FILE src/peripheral/video/fir.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/video/vencode.vhd
 set_global_assignment -name VHDL_FILE src/speccy2010.vhd
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll.qip
-set_global_assignment -name QIP_FILE src/peripheral/ram/ram.qip

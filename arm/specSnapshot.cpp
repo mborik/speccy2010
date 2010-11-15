@@ -186,7 +186,7 @@ void SaveSnapshot( const char *path, const char *name )
     word specPc = SystemBus_Read( 0xc00001 );
     byte specInt = SystemBus_Read( 0xc00002 );
 
-    char fullName[ PATH_SIZE + 1 ];
+    char fullName[ PATH_SIZE ];
 
     if( path == 0 ) path = "";
 

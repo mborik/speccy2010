@@ -8,6 +8,10 @@
 
 #include "types.h"
 
+#define VER_MAJOR 1
+#define VER_MINIR 0
+#define REV 41
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -33,6 +37,7 @@ extern "C"
     void UART0_WriteText( const char *str );
     void FPGA_Config();
     void Spectrum_UpdateConfig();
+    void Spectrum_UpdateDisks();
 
     //void AddMallocRecord( dword type, dword address, dword size );
     //void TestHeap();

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="speccy2010_boot" />
+		<Option pch_mode="2" />
+		<Option compiler="armelfgcc" />
+		<Build>
+			<Target title="release">
+				<Option output="_release\speccy2010_boot.elf" prefix_auto="0" extension_auto="0" />
+				<Option working_dir="_release" />
+				<Option object_output="_release\obj" />
+				<Option type="1" />
+				<Option compiler="armelfgcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Os" />
+			<Add option="-Wall" />
+			<Add option="-g" />
+			<Add option="-mcpu=arm7tdmi" />
+			<Add option="-fno-strict-aliasing" />
+			<Add option="-ffunction-sections" />
+			<Add option="-fdata-sections" />
+			<Add directory="libstr\inc" />
+		</Compiler>
+		<Linker>
+			<Add option="-Tsystem/STR75xFx2_FLASH.ld" />
+			<Add option="-Wl,-Map=_release/speccy2010_boot.map" />
+			<Add option="-Wl,--gc-sections" />
+		</Linker>
+		<ExtraCommands>
+			<Add after="arm-none-eabi-objcopy.exe -O binary _release/speccy2010_boot.elf _release/speccy2010_boot.bin" />
+		</ExtraCommands>
+		<Unit filename="fatfs\diskio.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="fatfs\diskio.h" />
+		<Unit filename="fatfs\ff.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="fatfs\ff.h" />
+		<Unit filename="fatfs\ffconf.h" />
+		<Unit filename="fatfs\integer.h" />
+		<Unit filename="fatfs\option\ccsbcs.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\inc\75x_adc.h" />
+		<Unit filename="libstr\inc\75x_can.h" />
+		<Unit filename="libstr\inc\75x_cfg.h" />
+		<Unit filename="libstr\inc\75x_conf.h" />
+		<Unit filename="libstr\inc\75x_dma.h" />
+		<Unit filename="libstr\inc\75x_eic.h" />
+		<Unit filename="libstr\inc\75x_extit.h" />
+		<Unit filename="libstr\inc\75x_gpio.h" />
+		<Unit filename="libstr\inc\75x_i2c.h" />
+		<Unit filename="libstr\inc\75x_lib.h" />
+		<Unit filename="libstr\inc\75x_map.h" />
+		<Unit filename="libstr\inc\75x_mrcc.h" />
+		<Unit filename="libstr\inc\75x_pwm.h" />
+		<Unit filename="libstr\inc\75x_rtc.h" />
+		<Unit filename="libstr\inc\75x_smi.h" />
+		<Unit filename="libstr\inc\75x_ssp.h" />
+		<Unit filename="libstr\inc\75x_tb.h" />
+		<Unit filename="libstr\inc\75x_tim.h" />
+		<Unit filename="libstr\inc\75x_type.h" />
+		<Unit filename="libstr\inc\75x_uart.h" />
+		<Unit filename="libstr\inc\75x_wdg.h" />
+		<Unit filename="libstr\inc\7xx_flash.h" />
+		<Unit filename="libstr\inc\flash_map.h" />
+		<Unit filename="libstr\src\75x_adc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_can.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_cfg.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_dma.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_eic.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_extit.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_gpio.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_i2c.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_lib.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_mrcc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_pwm.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_rtc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_smi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_ssp.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_tb.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_tim.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_uart.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\75x_wdg.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="libstr\src\7xx_flash.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="system.h" />
+		<Unit filename="system\STR75xFx2_DEF.ld" />
+		<Unit filename="system\STR75xFx2_FLASH.ld" />
+		<Unit filename="system\STR75x_COMMON.ld" />
+		<Unit filename="system\sections_FLASH.ld" />
+		<Unit filename="system\str75x_crt0.s" />
+		<Unit filename="system\str75x_it.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="system\str75x_vect.s" />
+		<Unit filename="types.h" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

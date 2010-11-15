@@ -205,7 +205,7 @@ void CTapeBlock::ParseHeader( byte *header )
 CTapeBlock currentBlock;
 
 CFifo tapeFifo( 0x30 );
-char tapePath[ PATH_SIZE + 1 ];
+char tapePath[ PATH_SIZE ];
 
 void Tape_SelectFile( const char *name )
 {
