@@ -6,8 +6,18 @@
 
 #if ADVANCED_BETADISK
 
+    #ifdef __cplusplus
+    extern "C"
+    {
+    #endif
+
     #include "betadisk/fdc.h"
     #include "betadisk/floppy.h"
+    #include "betadisk/wd1793.h"
+
+    #ifdef __cplusplus
+    }
+    #endif
 
 #else
 

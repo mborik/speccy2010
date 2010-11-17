@@ -10,7 +10,7 @@
 
 #define VER_MAJOR 1
 #define VER_MINIR 0
-#define REV 41
+#define REV 42
 
 #ifdef __cplusplus
 extern "C"
@@ -50,6 +50,7 @@ extern "C"
     #define CNTR_INTERVAL 10
     word get_ticks();
     void __TRACE( const char *str, ... );
+    void TestWait();
 
     void portENTER_CRITICAL();
     void portEXIT_CRITICAL();

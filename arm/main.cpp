@@ -536,6 +536,8 @@ void SystemBus_SetAddress( dword address )
     GPIO2->PD = ARM_ALE;
 
     portEXIT_CRITICAL();
+
+    WDT_Kick();
 }
 
 word SystemBus_Read()
@@ -707,6 +709,8 @@ void Spectrum_UpdateConfig()
 
     SystemBus_Write( 0xc00044, (dword) specConfig.specVideoSubcarrierDelta & 0xffff );
     SystemBus_Write( 0xc00045, (dword) specConfig.specVideoSubcarrierDelta >> 16 );
+
+    floppy_set_fast_mode( specConfig.specBdiMode );
 
     if( fpgaConfigVersionPrev != 0 && romConfigPrev != (dword) specConfig.specRom )
     {
@@ -975,6 +979,8 @@ void Timer_Routine()
 
     if( timer_flag_100Hz )        // 100Hz
     {
+        //TestWait();
+
         if( fpgaConfigVersionPrev != 0 )
         {
             if( kbdInited != KBD_OK )
@@ -1033,88 +1039,112 @@ void Timer_Routine()
         timer_flag_1Hz--;
         portEXIT_CRITICAL();
     }
-
-    if( fpgaConfigVersionPrev != 0 )
-    {
-        word trdosStatus = SystemBus_Read( 0xc00019 );
-        if( ( trdosStatus & 1 ) != 0 )
-        {
-            bool trdosWr = ( ( trdosStatus >> 1 ) & 1 ) != 0;
-            byte trdosAddr = SystemBus_Read( 0xc0001a );
-
-            static int counter = 0;
-
-            if( trdosWr )
-            {
-                byte trdosData = SystemBus_Read( 0xc0001b );
-                fdc_write( trdosAddr, trdosData );
-
-                if( LOG_BDI_PORTS )
-                {
-                    if( trdosAddr == 0x7f )
-                    {
-                        if( counter == 0 ) __TRACE( "Data write : " );
-
-                        __TRACE( "%.2x.", trdosData );
-
-                        counter++;
-                        if( counter == 16 )
-                        {
-                            counter = 0;
-                            __TRACE( "\n" );
-                        }
-                    }
-                    else //if( trdosAddr != 0xff )
-                    {
-                        if( counter != 0 )
-                        {
-                            counter = 0;
-                            __TRACE( "\n" );
-                        }
-
-                        word specPc = SystemBus_Read( 0xc00001 );
-                        __TRACE( "0x%.4x WR: 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData );
-                    }
-                }
-            }
-            else
-            {
-                byte trdosData = fdc_read( trdosAddr );
-                SystemBus_Write( 0xc0001b, trdosData );
-
-                if( LOG_BDI_PORTS )
-                {
-                    if( trdosAddr == 0x7f )
-                    {
-                        if( counter == 0 ) __TRACE( "Data read : " );
-
-                        __TRACE( "%.2x.", trdosData );
-
-                        counter++;
-                        if( counter == 16 )
-                        {
-                            counter = 0;
-                            __TRACE( "\n" );
-                        }
-                    }
-                    else if( trdosAddr != 0xff )
-                    {
-                        if( counter != 0 )
-                        {
-                            counter = 0;
-                            __TRACE( "\n" );
-                        }
-
-                        word specPc = SystemBus_Read( 0xc00001 );
-                        __TRACE( "0x%.4x RD : 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData );
-                    }
-                }
-            }
-
-            SystemBus_Write( 0xc00019, 0 );
-        }
-    }
 }
+
+void BDI_Routine()
+{
+    if( fpgaConfigVersionPrev == 0 ) return;
+
+    word trdosStatus = SystemBus_Read( 0xc00019 );
+
+    while( ( trdosStatus & 1 ) != 0 )
+    {
+        bool trdosWr = ( ( trdosStatus >> 1 ) & 1 ) != 0;
+        byte trdosAddr = SystemBus_Read( 0xc0001a );
+
+        static int counter = 0;
+
+        if( trdosWr )
+        {
+            byte trdosData = SystemBus_Read( 0xc0001b );
+            fdc_write( trdosAddr, trdosData );
+
+            if( LOG_BDI_PORTS )
+            {
+                if( trdosAddr == 0x7f )
+                {
+                    if( counter == 0 ) __TRACE( "Data write : " );
+
+                    __TRACE( "%.2x.", trdosData );
+
+                    counter++;
+                    if( counter == 16 )
+                    {
+                        counter = 0;
+                        __TRACE( "\n" );
+                    }
+                }
+                else //if( trdosAddr != 0xff )
+                {
+                    if( counter != 0 )
+                    {
+                        counter = 0;
+                        __TRACE( "\n" );
+                    }
+
+                    word specPc = SystemBus_Read( 0xc00001 );
+                    __TRACE( "0x%.4x WR: 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData );
+                }
+            }
+        }
+        else
+        {
+            byte trdosData = fdc_read( trdosAddr );
+            SystemBus_Write( 0xc0001b, trdosData );
+
+            if( LOG_BDI_PORTS )
+            {
+                if( trdosAddr == 0x7f )
+                {
+                    if( counter == 0 ) __TRACE( "Data read : " );
+
+                    __TRACE( "%.2x.", trdosData );
+
+                    counter++;
+                    if( counter == 16 )
+                    {
+                        counter = 0;
+                        __TRACE( "\n" );
+                    }
+                }
+                else if( trdosAddr != 0xff )
+                {
+                    if( counter != 0 )
+                    {
+                        counter = 0;
+                        __TRACE( "\n" );
+                    }
+
+                    word specPc = SystemBus_Read( 0xc00001 );
+                    __TRACE( "0x%.4x RD : 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData );
+                }
+            }
+        }
+
+        SystemBus_Write( 0xc00019, 0 );
+
+        static bool skipDispatch;
+
+        if( trdosAddr == 0x7f )
+        {
+            wd17xx_dispatch();
+            skipDispatch = true;
+        }
+        else
+        {
+            if( !skipDispatch ) fdc_dispatch();
+            skipDispatch = false;
+        }
+
+        if( trdosAddr != 0x7f && trdosAddr != 0xff ) break;
+
+        trdosStatus = SystemBus_Read( 0xc00019 );
+        if( ( trdosStatus & 1 ) == 0 ) break;
+    }
+
+    fdc_dispatch();
+}
+
 
 void UpdateCarrier( int delta )
 {
@@ -1448,12 +1478,13 @@ int main()
         Serial_Routine();
         Keyboard_Routine();
         Tape_Routine();
-        fdc_dispatch();
+        BDI_Routine();
     }
 }
 
 volatile dword delayTimer = 0;
 volatile dword tapeTimer = 0;
+volatile dword bdiTimer = 0;
 
 void TIM0_UP_IRQHandler()       //40kHz
 {
@@ -1461,6 +1492,8 @@ void TIM0_UP_IRQHandler()       //40kHz
 
 	if( delayTimer >= 25 ) delayTimer -= 25;
 	else delayTimer = 0;
+
+	bdiTimer += 25;
 
 	tick++;
 	if( tick >= 400 )  // 100Hz
@@ -1508,9 +1541,40 @@ void DelayMs( dword delay )
 	while( delayTimer ) WDT_Kick();
 }
 
+dword fpgaTime = 0;
+
 word get_ticks()
 {
-    return SystemBus_Read( 0xc0001c );
+    static word prevFpgaTime = 0;
+    word currentFpgaTime = SystemBus_Read( 0xc0001c );
+    fpgaTime += 10 * (word)( currentFpgaTime - prevFpgaTime );
+    prevFpgaTime = currentFpgaTime;
+    return currentFpgaTime;
+
+    //return (word) ( bdiTimer / 10 );
+}
+
+void TestWait()
+{
+    static dword prevArmTime = 0;
+    static dword armTime = 0;
+
+    portENTER_CRITICAL();
+    dword currentArmTime = bdiTimer;
+    armTime += (dword)( currentArmTime - prevArmTime );
+    prevArmTime = currentArmTime;
+    portEXIT_CRITICAL();
+
+    get_ticks();
+
+    if( armTime >= 1000000 )
+    {
+        dword result = 100 * fpgaTime / armTime;
+        __TRACE( "CPU USAGE : %d %%\n", result );
+
+        fpgaTime = 0;
+        armTime = 0;
+    }
 }
 
 dword prevEIC_ICR = 0;

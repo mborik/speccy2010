@@ -123,12 +123,10 @@ static inline word wd_sect_size(word sz_id)
 
 static inline byte wd_step_rate(byte rate_code)
 {
-#if FAST_FLOPPY
-    return 1;
-#else
-	static PROGMEM byte rates[4] = {6, 12, 20, 30};
-	return rates[rate_code & 3] / wd.clk;				// division
-#endif
+	static byte rates[4] = {6, 12, 20, 30};
+
+    if( fast_mode ) return 1;
+	else return rates[rate_code & 3] / wd.clk;				// division
 }
 
 ///////////////////////////////////////////////////////////////////////

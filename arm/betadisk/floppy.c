@@ -53,7 +53,7 @@ static byte sbuf[FLP_BUF_SIZE];
 static int sb_get;
 static int sb_put;
 
-static int fast_mode = 0;
+int fast_mode = 0;
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -176,9 +176,7 @@ static void floppy_init_am(void)
 void floppy_set_sec_id(byte sec)
 {
 	if (
-#if !FLOPPY_SET_SEC
-	    fast_mode &&
-#endif
+	    fast_mode  &&
 	    sel_drv->ops->set_sec_id && sel_drv->ops->set_sec_id(sec)) {
 
 		sel_drv->sec_done = 0;
@@ -209,7 +207,7 @@ byte floppy_read(void)
 			if (sb_get == sb_put) {
 				if ((sel_drv->stat & FLP_STAT_EOD) != 0) {
 					sel_drv->no_data = 1;
-					sel_drv->sec_done = FAST_FLOPPY;
+					sel_drv->sec_done = fast_mode;
 					goto done;
 				}
 				if (!sel_drv->ops->read(sbuf)) {
@@ -245,7 +243,7 @@ void floppy_write(byte data)
 			}
 			if ((sel_drv->stat & FLP_STAT_EOD) != 0) {
 				sel_drv->no_data = 1;
-				sel_drv->sec_done = FAST_FLOPPY;
+				sel_drv->sec_done = fast_mode;
 			}
 			sb_put = 0;
 		}

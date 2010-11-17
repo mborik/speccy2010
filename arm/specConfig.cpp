@@ -11,6 +11,7 @@ const CParameter *GetIniParameters()
         CParameter( PTYPE_LIST, "Timings", "ZX Spectrum 48|ZX Spectrum 128|Pentagon|Scorpion", &specConfig.specSync ),
         CParameter( PTYPE_LIST, "Turbo", "None|x2|x4|x8", &specConfig.specTurbo ),
         CParameter( PTYPE_LIST, "AY mode", "None|ABC|ACB|Mono", &specConfig.specAyMode ),
+        CParameter( PTYPE_LIST, "BDI mode", "Slow|Fast", &specConfig.specBdiMode ),
         CParameter( PTYPE_LIST, "Video mode", "Composite/S-Video|PAL RGB|VGA 50Hz|VGA 60Hz|VGA 75Hz", &specConfig.specVideoMode ),
         CParameter( PTYPE_LIST, "Video aspect ratio", "4:3|5:4|16:9", &specConfig.specVideoAspectRatio ),
         CParameter( PTYPE_INT, "Video subcarrier delta", "860000|900000|1", &specConfig.specVideoSubcarrierDelta ),
@@ -41,6 +42,7 @@ void RestreConfig()
     specConfig.specVideoMode = 0;
     specConfig.specVideoSubcarrierDelta = 885906;
     specConfig.specMouseSensitivity = 4;
+    specConfig.specBdiMode = 1;
 
     for( int i = 0; i < 4; i++ )
     {

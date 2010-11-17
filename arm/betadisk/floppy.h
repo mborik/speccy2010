@@ -37,6 +37,8 @@ void floppy_set_fast_mode(int fast);
 
 int floppy_leds(void);
 
+extern int fast_mode;
+
 #ifdef __cplusplus
 }
 #endif

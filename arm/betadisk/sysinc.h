@@ -4,8 +4,6 @@
 #define sysword_t word
 
 #define FDC_PORTABLE			0
-#define FAST_FLOPPY				0
-#define FLOPPY_SET_SEC			1			// установка сектора, не дожидаясь прокрутки диска
 #define TRD_ON_ODI				0
 
 #define BDI_TRACE_FLAG          0

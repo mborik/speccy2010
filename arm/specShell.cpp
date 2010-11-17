@@ -976,11 +976,12 @@ CMenuItem mainMenu[] = {
     CMenuItem( 1, 7, "Timings: ", GetParam( iniParameters, "Timings" ) ),
     CMenuItem( 1, 8, "Turbo: ", GetParam( iniParameters, "Turbo" ) ),
     CMenuItem( 1, 9, "AY mode: ", GetParam( iniParameters, "AY mode" ) ),
+    CMenuItem( 1, 10, "BDI mode: ", GetParam( iniParameters, "BDI mode" ) ),
 
-    CMenuItem( 1, 10, "Joystick emulation: ", GetParam( iniParameters, "Joystick emulation" ) ),
-    CMenuItem( 1, 11, "Joystick 1: ", GetParam( iniParameters, "Joystick 1" ) ),
-    CMenuItem( 1, 12, "Joystick 2: ", GetParam( iniParameters, "Joystick 2" ) ),
-    CMenuItem( 1, 13, "Mouse Sensitivity: ", GetParam( iniParameters, "Mouse Sensitivity" ) ),
+    CMenuItem( 1, 11, "Joystick emulation: ", GetParam( iniParameters, "Joystick emulation" ) ),
+    CMenuItem( 1, 12, "Joystick 1: ", GetParam( iniParameters, "Joystick 1" ) ),
+    CMenuItem( 1, 13, "Joystick 2: ", GetParam( iniParameters, "Joystick 2" ) ),
+    CMenuItem( 1, 14, "Mouse Sensitivity: ", GetParam( iniParameters, "Mouse Sensitivity" ) ),
 
     CMenuItem( 1, 15, "Video mode: ", GetParam( iniParameters, "Video mode" ) ),
     CMenuItem( 1, 16, "Video aspect ratio: ", GetParam( iniParameters, "Video aspect ratio" ) ),

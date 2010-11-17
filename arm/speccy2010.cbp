@@ -12,14 +12,10 @@
 				<Option type="1" />
 				<Option compiler="armelfgcc" />
 				<Compiler>
-					<Add option="-mthumb" />
-					<Add option="-mthumb-interwork" />
 					<Add option="-Os" />
 				</Compiler>
 				<Linker>
 					<Add option="-Wl,-Map=_release/speccy2010.map" />
-					<Add option="-mthumb" />
-					<Add option="-mthumb-interwork" />
 				</Linker>
 				<ExtraCommands>
 					<Add after="arm-none-eabi-objcopy.exe -O binary _release/speccy2010.elf _release/speccy2010.bin" />

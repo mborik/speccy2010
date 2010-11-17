@@ -56,7 +56,8 @@ end speccy2010_top;
 
 architecture rtl of speccy2010_top is
 
-	constant freq : integer := 84;
+	constant memFreq : integer := 84;
+	constant sysFreq : integer := 42;
 	
 	signal memclk : std_logic;
 	signal sysclk : std_logic;
@@ -361,7 +362,7 @@ begin
 		
 	U03 : entity work.vencode
 		generic map(
-			freq => 42
+			freq => sysFreq
 		)
 		
 		port map(
@@ -382,7 +383,7 @@ begin
 		
 	U04 : entity work.sdram
 		generic map(
-			freq => freq
+			freq => memFreq
 		)
 		
 		port map(
@@ -1156,7 +1157,8 @@ begin
 	
 	process(sysclk)
 	
-			variable specTrdosPreCounter : unsigned( 15 downto 0 ) := x"0000";
+		variable specTrdosPreCounter : unsigned( 15 downto 0 ) := x"0000";
+		variable waitCounter : std_logic := '0';
 
 	begin
 				
@@ -1167,17 +1169,21 @@ begin
 				specTrdosCounter <= x"0000";
 			end if;		
 		
-			if cpuWait = '0' then
+			if waitCounter = '0' then
 				
 				specTrdosPreCounter := specTrdosPreCounter + 1;
 				
-				if specTrdosPreCounter >= freq * 10 then
+				if specTrdosPreCounter >= sysFreq * 10 then
 				
 					specTrdosPreCounter := x"0000";
 					specTrdosCounter <= specTrdosCounter + 1;
 					
 				end if;
 				
+			end if;
+			
+			if cpuCLK_nowait = '1' then
+				waitCounter := cpuWait;
 			end if;
 			
 		end if;                                                      

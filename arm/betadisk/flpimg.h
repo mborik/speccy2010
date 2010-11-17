@@ -5,7 +5,7 @@
 #ifndef __FLPIMG_H
 #define __FLPIMG_H
 
-#define FLOPPY_RPS			5
+#define FLOPPY_RPS			12
 #define FLP_AM_CONSTANT		6
 
 #define FLP_BUF_SIZE		16
