@@ -164,7 +164,7 @@ architecture rtl of speccy2010_top is
 	signal specTrdosWait : std_logic := '0';
 	signal specTrdosWr : std_logic := '0';
 	signal specTrdosCounter	: unsigned(15 downto 0) := x"0000";
-	signal specTrdosStat	: std_logic_vector(7 downto 0) := x"00";
+	signal specTrdosPortFF	: std_logic_vector(7 downto 0) := x"00";
 	
 	signal specMode		: unsigned(7 downto 0) := x"00";
 	signal syncMode		: unsigned(7 downto 0) := x"00";
@@ -291,6 +291,25 @@ architecture rtl of speccy2010_top is
 	signal tapeFifoReady	: std_logic;
 	signal tapeFifoFull		: std_logic;
 	
+	signal trdosFifoReadWrTmp 	: std_logic_vector( 7 downto 0 );
+	signal trdosFifoReadWr		: std_logic;
+	signal trdosFifoReadRdTmp 	: std_logic_vector( 7 downto 0 );
+	signal trdosFifoReadRd		: std_logic;
+	
+	signal trdosFifoReadRst		: std_logic;
+	signal trdosFifoReadReady	: std_logic;
+	signal trdosFifoReadFull	: std_logic;
+	
+	signal trdosFifoWriteWrTmp 	: std_logic_vector( 7 downto 0 );
+	signal trdosFifoWriteWr		: std_logic;
+	signal trdosFifoWriteRdTmp 	: std_logic_vector( 7 downto 0 );
+	signal trdosFifoWriteRd		: std_logic;
+	
+	signal trdosFifoWriteRst		: std_logic;
+	signal trdosFifoWriteReady	: std_logic;
+	signal trdosFifoWriteFull	: std_logic;
+	signal trdosFifoWriteCounter	: unsigned( 10 downto 0 ) := "00000000000";
+
 begin
 
 	U00 : entity work.pll
@@ -481,8 +500,47 @@ begin
 			in_full_o => tapeFifoFull
 		);
 
+	U08 : entity work.fifo
+		generic map(
+			fifo_width => 8,
+			fifo_depth => 1024 
+		)
+		
+		port map(
+			clk_i => memclk,
+			rst_i => reset or trdosFifoReadRst,
 
-    process( sysclk )
+			data_o => trdosFifoReadRdTmp,
+			data_i => trdosFifoReadWrTmp,
+
+			wr_i => trdosFifoReadWr,
+			rd_i => trdosFifoReadRd,
+
+			out_ready_o => trdosFifoReadReady,
+			in_full_o => trdosFifoReadFull
+		);
+
+	U09 : entity work.fifo
+		generic map(
+			fifo_width => 8,
+			fifo_depth => 1024 
+		)
+		
+		port map(
+			clk_i => memclk,
+			rst_i => reset or trdosFifoWriteRst,
+
+			data_o => trdosFifoWriteRdTmp,
+			data_i => trdosFifoWriteWrTmp,
+
+			wr_i => trdosFifoWriteWr,
+			rd_i => trdosFifoWriteRd,
+
+			out_ready_o => trdosFifoWriteReady,
+			in_full_o => trdosFifoWriteFull
+		);
+
+	    process( sysclk )
 		
 		variable iCLK_20 : std_logic_vector( 1 downto 0 ) := "11";
 		variable counter20_en_prev : std_logic := '0';
@@ -739,8 +797,17 @@ begin
 			keysWr <= '0';			        
 			mouseRd <= '0';
 			mouseWr <= '0';
+			
 			tapeFifoWr <= '0';
 			
+			trdosFifoReadRd <= '0';
+			trdosFifoReadWr <= '0';
+			trdosFifoReadRst <= '0';
+			
+			trdosFifoWriteRd <= '0';
+			trdosFifoWriteWr <= '0';
+			trdosFifoWriteRst <= '0';
+
 			----------------------------------------------------------------------------------
 			
 			if ulaWait /= '1' then
@@ -770,15 +837,16 @@ begin
 					
 				elsif cpuIORQ = '0' and cpuM1 = '1' then
 				
-					if specTrdosFlag = '1' and ( 
-						cpuA( 7 downto 0 ) = x"1F" or
-						cpuA( 7 downto 0 ) = x"3F" or
-						cpuA( 7 downto 0 ) = x"5F" or
-						cpuA( 7 downto 0 ) = x"7F" or
-						cpuA( 7 downto 0 ) = x"FF" 	) then 
-						
-						specTrdosWait <= '1';
-						specTrdosWr <= '1';
+					if specTrdosFlag = '1' and cpuA( 4 downto 0 ) = "11111" then 									
+			
+						if cpuA( 7 downto 0 ) = x"7F" and trdosFifoWriteCounter > 0 then
+							trdosFifoWriteWrTmp <= cpuDout;
+							trdosFifoWriteWr <= '1';							
+							trdosFifoWriteCounter <= trdosFifoWriteCounter - 1;
+						else
+							specTrdosWait <= '1';
+							specTrdosWr <= '1';
+						end if;
 						
 					else
 					
@@ -846,17 +914,22 @@ begin
 						--cpuDin <= rtcRam( to_integer( unsigned( specPortDff7( 5 downto 0 ) ) ) );
 						cpuDin <= rtcRamDataRd;
 						
-					elsif specTrdosFlag = '1' then
-
-						if cpuA( 7 downto 0 ) = x"1F" or
-							cpuA( 7 downto 0 ) = x"3F" or
-							cpuA( 7 downto 0 ) = x"5F" or
-							cpuA( 7 downto 0 ) = x"7F" or
-							cpuA( 7 downto 0 ) = x"FF" then
+					elsif specTrdosFlag = '1' and cpuA( 4 downto 0 ) = "11111" then
 						
+						if cpuA( 7 downto 0 ) = x"FF" then 
+						
+							cpuDin <= specTrdosPortFF;
+						
+						elsif cpuA( 7 downto 0 ) = x"7F" and trdosFifoReadReady = '1' then 
+						
+							cpuDin <= trdosFifoReadRdTmp;
+							trdosFifoReadRd <= '1';
+						
+						else
+				
 							specTrdosWait <= '1';
 							specTrdosWr <= '0';
-							
+						
 						end if;
 						
 					else
@@ -938,7 +1011,21 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"1b" then
 							cpuDin <= ARM_AD(7 downto 0);
 						elsif addressReg( 7 downto 0 ) = x"1d" then							
-							specTrdosStat <= ARM_AD( 7 downto 0 );
+							specTrdosPortFF <= ARM_AD( 7 downto 0 );
+							
+						elsif addressReg( 7 downto 0 ) = x"60" then
+						
+							if ARM_AD( 15 ) = '1' then						
+								trdosFifoReadRst <= '1';							
+							else						
+								trdosFifoReadWrTmp <= ARM_AD( 7 downto 0 );
+								trdosFifoReadWr <= '1';								
+							end if;
+							
+						elsif addressReg( 7 downto 0 ) = x"61" then
+						
+							trdosFifoWriteRst <= ARM_AD( 15 );
+							trdosFifoWriteCounter <= unsigned( ARM_AD( 10 downto 0 ));
 						
 						elsif addressReg( 7 downto 0 ) = x"1e" then							
 							mouseX <= ARM_AD( 7 downto 0 );
@@ -1037,6 +1124,11 @@ begin
 							ARM_AD <= x"00" & cpuDout;
 						elsif addressReg( 7 downto 0 ) = x"1c" then
 							ARM_AD <= std_logic_vector( specTrdosCounter );
+						elsif addressReg( 7 downto 0 ) = x"61" then
+							ARM_AD <= trdosFifoWriteReady & "0000000" & trdosFifoWriteRdTmp;
+							if trdosFifoWriteReady = '1' then
+								trdosFifoWriteRd <= '1';
+							end if;
 							
 						elsif addressReg( 7 downto 0 ) = x"30" then
 							ARM_AD <= joyCode0;
@@ -1084,10 +1176,6 @@ begin
 				
 			end if;
 			
-			if cpuHaltReq = '1' then
-				specTrdosWait <= '0';
-			end if;
-			
 			if cpuRD /= '0' then
 				cpuDin <= x"ff";
 			end if;			
@@ -1124,7 +1212,7 @@ begin
 	
 	------------------------------------------------------------------------------
 	
-	process(memclk)
+	process(sysclk)
 	
 		variable cpuSaveInt7_prev : std_logic := '0';
 
@@ -1303,10 +1391,13 @@ begin
 					cpuINT <= '1';
 				end if;
 
-				specIntCounter <= specIntCounter + 1;
+				if cpuHaltAck = '0' and specTrdosWait = '0' then
+					specIntCounter <= specIntCounter + 1;
+				end if;
+				
 				cpuOneCycleWaitAck <= cpuOneCycleWaitReq;
 				
-			end if;			
+			end if;
 			
 			if cpuCLK = '1' then
 				
@@ -1385,7 +1476,8 @@ begin
 					end if;
 				end if;
 				
-				if cpuHaltAck = '1' or specTrdosWait = '1' then
+				--if cpuHaltAck = '1' or specTrdosWait = '1' then
+				if cpuHaltAck = '1' then
 					cpuINT <= '1';
 					cpuIntSkip := '1';
 				end if;						

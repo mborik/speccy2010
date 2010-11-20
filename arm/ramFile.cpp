@@ -25,7 +25,7 @@ int rf_open ( RFIL *rfile, const char *name, byte flags )
     SystemBus_Write( 0xc00020, page );
 
     dword size = file.fsize;
-    CPU_Stop();
+    //CPU_Stop();
 
     while( size > 0 )
     {
@@ -47,7 +47,7 @@ int rf_open ( RFIL *rfile, const char *name, byte flags )
         if( ( address & 0xff ) == 0 ) WDT_Kick();
     }
 
-    CPU_Start();
+    //CPU_Start();
 
     rfile->flag = flags;
     rfile->fptr = 0;
@@ -72,7 +72,7 @@ int rf_read ( RFIL *rfile, void *buff, dword size, dword *psize )
     word page = address >> 23;
     SystemBus_Write( 0xc00020, page );
 
-    CPU_Stop();
+    //CPU_Stop();
 
     *psize = 0;
     while( *psize < size && rfile->fptr < rfile->fsize && rfile->fptr < RF_MAX_SIZE )
@@ -90,7 +90,7 @@ int rf_read ( RFIL *rfile, void *buff, dword size, dword *psize )
         (*psize)++;
     }
 
-    CPU_Start();
+    //CPU_Start();
 
     return 0;
 }
@@ -101,7 +101,7 @@ int rf_write ( RFIL *rfile, const void *buff, dword size, dword *psize )
     word page = address >> 23;
     SystemBus_Write( 0xc00020, page );
 
-    CPU_Stop();
+    //CPU_Stop();
 
     *psize = 0;
     while( *psize < size && rfile->fptr < rfile->fsize && rfile->fptr < RF_MAX_SIZE )
@@ -119,7 +119,7 @@ int rf_write ( RFIL *rfile, const void *buff, dword size, dword *psize )
         (*psize)++;
     }
 
-    CPU_Start();
+    //CPU_Start();
 
     return 0;
 }

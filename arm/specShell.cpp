@@ -535,11 +535,12 @@ void CPU_Start()
 {
     if( cpuStopNesting > 0 )
     {
-        if( cpuStopNesting == 1 && ( SystemBus_Read( 0xc00019 ) & 0x0001 ) == 0 )
+        if( cpuStopNesting == 1 )
         {
             //ResetKeyboard();
             SystemBus_Write( 0xc00000, 0x0000 );
             SystemBus_Write( 0xc00008, 0x0001 );
+            BDI_StartTimer();
         }
 
         cpuStopNesting--;
@@ -548,13 +549,14 @@ void CPU_Start()
 
 void CPU_Stop()
 {
-    if( cpuStopNesting == 0 && ( SystemBus_Read( 0xc00019 ) & 0x0001 ) == 0 )
+    if( cpuStopNesting == 0 )
     {
         SystemBus_Write( 0xc00000, 0x0001 );
+        BDI_StopTimer();
 
         while( true )
         {
-            DelayUs( 1 );
+            BDI_Routine();
             if( ( SystemBus_Read( 0xc00000 ) & 0x0001 ) != 0 ) break;
         }
 
@@ -1225,8 +1227,10 @@ void Debugger_Enter()
     byte CurX = 0, CurY = 0, CurXold, CurYold, half = 0, editAddr = 0, editAddrPos = 3;
 
     word addr = SystemBus_Read( 0xC00001 );
+    CurX = addr & 0x0007;
+
     Debugger_Screen1( addr, CurX, CurY );
-    WriteAttr( 5, 0, 0x17, 2 );
+    WriteAttr( 5 + CurX * 3, CurY, 0x17, 2 );
 
     while( true )
     {
@@ -1348,14 +1352,18 @@ void Debugger_Enter()
                 }
             }
         }
-//        if( key == 'z' )  //one step
-//        {
-//            SystemBus_Write( 0xc00008, 0x01 );
-//            DelayMs( 1 );
-//        }
-//        if( key == 's' ) SaveSnapshot( Shell_GetPath(), 0 );
+        if( key == 'z' )  //one step
+        {
+            SystemBus_Write( 0xc00008, 0x01 );
+            DelayMs( 1 );
+            BDI_Routine();
+
+            addr = SystemBus_Read( 0xC00001 );
+            CurX = addr & 0x0007;
+        }
+        if( key == 's' ) SaveSnapshot( Shell_GetPath(), 0 );
         if( key == 'm' ) editAddr = 1;
-        if( key != 0)
+        if( key != 0 )
         {
             if( editAddr )
             {

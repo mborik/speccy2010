@@ -10,7 +10,7 @@
 
 #define VER_MAJOR 1
 #define VER_MINIR 0
-#define REV 42
+#define REV 43
 
 #ifdef __cplusplus
 extern "C"
@@ -39,6 +39,15 @@ extern "C"
     void Spectrum_UpdateConfig();
     void Spectrum_UpdateDisks();
 
+    void BDI_Routine();
+    void BDI_ResetWrite();
+    void BDI_Write( byte data );
+    void BDI_ResetRead( word counter );
+    bool BDI_Read( byte *data );
+    void BDI_StopTimer();
+    void BDI_StartTimer();
+
+
     //void AddMallocRecord( dword type, dword address, dword size );
     //void TestHeap();
 
@@ -47,11 +56,10 @@ extern "C"
     void DelayUs( dword );
     void DelayMs( dword );
 
-    #define CNTR_INTERVAL 10
-    word get_ticks();
-    void __TRACE( const char *str, ... );
-    void TestWait();
+    #define CNTR_INTERVAL 1
+    dword get_ticks();
 
+    void __TRACE( const char *str, ... );
     void portENTER_CRITICAL();
     void portEXIT_CRITICAL();
 

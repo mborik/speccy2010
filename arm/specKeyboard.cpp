@@ -112,7 +112,11 @@ void DecodeKey( word keyCode, word keyFlags )
     if( keyCode == KEY_POWER && !flagKeyRelease ) reset2 = true;
     if( keyCode == KEY_POWER && flagKeyRelease ) reset2 = false;
 
-    if( ( reset1 || reset2 ) != resetState )
+    static bool reset3 = false;
+    if( keyCode == KEY_SCROLLOCK && !flagKeyRelease ) reset2 = true;
+    if( keyCode == KEY_SCROLLOCK && flagKeyRelease ) reset2 = false;
+
+    if( ( reset1 || reset2 || reset3 ) != resetState )
     {
         resetState = reset1 || reset2;
         CPU_Reset( resetState );

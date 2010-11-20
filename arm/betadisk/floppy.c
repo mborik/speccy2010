@@ -210,10 +210,14 @@ byte floppy_read(void)
 					sel_drv->sec_done = fast_mode;
 					goto done;
 				}
+
+				BDI_StopTimer();
 				if (!sel_drv->ops->read(sbuf)) {
 					sel_drv->stat |= (FLP_STAT_ERR|FLP_STAT_EOD);
 					sel_drv->no_data = 1;
 				}
+				BDI_StartTimer();
+
 				sb_get = 0;
 				sb_put = FLP_BUF_SIZE;
 			}
@@ -237,10 +241,14 @@ void floppy_write(byte data)
 			return;
 		}
 		sbuf[sb_put++] = data;
-		if (sb_put == FLP_BUF_SIZE) {
+		if (sb_put == FLP_BUF_SIZE)
+		{
+            BDI_StopTimer();
 			if (!sel_drv->ops->write(sbuf)) {
 				sel_drv->stat |= (FLP_STAT_ERR|FLP_STAT_EOD);
 			}
+			BDI_StartTimer();
+
 			if ((sel_drv->stat & FLP_STAT_EOD) != 0) {
 				sel_drv->no_data = 1;
 				sel_drv->sec_done = fast_mode;
@@ -255,9 +263,9 @@ word floppy_stat(void)
 	return sel_drv->stat;
 }
 
-static inline word elapsed(void)
+static inline dword elapsed(void)
 {
-	return (sysword_t)(get_ticks() - sel_drv->time);
+	return ( get_ticks() - sel_drv->time );
 }
 
 void floppy_dispatch(void)
@@ -320,7 +328,7 @@ void floppy_dispatch(void)
 	}
 
 	if (sel_drv->set_trk) {
-		fdc_set(FDC_TRK0, !sel_drv->trk_n);
+		fdc_set( FDC_TRK0, sel_drv->trk_n != 0 );
 		sel_drv->set_trk = 0;
 		if (ready) {
 			FLP_TRACE(("flp: set_trk: trk=%u, trk_cnt=%u\n", sel_drv->trk_n, sel_drv->trk_cnt));

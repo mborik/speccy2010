@@ -1,8 +1,6 @@
 #define TRACE( x )      __TRACE x
 //#define TRACE( x )
 
-#define sysword_t word
-
 #define FDC_PORTABLE			0
 #define TRD_ON_ODI				0
 

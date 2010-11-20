@@ -51,9 +51,11 @@
 
 #define SET_TIMER(x) 		do { wd.delta_time = (x) * (1000 / CNTR_INTERVAL); wd.start_time = get_ticks(); } while (0)
 #define SET_TIMERU(x) 		do { wd.delta_time = (x) / CNTR_INTERVAL; wd.start_time = get_ticks(); } while (0)
-#define TIMER_EXP() 		(((sysword_t)(get_ticks() - wd.start_time)) >= wd.delta_time)
+#define SET_TIMER_DCNT(x)	do { wd.delta_time = floppy_byte_time() * x; wd.start_time = get_ticks(); } while (0)
+
+#define TIMER_EXP() 		(( (get_ticks() - wd.start_time) ) >= wd.delta_time )
 #define WAIT_TIMER() 		if (!TIMER_EXP()) WAIT()
-#define SET_DRQ_WTMR() 		do { WD_SET_DRQ(); wd.delta_time = floppy_byte_time(); wd.start_time = get_ticks(); } while (0)
+
 
 
 enum wd_state {
@@ -92,24 +94,24 @@ struct wd17xx {
  	byte clk;
 
 	// statuses
- 	volatile byte index: 1;
- 	volatile byte ready: 1;
+ 	byte index: 1;
+ 	byte ready: 1;
 
-	volatile byte tr;
-	volatile byte sr;
-	volatile byte str;
-	volatile byte cr;
-	volatile byte cr_c;
- 	volatile byte dr;
- 	volatile byte dsr;
- 	volatile word dcnt;
- 	volatile byte icnt;
- 	volatile word crc;
+	byte tr;
+	byte sr;
+	byte str;
+	byte cr;
+	byte cr_c;
+ 	byte dr;
+ 	byte dsr;
+ 	word dcnt;
+ 	byte icnt;
+ 	word crc;
  	// state
- 	volatile byte state;
+ 	byte state;
 
-	volatile word start_time;
-	volatile word delta_time;
+	dword start_time;
+	dword delta_time;
 };
 
 static struct wd17xx wd;
@@ -249,12 +251,18 @@ static void wd_proc(void)
 	WD_TRACE(("wd: t0_cmd: %s, cr=0x%02x\n", wd_command_decode(wd.cr), wd.cr));
 
 	if ((wd.cr & TYPEIV_MASK) == TYPEIV) {
-		if (WD_BUSY()) {
-			if ((wd.cr & INTR_MASK) != 0) {
-				wd.ready = fdc_query(FDC_READY);
-				JUMP(t4);
-			}
-		} else {
+        BDI_ResetWrite();
+        BDI_ResetRead( 0 );
+
+        if ((wd.cr & INTR_MASK) != 0)
+        {
+            wd.ready = fdc_query(FDC_READY);
+            SET_TIMERU( 64 );
+            JUMP(t4);
+        }
+
+		if (!WD_BUSY())
+		{
 			wd.cr_c = 0;
 		}
 		WD_TRACE(("wd: clr busy signal (#1)\n"));
@@ -327,7 +335,7 @@ static void wd_proc(void)
 	/***************/ ENTRY(t1_trk0); /***************/
 	WD_TRACE(("wd: t1_trk0, sdir=%u, time=%s\n", fdc_query(FDC_SDIR), ticks_str(get_ticks())));
 
-	if (fdc_query(FDC_TRK0) && !fdc_query(FDC_SDIR)) {
+	if (!fdc_query(FDC_TRK0) && !fdc_query(FDC_SDIR)) {
 		WD_TRACE(("wd: t1_trk0: trk0\n"));
 		wd.tr = 0;
 		JUMP(t1_vrfy);
@@ -458,10 +466,15 @@ static void wd_proc(void)
 	}
 
 	wd.dcnt = wd_sect_size(am[3]);
+    BDI_ResetWrite();
+    SET_TIMER_DCNT( wd.dcnt );
 
-	if ((wd.cr_c & TYPEII_WR_MASK) == TYPEII_WR) {
-		SET_DRQ_WTMR();
+	if ((wd.cr_c & TYPEII_WR_MASK) == TYPEII_WR)
+	{
+	    BDI_ResetRead( wd.dcnt - 1 );
+
 		WD_TRACE(("wd: t2_amc, SET_DRQ() time=%s\n", ticks_str(get_ticks())));
+		WD_SET_DRQ();
 		JUMP(t2_wr);
 	}
 	/***************/ ENTRY(t2_rd); /***************/
@@ -472,14 +485,23 @@ static void wd_proc(void)
 		wd.str |= WD17XX_STAT_NOTFOUND;
 		JUMP(done);
 	}
+
 	// put record type in status reg bit 5
 	if ((stat & FLP_STAT_DEL) != 0) {
 		wd.str |= WD17XX_STAT_RECTYPE;  // 1 = deleted record, 0 - normal record
 	} else {
 		wd.str &= ~WD17XX_STAT_RECTYPE; // 1 = deleted record, 0 - normal record
 	}
+
 	/***************/ ENTRY(t2_rdblk); /***************/
 	WDH_TRACE(("wd: t2_rdblk dcnt=%u, time=%s\n", wd.dcnt, ticks_str(get_ticks())));
+
+    while( wd.dcnt > 1 )
+    {
+        wd_floppy_read();
+        BDI_Write( wd.dsr );
+        wd.dcnt--;
+    }
 
 	// has first byte been assembled in dsr
 	if (!WD_DRQ())
@@ -496,14 +518,17 @@ static void wd_proc(void)
 		wd_floppy_read();
 		wd.dr = wd.dsr;
 		wd.dcnt -= 1;
-		SET_DRQ_WTMR();
+		WD_SET_DRQ();
 	} else {
 		if (TIMER_EXP()) {
 			WD_TRACE(("wd: t2_rdblk - set LOST, time=%s (byte time=%s, drq time=%s)\n", ticks_str(get_ticks()), ticks_str1(wd.delta_time), ticks_str2(wd.start_time)));
+			//__TRACE( "wd: t2_rdblk - set LOST\n" );
 			wd.str |= WD17XX_STAT_LOST;
+			BDI_ResetWrite();
 			goto t2_rd_common;
 		}
 	}
+
 	WAIT();
 	/***************/ ENTRY(t2_mchk); /***************/
 	WD_TRACE(("wd: t2_mchk wdstat=%x, flp_stat=%x, time=%s\n", wd.str, stat, ticks_str(get_ticks())));
@@ -516,6 +541,12 @@ static void wd_proc(void)
 	JUMP(done);
 	/***************/ ENTRY(t2_wr); /***************/
 	WDH_TRACE(("wd: t2_wr dcnt=%u, time=%s\n", wd.dcnt, ticks_str(get_ticks())));
+
+    while( BDI_Read( &wd.dsr ) )
+    {
+        wd_floppy_write();
+        wd.dcnt--;
+    }
 
 	if (!WD_DRQ())
 	{
@@ -531,10 +562,13 @@ static void wd_proc(void)
 			}
 			JUMP(t2_mchk);
 		}
-		SET_DRQ_WTMR();
+		WD_SET_DRQ();
 	} else {
 		if (TIMER_EXP()) {
 			WD_TRACE(("wd: t2_wr - set LOST, time=%s (byte time=%s, drq time=%s)\n", ticks_str(get_ticks()), ticks_str1(wd.delta_time), ticks_str2(wd.start_time)));
+		    //__TRACE( "wd: t2_wr - set LOST\n" );
+		    BDI_ResetRead(0);
+
 			wd.str |= WD17XX_STAT_LOST;
 			wd.dsr = 0;
 			goto t2_wr_common;
@@ -564,6 +598,8 @@ static void wd_proc(void)
     wd.icnt = 0;
     wd.dcnt = 6;
     wd_crc_init();
+    BDI_ResetWrite();
+
 	/***************/ ENTRY(t3_rdam); /***************/
 	WDH_TRACE(("wd: t3_rdam time=%s\n", ticks_str(get_ticks())));
 
@@ -571,12 +607,20 @@ static void wd_proc(void)
 		wd.str |= WD17XX_STAT_NOTFOUND;
 		JUMP(done);
 	}
+
 	if (wd.dcnt == 6) {
 		stat = floppy_stat();
 		if ((stat & FLP_STAT_AM) == 0) {
 			WAIT();
 		}
 	}
+
+    while( wd.dcnt > 1 )
+    {
+        wd_floppy_read();
+        BDI_Write( wd.dsr );
+        wd.dcnt--;
+    }
 
 	if (!WD_DRQ()) {
 		if (wd.dcnt == 0) {
@@ -604,6 +648,8 @@ static void wd_proc(void)
 	// type 4
 	//=========================================================
 	/***************/ ENTRY(t4); /***************/
+
+    WAIT_TIMER();
 
 	i_met = INTR_MASK_I3;
 	if (wd.ready != fdc_query(FDC_READY)) {
@@ -636,8 +682,8 @@ static inline void wd_update_stat(void)
 
 	if ((wd.cr_c & TYPEI_MASK) == TYPEI) {
 		str &= ~(WD17XX_STAT_INDEX|WD17XX_STAT_TRK0|WD17XX_STAT_HLD|WD17XX_STAT_WP);
-		if (fdc_query(FDC_INDEX)) str |= WD17XX_STAT_INDEX;
-		if (fdc_query(FDC_TRK0)) str |= WD17XX_STAT_TRK0;
+		if (!fdc_query(FDC_INDEX)) str |= WD17XX_STAT_INDEX;
+		if (!fdc_query(FDC_TRK0)) str |= WD17XX_STAT_TRK0;
 		if (wd_is_hld()) str |= WD17XX_STAT_HLD;
 		if (fdc_query(FDC_WP)) str |= WD17XX_STAT_WP;
 	} else {
@@ -666,7 +712,7 @@ void wd17xx_write(word addr, byte data)
 	}
 	switch (addr & (WD17XX_A1 | WD17XX_A0)) {
 		case WDR_CMD:
-			if ((wd.cr & TYPEIV_MASK) == TYPEIV || !WD_BUSY()) {
+			if ((data & TYPEIV_MASK) == TYPEIV || !WD_BUSY()) {
 				wd.cr = data;
 				wd_cmd_start();
 			}

@@ -10,8 +10,8 @@ entity fifo is
 	);
 	
 	port (
-		clk_i 		: in std_logic;   -- Global clk
-		rst_i 		: in std_logic;   -- GLobal Asinchronous reset
+		clk_i 		: in std_logic;
+		rst_i 		: in std_logic;
 
 		data_o    	: out std_logic_vector( fifo_width - 1 downto 0 );
 		data_i    	: in  std_logic_vector( fifo_width - 1 downto 0 );
@@ -40,57 +40,62 @@ begin
 	
 	begin
 	
-		if rst_i = '1' then
-			
-			readPtr  := 0;
-			writePtr := 0;
-			dataSize := 0;
-			
-		elsif clk_i'event and clk_i = '1' then
+		if clk_i'event and clk_i = '1' then
 		
-			data_o <= buff( readPtr );
+			if rst_i = '1' then
+				
+				out_ready_o <= '0';
+				readPtr  := 0;
+				writePtr := 0;
+				dataSize := 0;
+			
+			else
+			
+				data_o <= buff( readPtr );
 
-			if dataSize < fifo_depth then
-				in_full_o <= '0';
-			else 
-				in_full_o <= '1';
-			end if;
-			
-			if wr_i = '1' and dataSize < fifo_depth then
-				
-				buff( writePtr ) := data_i;
-				
-				writePtr := writePtr + 1;
-				if writePtr = fifo_depth then
-					writePtr := 0;
+				if dataSize < fifo_depth then
+					in_full_o <= '0';
+				else 
+					in_full_o <= '1';
 				end if;
 				
-				if dataSize = 0 then							
-					data_o <= data_i;
-					out_ready_o <= '1';
+				if wr_i = '1' and dataSize < fifo_depth then
+					
+					buff( writePtr ) := data_i;
+					
+					writePtr := writePtr + 1;
+					if writePtr = fifo_depth then
+						writePtr := 0;
+					end if;
+					
+					if dataSize = 0 then							
+						data_o <= data_i;
+						out_ready_o <= '1';
+					end if;
+					
 				end if;
 				
-			end if;
-			
-			if rd_i = '1' and dataSize > 0 then
-				
-				readPtr := readPtr + 1;				
-				if readPtr = fifo_depth then
-					readPtr := 0;
+				if rd_i = '1' and dataSize > 0 then
+					
+					readPtr := readPtr + 1;				
+					if readPtr = fifo_depth then
+						readPtr := 0;
+					end if;
+					
+					if dataSize = 1 then
+						out_ready_o <= '0';
+					end if;				
+					
 				end if;
 				
-				if dataSize = 1 then
-					out_ready_o <= '0';
-				end if;				
-				
-			end if;
-			
-			if wr_i = '1' and rd_i = '0' then
-				dataSize := dataSize + 1;
-			elsif wr_i = '0' and rd_i = '1' then
-				dataSize := dataSize - 1;
-			end if;
+				if wr_i = '1' and rd_i = '0' then
+					dataSize := dataSize + 1;
+				elsif wr_i = '0' and rd_i = '1' then
+					dataSize := dataSize - 1;
+				end if;
 
+			end if;
+			
 		end if;
 			
 	end process;

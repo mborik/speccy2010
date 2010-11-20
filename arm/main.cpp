@@ -18,6 +18,7 @@
 #include "ramFile.h"
 
 bool LOG_BDI_PORTS = false;
+bool LOG_WAIT = false;
 
 byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
@@ -979,8 +980,6 @@ void Timer_Routine()
 
     if( timer_flag_100Hz )        // 100Hz
     {
-        //TestWait();
-
         if( fpgaConfigVersionPrev != 0 )
         {
             if( kbdInited != KBD_OK )
@@ -1041,9 +1040,33 @@ void Timer_Routine()
     }
 }
 
+void BDI_ResetWrite()
+{
+    SystemBus_Write( 0xc00060, 0x8000 );
+}
+
+void BDI_Write( byte data )
+{
+    SystemBus_Write( 0xc00060, data );
+}
+
+void BDI_ResetRead( word counter )
+{
+    SystemBus_Write( 0xc00061, 0x8000 | counter );
+}
+
+bool BDI_Read( byte *data )
+{
+    word result = SystemBus_Read( 0xc00061 );
+    *data = (byte) result;
+
+    return ( result & 0x8000 ) != 0;
+}
+
 void BDI_Routine()
 {
     if( fpgaConfigVersionPrev == 0 ) return;
+    int ioCounter = 0x20;
 
     word trdosStatus = SystemBus_Read( 0xc00019 );
 
@@ -1083,7 +1106,7 @@ void BDI_Routine()
                     }
 
                     word specPc = SystemBus_Read( 0xc00001 );
-                    __TRACE( "0x%.4x WR: 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData );
+                    __TRACE( "0x%.4x WR : 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData );
                 }
             }
         }
@@ -1121,28 +1144,22 @@ void BDI_Routine()
             }
         }
 
+        SystemBus_Write( 0xc0001d, fdc_read( 0xff ) );
         SystemBus_Write( 0xc00019, 0 );
 
-        static bool skipDispatch;
+        fdc_dispatch();
 
-        if( trdosAddr == 0x7f )
-        {
-            wd17xx_dispatch();
-            skipDispatch = true;
-        }
-        else
-        {
-            if( !skipDispatch ) fdc_dispatch();
-            skipDispatch = false;
-        }
+        SystemBus_Write( 0xc0001d, fdc_read( 0xff ) );
+        //SystemBus_Write( 0xc00019, 0 );
 
-        if( trdosAddr != 0x7f && trdosAddr != 0xff ) break;
+        if( --ioCounter == 0 ) break;
 
         trdosStatus = SystemBus_Read( 0xc00019 );
         if( ( trdosStatus & 1 ) == 0 ) break;
     }
 
     fdc_dispatch();
+    SystemBus_Write( 0xc0001d, fdc_read( 0xff ) );
 }
 
 
@@ -1379,6 +1396,8 @@ void Serial_Routine()
 
             if( strcmp( cmd, "test stack" ) == 0 ) TestStack();
             else if( strcmp( cmd, "log bdi" ) == 0 ) LOG_BDI_PORTS = true;
+            else if( strcmp( cmd, "log wait off" ) == 0 ) LOG_WAIT = false;
+            else if( strcmp( cmd, "log wait" ) == 0 ) LOG_WAIT = true;
             //else if( strcmp( cmd, "test heap" ) == 0 ) TestHeap();
             else if( strcmp( cmd, "reset" ) == 0 ) while( true );
             else
@@ -1484,6 +1503,8 @@ int main()
 
 volatile dword delayTimer = 0;
 volatile dword tapeTimer = 0;
+
+volatile bool bdiTimerFlag = true;
 volatile dword bdiTimer = 0;
 
 void TIM0_UP_IRQHandler()       //40kHz
@@ -1493,7 +1514,7 @@ void TIM0_UP_IRQHandler()       //40kHz
 	if( delayTimer >= 25 ) delayTimer -= 25;
 	else delayTimer = 0;
 
-	bdiTimer += 25;
+	if( bdiTimerFlag ) bdiTimer += 25;
 
 	tick++;
 	if( tick >= 400 )  // 100Hz
@@ -1541,40 +1562,19 @@ void DelayMs( dword delay )
 	while( delayTimer ) WDT_Kick();
 }
 
-dword fpgaTime = 0;
-
-word get_ticks()
+dword get_ticks()
 {
-    static word prevFpgaTime = 0;
-    word currentFpgaTime = SystemBus_Read( 0xc0001c );
-    fpgaTime += 10 * (word)( currentFpgaTime - prevFpgaTime );
-    prevFpgaTime = currentFpgaTime;
-    return currentFpgaTime;
-
-    //return (word) ( bdiTimer / 10 );
+    return bdiTimer;
 }
 
-void TestWait()
+void BDI_StopTimer()
 {
-    static dword prevArmTime = 0;
-    static dword armTime = 0;
+    bdiTimerFlag = false;
+}
 
-    portENTER_CRITICAL();
-    dword currentArmTime = bdiTimer;
-    armTime += (dword)( currentArmTime - prevArmTime );
-    prevArmTime = currentArmTime;
-    portEXIT_CRITICAL();
-
-    get_ticks();
-
-    if( armTime >= 1000000 )
-    {
-        dword result = 100 * fpgaTime / armTime;
-        __TRACE( "CPU USAGE : %d %%\n", result );
-
-        fpgaTime = 0;
-        armTime = 0;
-    }
+void BDI_StartTimer()
+{
+    bdiTimerFlag = true;
 }
 
 dword prevEIC_ICR = 0;

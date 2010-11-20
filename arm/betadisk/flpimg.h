@@ -5,7 +5,7 @@
 #ifndef __FLPIMG_H
 #define __FLPIMG_H
 
-#define FLOPPY_RPS			12
+#define FLOPPY_RPS			5
 #define FLP_AM_CONSTANT		6
 
 #define FLP_BUF_SIZE		16
@@ -91,7 +91,7 @@ struct flp_image {
 	word byte_time;
 	word am_time;
 	word sector_time;
-	word time;
+	dword time;
 	word rps;
 
 	dword priv[ 64 / 4 ];
