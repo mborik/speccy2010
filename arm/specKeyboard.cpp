@@ -113,8 +113,8 @@ void DecodeKey( word keyCode, word keyFlags )
     if( keyCode == KEY_POWER && flagKeyRelease ) reset2 = false;
 
     static bool reset3 = false;
-    if( keyCode == KEY_SCROLLOCK && !flagKeyRelease ) reset2 = true;
-    if( keyCode == KEY_SCROLLOCK && flagKeyRelease ) reset2 = false;
+    if( keyCode == KEY_PRNTSCR && !flagKeyRelease ) reset2 = true;
+    if( keyCode == KEY_PRNTSCR && flagKeyRelease ) reset2 = false;
 
     if( ( reset1 || reset2 || reset3 ) != resetState )
     {

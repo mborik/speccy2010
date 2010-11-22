@@ -270,12 +270,12 @@ static void wd_proc(void)
 		JUMP(t0);
 	} else if ((wd.cr & TYPEI_MASK) == TYPEI) {
 		wd.cr_c = wd.cr;
-  		wd.str &= ~(WD17XX_STAT_CRCERR|WD17XX_STAT_NOTFOUND);
+  		wd.str &= ~(WD17XX_STAT_CRCERR|WD17XX_STAT_SEEKERR);
   		fdc_set(FDC_HLD, (wd.cr_c & TYPEI_BIT_H) != 0);
    		JUMP(t1);
 	} else {
 		wd.cr_c = wd.cr;
-		wd.str &= ~(WD17XX_STAT_RECTYPE|WD17XX_STAT_WRERR|WD17XX_STAT_CRCERR|WD17XX_STAT_LOST|WD17XX_STAT_WP);
+		wd.str &= ~(WD17XX_STAT_RECTYPE|WD17XX_STAT_WRERR|WD17XX_STAT_CRCERR|WD17XX_STAT_LOST|WD17XX_STAT_WP|WD17XX_STAT_NOTFOUND);
 
 		if (!fdc_query(FDC_READY)) {
 			JUMP(done);
@@ -509,10 +509,8 @@ static void wd_proc(void)
 	t2_rd_common:
 		if (wd.dcnt == 0) {
 			stat = floppy_stat();
-			if ((stat & FLP_STAT_ERR) != 0 || (stat & FLP_STAT_EOD) == 0) {
-				wd.str |= WD17XX_STAT_CRCERR;
-				JUMP(done);
-			}
+			if( ( stat & FLP_STAT_ERR ) != 0 ) wd.str |= WD17XX_STAT_CRCERR;
+			if( ( wd.str & WD17XX_STAT_CRCERR ) != 0 ) JUMP(done);
 			JUMP(t2_mchk);
 		}
 		wd_floppy_read();
@@ -524,6 +522,7 @@ static void wd_proc(void)
 			WD_TRACE(("wd: t2_rdblk - set LOST, time=%s (byte time=%s, drq time=%s)\n", ticks_str(get_ticks()), ticks_str1(wd.delta_time), ticks_str2(wd.start_time)));
 			//__TRACE( "wd: t2_rdblk - set LOST\n" );
 			wd.str |= WD17XX_STAT_LOST;
+			wd.str |= WD17XX_STAT_CRCERR;
 			BDI_ResetWrite();
 			goto t2_rd_common;
 		}
@@ -556,10 +555,8 @@ static void wd_proc(void)
 		wd.dcnt -= 1;
 		if (wd.dcnt == 0) {
 			stat = floppy_stat();
-			if ((stat & FLP_STAT_ERR) != 0 || (stat & FLP_STAT_EOD) == 0) {
-				wd.str |= WD17XX_STAT_WRERR;
-				JUMP(done);
-			}
+			if( ( stat & FLP_STAT_ERR ) != 0 ) wd.str |= WD17XX_STAT_CRCERR;
+			if( ( wd.str & WD17XX_STAT_CRCERR ) != 0 ) JUMP(done);
 			JUMP(t2_mchk);
 		}
 		WD_SET_DRQ();
@@ -568,8 +565,8 @@ static void wd_proc(void)
 			WD_TRACE(("wd: t2_wr - set LOST, time=%s (byte time=%s, drq time=%s)\n", ticks_str(get_ticks()), ticks_str1(wd.delta_time), ticks_str2(wd.start_time)));
 		    //__TRACE( "wd: t2_wr - set LOST\n" );
 		    BDI_ResetRead(0);
-
 			wd.str |= WD17XX_STAT_LOST;
+			wd.str |= WD17XX_STAT_CRCERR;
 			wd.dsr = 0;
 			goto t2_wr_common;
 		}
