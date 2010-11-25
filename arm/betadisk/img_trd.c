@@ -16,8 +16,6 @@
 #define TRD_TRACE(x)
 #endif
 
-#define ALL_IMAGES			0
-
 #if !TRD_ON_ODI
 
 ///////////////////////////////////////////////////////////////////////
@@ -34,22 +32,17 @@ static int trd_open(struct flp_image *img, dword size)
    	}
 
 	TRD_TRACE(("trd: dtype=%x, trd=%x\n", trd_id[0], trd_id[4]));
-	if ((!(trd_id[4] == 0 || trd_id[0] == 0)) && (trd_id[4] != 0x10 || trd_id[0] < 0x16 || trd_id[0] > 0x19)) {
-#if ALL_IMAGES
-		if (size != ((dword)STD_SEC_CNT) * STD_SEC_SIZE * STD_TRK_CNT * STD_SIDE_CNT) {
-   			// disk contains trash
-   			return FLPO_ERR_FORMAT;
-   		}
-   		img->side_cnt = STD_SIDE_CNT;
-   		img->trk_cnt = STD_TRK_CNT;
-#else
-		return FLPO_ERR_FORMAT;
-#endif
-   	} else {
-		img->side_cnt = trd_id[0] & 0x08 ? 1 : 2;
-		img->trk_cnt = trd_id[0] & 0x01 ? 40 : 80;
-   	}
-		
+	if( trd_id[4] == 0x10 && trd_id[0] >= 0x16 && trd_id[0] <= 0x19 )
+	{
+	    img->side_cnt = trd_id[0] & 0x08 ? 1 : 2;
+	}
+	else
+	{
+	    img->side_cnt = 2;
+	}
+
+	img->trk_cnt = size / ( img->side_cnt * STD_SEC_CNT * STD_SEC_SIZE );
+
 	floppy_std_params(img);
 
 	return FLPO_ERR_OK;

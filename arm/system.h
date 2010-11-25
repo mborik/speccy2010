@@ -10,7 +10,7 @@
 
 #define VER_MAJOR 1
 #define VER_MINIR 0
-#define REV 44
+#define REV 45
 
 #ifdef __cplusplus
 extern "C"

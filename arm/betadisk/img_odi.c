@@ -16,8 +16,6 @@
 #define ODI_TRACE(x)
 #endif
 
-#define ALL_IMAGES			0
-
 ///////////////////////////////////////////////////////////////////////
 
 
@@ -62,7 +60,7 @@ static int odi_open(struct flp_image *img, dword size)
 		default:
 			return FLPO_ERR_FORMAT;
 	}
-	
+
 	img->trk_sz = (((word)128) << img->am_size) * ((word)img->sec_cnt);
 	floppy_set_times(img);
 

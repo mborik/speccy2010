@@ -179,7 +179,7 @@ architecture rtl of speccy2010_top is
 	signal borderAttr	: std_logic_vector(2 downto 0);
 	signal speaker 		: std_logic;
 	
-	signal tapeIn 		: std_logic;
+	signal tapeIn 		: std_logic := '0';
 	signal keyboard		: std_logic_vector(39 downto 0) := "1111111111111111111111111111111111111111";
 	signal joystick		: std_logic_vector(7 downto 0) := x"00";
 	signal mouseX		: std_logic_vector(7 downto 0) := x"00";
@@ -900,7 +900,7 @@ begin
 								and ( keyboard( 29 downto 25 ) or ( cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) ) )
 								and ( keyboard( 34 downto 30 ) or ( cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) ) )
 								and ( keyboard( 39 downto 35 ) or ( cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) ) );
-						cpuDin <= "0" & tapeIn & "0" & kbdTmp;
+						cpuDin <= "1" & tapeIn & "1" & kbdTmp;
 						
 					elsif cpuA( 15 downto 0 ) = x"FADF" then
 						cpuDin <= mouseButtons;
@@ -1308,6 +1308,10 @@ begin
 				
 						tapeCounter := tapeCounter - 1;
 						
+						if tapeCounter = 0 then
+							tapeIn <= '0';
+						end if;
+						
 					end if;				
 				
 				end if;
@@ -1316,11 +1320,20 @@ begin
 			
 			tapeFifoRd <= '0';
 
-			if tapeCounter = 0 and tapeFifoReady = '1' then
+			if tapeCounter = 0 then
+		
+				if tapeFifoReady = '1' then
 				
-				tapeCounter := unsigned( tapeFifoRdTmp( 14 downto 0 ) );
-				tapePulse := tapeFifoRdTmp( 15 );
-				tapeFifoRd <= '1';
+					tapeCounter := unsigned( tapeFifoRdTmp( 14 downto 0 ) );
+					tapePulse := tapeFifoRdTmp( 15 );
+					tapeFifoRd <= '1';
+					
+				else
+			
+					tapeCounter := "111111111111111";
+					tapePulse := '0';
+					
+				end if;
 					
 			end if;			
 			

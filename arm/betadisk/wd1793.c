@@ -127,7 +127,7 @@ static inline byte wd_step_rate(byte rate_code)
 {
 	static byte rates[4] = {6, 12, 20, 30};
 
-    if( fast_mode ) return 1;
+    if( floppy_fast_mode ) return 1;
 	else return rates[rate_code & 3] / wd.clk;				// division
 }
 
@@ -302,7 +302,7 @@ static void wd_proc(void)
 
 	if ((wd.cr_c & TYPEI_STEP_MASK) != 0) {
 		if ((wd.cr_c & TYPEI_STEPWD_MASK) == TYPEI_STEPWD) {
-			fdc_set(FDC_SDIR, (wd.cr_c & TYPEI_SDIR_MASK) != 0);
+			fdc_set(FDC_SDIR, (wd.cr_c & TYPEI_SDIR_MASK) == 0);
 		}
 		if ((wd.cr_c & TYPEI_BIT_U)) {
 			JUMP(t1_trkupd);
@@ -447,10 +447,17 @@ static void wd_proc(void)
 	if (!wd_rd_am(am)) {
 		JUMP(done);
 	}
+
 	WD_TRACE(("wd: t2_amc, sz=%u (trk,side,sec) dsk(%u,%u,%u) wd(%u,%u,%u) time=%s\n", am[3], am[0], am[1], am[2], wd.tr, wd.cr_c & TYPEII_BIT_S ? 1 : 0, wd.sr, ticks_str(get_ticks())));
 	if (wd.tr != am[0]) {
-		WAIT();
+		if( floppy_fast_mode )
+		{
+		    wd.str |= WD17XX_STAT_NOTFOUND;
+            JUMP(done);
+		}
+		else WAIT();
 	}
+
 	if (wd.sr != am[2]) {
 		WAIT();
 	}
