@@ -197,7 +197,7 @@ void SaveSnapshot( const char *path, const char *name )
     else
     {
         tm time;
-        GetTime( &time );
+        RTC_GetTime( &time );
         sniprintf( fullName, sizeof( fullName ), "%s%.2d%.2d%.2d_%.2d%.2d%.2d.sna", path, time.tm_year - 100, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec );
     }
 

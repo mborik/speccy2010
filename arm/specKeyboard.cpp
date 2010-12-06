@@ -209,12 +209,20 @@ void DecodeKey( word keyCode, word keyFlags )
                     }
                     break;
 
+                case KEY_F9 :
+                    Shell_SettingsMenu();
+                    break;
+
+                case KEY_F10 :
+                    Shell_DisksMenu();
+                    break;
+
                 case KEY_F11 :
                     SaveSnapshot( Shell_GetPath(), 0 );
                     break;
 
                 case KEY_F12 :
-                    Shell_Enter();
+                    Shell_Browser();
                     break;
 
                 case KEY_EQUALS :

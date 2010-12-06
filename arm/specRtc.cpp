@@ -19,7 +19,7 @@ void RTC_Update()
     SystemBus_Write( 0xc0010a, rtcData[ 0x0a ] );
 
     tm time;
-    GetTime( &time );
+    RTC_GetTime( &time );
 
     rtcData[0] = RTC_ToDec( time.tm_sec );
     rtcData[2] = RTC_ToDec( time.tm_min );

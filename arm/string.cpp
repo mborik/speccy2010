@@ -169,7 +169,7 @@ CString &CString::Delete( int i, int num )
                 str[ j ] = str[ j + num ];
         }
 
-		portENTER_CRITICAL();
+		portEXIT_CRITICAL();
     }
 
     return *this;

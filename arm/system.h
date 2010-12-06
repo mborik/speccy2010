@@ -10,7 +10,7 @@
 
 #define VER_MAJOR 1
 #define VER_MINIR 0
-#define REV 45
+#define REV 46
 
 #ifdef __cplusplus
 extern "C"
@@ -36,6 +36,10 @@ extern "C"
 
     void UART0_WriteText( const char *str );
     void FPGA_Config();
+
+    void Keyboard_Reset();
+    void Mouse_Reset();
+
     void Spectrum_UpdateConfig();
     void Spectrum_UpdateDisks();
 
@@ -107,8 +111,8 @@ extern "C"
 
     //void MassStorage_Routine();
 
-    void GetTime( tm *newTime );
-    void SetTime( tm *newTime );
+    bool RTC_GetTime( tm *newTime );
+    bool RTC_SetTime( tm *newTime );
 
 #endif
 

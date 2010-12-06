@@ -14,7 +14,6 @@ const CParameter *GetIniParameters()
         CParameter( PTYPE_LIST, "BDI mode", "Slow|Fast", &specConfig.specBdiMode ),
         CParameter( PTYPE_LIST, "Video mode", "Composite/S-Video|PAL RGB|VGA 50Hz|VGA 60Hz|VGA 75Hz", &specConfig.specVideoMode ),
         CParameter( PTYPE_LIST, "Video aspect ratio", "4:3|5:4|16:9", &specConfig.specVideoAspectRatio ),
-        CParameter( PTYPE_INT, "Video subcarrier delta", "860000|900000|1", &specConfig.specVideoSubcarrierDelta ),
         CParameter( PTYPE_LIST, "Audio DAC mode", "R-2R|TDA1543|TDA1543A", &specConfig.specDacMode ),
         CParameter( PTYPE_LIST, "Joystick emulation", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyModeEmulation ),
         CParameter( PTYPE_LIST, "Joystick 1", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode1 ),
@@ -40,7 +39,6 @@ const CParameter *GetIniParameters()
 void RestreConfig()
 {
     specConfig.specVideoMode = 0;
-    specConfig.specVideoSubcarrierDelta = 885906;
     specConfig.specMouseSensitivity = 4;
     specConfig.specBdiMode = 1;
 

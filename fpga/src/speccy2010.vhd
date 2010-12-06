@@ -5,6 +5,7 @@ use IEEE.numeric_std.all;
 entity speccy2010_top is
 	port(
 		CLK_20			: in std_logic;
+		CLK_20_ALT		: in std_logic;
 		
 		SOUND_LEFT		: out std_logic_vector(7 downto 0) := "10000000";
 		SOUND_RIGHT		: out std_logic_vector(7 downto 0) := "10000000";
@@ -321,6 +322,7 @@ begin
 		
 		);
 		
+	
 	U01 : entity work.t80se
 		port map(
 			RESET_n => not ( cpuReset or reset ),
@@ -385,10 +387,9 @@ begin
 		)
 		
 		port map(
-			clk84m => sysclk,
+			clk => sysclk,
 			clk_en => '1',
 			reset => '0',
-			subcarrierDelta => subcarrierDelta(22 downto 0) & "0",
 			videoR => rgbR(7 downto 2),
 			videoG => rgbG(7 downto 2),
 			videoB => rgbB(7 downto 2),

@@ -449,7 +449,8 @@ static void wd_proc(void)
 	}
 
 	WD_TRACE(("wd: t2_amc, sz=%u (trk,side,sec) dsk(%u,%u,%u) wd(%u,%u,%u) time=%s\n", am[3], am[0], am[1], am[2], wd.tr, wd.cr_c & TYPEII_BIT_S ? 1 : 0, wd.sr, ticks_str(get_ticks())));
-	if (wd.tr != am[0]) {
+
+    if (wd.tr != am[0]) {
 		if( floppy_fast_mode )
 		{
 		    wd.str |= WD17XX_STAT_NOTFOUND;

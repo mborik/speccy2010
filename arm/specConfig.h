@@ -25,7 +25,6 @@ struct CSpecConfig
 	int specTurbo;
 	int specVideoMode;
 	int specVideoAspectRatio;
-	int specVideoSubcarrierDelta;
 	int specDacMode;
 	int specAyMode;
 	int specBdiMode;

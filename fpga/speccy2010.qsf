@@ -213,3 +213,4 @@ set_global_assignment -name VHDL_FILE src/peripheral/video/fir.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/video/vencode.vhd
 set_global_assignment -name VHDL_FILE src/speccy2010.vhd
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll.qip
+set_location_assignment PIN_24 -to CLK_20_ALT

@@ -157,36 +157,54 @@ void UART0_WriteText( const char *str )
 }
 
 const byte RTC_ADDRESS = 0xd0;
+const int RTC_TIMEOUT = 100;
 tm currentTime;
+bool rtcInited = false;
 
-void GetTime( tm *time )
+void RTC_Init()
+{
+    currentTime.tm_sec = 00;
+    currentTime.tm_min = 11;
+    currentTime.tm_hour = 17;
+
+    currentTime.tm_wday  = 0;
+    currentTime.tm_mday = 5;
+    currentTime.tm_mon = 11;
+    currentTime.tm_year = 110;
+
+    if( RTC_GetTime( NULL ) ) __TRACE( "RTC init OK..\n" );
+    else __TRACE( "RTC init error..\n" );
+}
+
+bool RTC_GetTime( tm *time )
 {
     byte data[ 7 ];
     byte address;
 
+    int rtc_timer = 0;
     address = 0;
 
     I2C_GenerateSTART(ENABLE);
-    while(!I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECT));
+    while( !I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECT) && ++rtc_timer < RTC_TIMEOUT ) DelayUs(100);
 
     I2C_Send7bitAddress(RTC_ADDRESS, I2C_MODE_TRANSMITTER);
-    while(!I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECTED));
+    while( !I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECTED) && ++rtc_timer < RTC_TIMEOUT ) DelayUs(100);
 
     I2C_Cmd(ENABLE);
     I2C_SendData( address );
-    while(!I2C_CheckEvent(I2C_EVENT_MASTER_BYTE_TRANSMITTED));
+    while( !I2C_CheckEvent(I2C_EVENT_MASTER_BYTE_TRANSMITTED) && ++rtc_timer < RTC_TIMEOUT ) DelayUs(100);
 
     I2C_GenerateSTART(ENABLE);
-    while(!I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECT));
+    while( !I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECT) && ++rtc_timer < RTC_TIMEOUT ) DelayUs(100);
 
     I2C_Send7bitAddress(RTC_ADDRESS, I2C_MODE_RECEIVER);
-    while(!I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECTED));
+    while( !I2C_CheckEvent(I2C_EVENT_MASTER_MODE_SELECTED) && ++rtc_timer < RTC_TIMEOUT ) DelayUs(100);
 
     I2C_Cmd(ENABLE);
 
     while( address < sizeof( data ) )
     {
-        while( !I2C_CheckEvent( I2C_EVENT_MASTER_BYTE_RECEIVED ) );
+        while( !I2C_CheckEvent( I2C_EVENT_MASTER_BYTE_RECEIVED ) && ++rtc_timer < RTC_TIMEOUT ) DelayUs(100);
 
         if( address == sizeof( data ) - 2 ) I2C_AcknowledgeConfig(DISABLE);
         else if( address == sizeof( data ) - 1 ) I2C_GenerateSTOP(ENABLE);
@@ -195,20 +213,31 @@ void GetTime( tm *time )
     }
 
     I2C_AcknowledgeConfig(ENABLE);
+    //__TRACE( "RTC read time %d..\n", rtc_timer );
 
-    currentTime.tm_sec = ( data[0] >> 4 ) * 10 + ( data[0] & 0x0f );
-    currentTime.tm_min = ( data[1] >> 4 ) * 10 + ( data[1] & 0x0f );
-    currentTime.tm_hour = ( data[2] >> 4 ) * 10 + ( data[2] & 0x0f );
+    if( rtc_timer < RTC_TIMEOUT )
+    {
+        currentTime.tm_sec = ( data[0] >> 4 ) * 10 + ( data[0] & 0x0f );
+        currentTime.tm_min = ( data[1] >> 4 ) * 10 + ( data[1] & 0x0f );
+        currentTime.tm_hour = ( data[2] >> 4 ) * 10 + ( data[2] & 0x0f );
 
-    currentTime.tm_wday  = ( data[3] & 0x0f );
-    currentTime.tm_mday = ( data[4] >> 4 ) * 10 + ( data[4] & 0x0f );
-    currentTime.tm_mon = ( data[5] >> 4 ) * 10 + ( data[5] & 0x0f ) - 1;
-    currentTime.tm_year = 100 + ( data[6] >> 4 ) * 10 + ( data[6] & 0x0f );
+        currentTime.tm_wday  = ( data[3] & 0x0f );
+        currentTime.tm_mday = ( data[4] >> 4 ) * 10 + ( data[4] & 0x0f );
+        currentTime.tm_mon = ( data[5] >> 4 ) * 10 + ( data[5] & 0x0f ) - 1;
+        currentTime.tm_year = 100 + ( data[6] >> 4 ) * 10 + ( data[6] & 0x0f );
+
+        rtcInited = true;
+    }
+    else
+    {
+        rtcInited = false;
+    }
 
     if( time ) memcpy( time, &currentTime, sizeof( tm ) );
+    return rtcInited;
 }
 
-void SetTime( tm *newTime )
+bool RTC_SetTime( tm *newTime )
 {
     tm time;
     memcpy( &time, newTime, sizeof( tm ) );
@@ -236,48 +265,50 @@ void SetTime( tm *newTime )
     }
 
     mktime( &time );
+    memcpy( &currentTime, &time, sizeof( tm ) );
 
-    time.tm_mon += 1;
-    time.tm_year %= 100;
-
-    byte data[7];
-    data[0] = ( ( time.tm_sec / 10 ) << 4 ) | ( time.tm_sec % 10 );
-    data[1] = ( ( time.tm_min / 10 ) << 4 ) | ( time.tm_min % 10 );
-    data[2] = ( ( time.tm_hour / 10 ) << 4 ) | ( time.tm_hour % 10 );
-    data[3] = time.tm_wday;
-    data[4] = ( ( time.tm_mday / 10 ) << 4 ) | ( time.tm_mday % 10 );
-    data[5] = ( ( time.tm_mon / 10 ) << 4 ) | ( time.tm_mon % 10 );
-    data[6] = ( ( time.tm_year / 10 ) << 4 ) | ( time.tm_year % 10 );
-
-    byte address = 0;
-
-    I2C_GenerateSTART(ENABLE);
-    while( !I2C_CheckEvent( I2C_EVENT_MASTER_MODE_SELECT ) );
-
-    I2C_Send7bitAddress(RTC_ADDRESS, I2C_MODE_TRANSMITTER );
-    while( !I2C_CheckEvent( I2C_EVENT_MASTER_MODE_SELECTED ) );
-
-    I2C_Cmd(ENABLE);
-    I2C_SendData( address );
-    while( !I2C_CheckEvent( I2C_EVENT_MASTER_BYTE_TRANSMITTED ) );
-
-    I2C_Cmd(ENABLE);
-    while( address < sizeof( data ) )
+    if( rtcInited )
     {
-        I2C_SendData( data[ address++ ] );
+        time.tm_mon += 1;
+        time.tm_year %= 100;
+
+        byte data[7];
+        data[0] = ( ( time.tm_sec / 10 ) << 4 ) | ( time.tm_sec % 10 );
+        data[1] = ( ( time.tm_min / 10 ) << 4 ) | ( time.tm_min % 10 );
+        data[2] = ( ( time.tm_hour / 10 ) << 4 ) | ( time.tm_hour % 10 );
+        data[3] = time.tm_wday;
+        data[4] = ( ( time.tm_mday / 10 ) << 4 ) | ( time.tm_mday % 10 );
+        data[5] = ( ( time.tm_mon / 10 ) << 4 ) | ( time.tm_mon % 10 );
+        data[6] = ( ( time.tm_year / 10 ) << 4 ) | ( time.tm_year % 10 );
+
+        byte address = 0;
+
+        I2C_GenerateSTART(ENABLE);
+        while( !I2C_CheckEvent( I2C_EVENT_MASTER_MODE_SELECT ) );
+
+        I2C_Send7bitAddress(RTC_ADDRESS, I2C_MODE_TRANSMITTER );
+        while( !I2C_CheckEvent( I2C_EVENT_MASTER_MODE_SELECTED ) );
+
+        I2C_Cmd(ENABLE);
+        I2C_SendData( address );
         while( !I2C_CheckEvent( I2C_EVENT_MASTER_BYTE_TRANSMITTED ) );
+
+        I2C_Cmd(ENABLE);
+        while( address < sizeof( data ) )
+        {
+            I2C_SendData( data[ address++ ] );
+            while( !I2C_CheckEvent( I2C_EVENT_MASTER_BYTE_TRANSMITTED ) );
+        }
+
+        I2C_GenerateSTOP(ENABLE);
     }
 
-    I2C_GenerateSTOP(ENABLE);
-
-    time.tm_year += 100;
-    time.tm_mon -= 1;
-    memcpy( &currentTime, &time, sizeof( tm ) );
+    return rtcInited;
 }
 
 DWORD get_fattime()
 {
-    GetTime( NULL );
+    RTC_GetTime( NULL );
 
 	return	( ( currentTime.tm_year - 80 ) << 25 ) | ( ( currentTime.tm_mon + 1 ) << 21 ) |
                 ( currentTime.tm_mday << 16 ) | ( currentTime.tm_hour << 11 ) |
@@ -479,11 +510,16 @@ void FPGA_Config()
         __TRACE( "Wrong FPGA configuration...\n" );
         fpgaConfigVersionPrev = 0;
     }
+    else
+    {
+        FPGA_TestClock();
+        Keyboard_Reset();
+        Mouse_Reset();
+    }
 
     romConfigPrev = -1;
-    FPGA_TestClock();
-
     WDT_Kick();
+
     timer_flag_1Hz = 0;
     timer_flag_100Hz = 0;
 }
@@ -708,9 +744,6 @@ void Spectrum_UpdateConfig()
     SystemBus_Write( 0xc00046, specConfig.specDacMode );
     SystemBus_Write( 0xc00047, specConfig.specAyMode );
 
-    SystemBus_Write( 0xc00044, (dword) specConfig.specVideoSubcarrierDelta & 0xffff );
-    SystemBus_Write( 0xc00045, (dword) specConfig.specVideoSubcarrierDelta >> 16 );
-
     floppy_set_fast_mode( specConfig.specBdiMode );
 
     if( fpgaConfigVersionPrev != 0 && romConfigPrev != (dword) specConfig.specRom )
@@ -725,6 +758,7 @@ void Spectrum_UpdateDisks()
     for( int i = 0; i < 4; i++ )
     {
         fdc_open_image( i, specConfig.specImages[ i ].name );
+        floppy_disk_wp( i, &specConfig.specImages[i].readOnly );
     }
 }
 
@@ -802,6 +836,7 @@ void Keyboard_Reset()
 void Keyboard_Send( const byte *data, int size )
 {
     if( size <= 0 || size > (int) sizeof(keybordSend) ) return;
+    if( kbdInited != KBD_OK ) return;
 
     memcpy( keybordSend, data, size );
     keybordSendSize = size;
@@ -913,8 +948,10 @@ void Timer_Routine()
                 {
                     mouseInited++;
                     mouseBuffPos = 0;
+
+                    __TRACE( "PS/2 mouse init OK..\n" );
                 }
-                else
+                else if( mouseInited == MOUSE_OK )
                 {
                     static dword x = 0x12345678;
                     static dword y = 0x12345678;
@@ -985,13 +1022,13 @@ void Timer_Routine()
             if( kbdInited != KBD_OK )
             {
                 kbdResetTimer++;
-                if( kbdResetTimer > 100 ) Keyboard_Reset();
+                if( kbdResetTimer > 200 ) Keyboard_Reset();
             }
 
             if( mouseInited != MOUSE_OK )
             {
                 mouseResetTimer++;
-                if( mouseResetTimer > 100 ) Mouse_Reset();
+                if( mouseResetTimer > 200 ) Mouse_Reset();
             }
 
             //-------------------------------------------------
@@ -1000,7 +1037,7 @@ void Timer_Routine()
             static byte leds_prev = 0;
             byte leds = floppy_leds();
 
-            if( leds != leds_prev )
+            if( leds != leds_prev && kbdInited == KBD_OK )
             {
                 byte data[2] = { 0xed, leds };
                 Keyboard_Send( data, 2 );
@@ -1162,16 +1199,6 @@ void BDI_Routine()
     SystemBus_Write( 0xc0001d, fdc_read( 0xff ) );
 }
 
-
-void UpdateCarrier( int delta )
-{
-    specConfig.specVideoSubcarrierDelta += delta;
-    SystemBus_Write( 0xc00044, (dword) specConfig.specVideoSubcarrierDelta & 0xffff );
-    SystemBus_Write( 0xc00045, (dword) specConfig.specVideoSubcarrierDelta >> 16 );
-
-    __TRACE( "subcarrierDelta - %d\n", specConfig.specVideoSubcarrierDelta );
-}
-
 static word pressedKeys[4] = { KEY_NONE, KEY_NONE, KEY_NONE, KEY_NONE };
 
 bool ReadKey( word &_keyCode, word &_keyFlags )
@@ -1198,6 +1225,8 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
         {
             kbdInited = KBD_OK;
             keyFlags = 0;
+
+            __TRACE( "PS/2 keyboard init OK..\n" );
         }
         else if( kbdInited == KBD_OK )
         {
@@ -1231,14 +1260,6 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
                 {
                     if( keyRelease == 0 ) keyFlags |= tempFlag;
                     else keyFlags &= ~tempFlag;
-                }
-
-                if( keyRelease == 0 && ( keyFlags & fKeyCtrl ) != 0 )
-                {
-                    if( keyCode == KEY_HOME ) UpdateCarrier( 1 );   // HOME
-                    if( keyCode == KEY_END ) UpdateCarrier( -1 );   // END
-                    if( keyCode == KEY_PAGEUP ) UpdateCarrier( 10 );   // PGUP
-                    if( keyCode == KEY_PAGEDOWN ) UpdateCarrier( -10 );   // PGDOWN
                 }
 
                 int i;
@@ -1490,6 +1511,7 @@ int main()
     DelayMs( 100 );
 
     fdc_init();
+    RTC_Init();
 
     while( true )
     {
