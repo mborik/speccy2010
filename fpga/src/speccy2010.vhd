@@ -82,8 +82,8 @@ architecture rtl of speccy2010_top is
 	signal cpuOneCycleWaitReq : std_logic := '0';
 	signal cpuOneCycleWaitAck : std_logic := '0';
 	
-	signal cpuBP0 	: std_logic_vector(15 downto 0) := x"0000";
-	signal cpuBP0_en : std_logic := '0';
+	--signal cpuBP0 	: std_logic_vector(15 downto 0) := x"0000";
+	--cpuBP0_en : std_logic := '0';
 
     signal activeBank : unsigned( 1 downto 0 ) := "00";
 	signal armVideoPage	: std_logic_vector(15 downto 0) := x"0000";
@@ -158,7 +158,7 @@ architecture rtl of speccy2010_top is
 	signal specPort7ffd	: std_logic_vector(7 downto 0);
 	
 	signal specPortEff7	: std_logic_vector(7 downto 0);
-	signal specPortDff7	: std_logic_vector(7 downto 0);	
+	--signal specPortDff7	: std_logic_vector(7 downto 0);	
 	
 	signal specTrdosToggleFlag : std_logic := '0';
 	signal specTrdosFlag : std_logic := '0';
@@ -171,7 +171,7 @@ architecture rtl of speccy2010_top is
 	signal syncMode		: unsigned(7 downto 0) := x"00";
     signal cpuTurbo 	: unsigned(7 downto 0 ) := x"00";
 	signal videoMode	: unsigned(7 downto 0) := x"00";
-    signal subcarrierDelta : unsigned( 23 downto 0 ) := to_unsigned( 885662, 24 ); -- 885521
+    --signal subcarrierDelta : unsigned( 23 downto 0 ) := to_unsigned( 885662, 24 ); -- 885521
 	signal dacMode		: unsigned(7 downto 0) := x"00";
 	signal ayMode		: unsigned(7 downto 0) := x"00";
 	signal videoAspectRatio	: unsigned(7 downto 0) := x"00";
@@ -860,7 +860,7 @@ begin
 						elsif cpuA = x"eff7" then	
 							specPortEff7 <= cpuDout;
 						elsif cpuA = x"dff7" and specPortEff7(7) = '1' then	
-							specPortDff7 <= cpuDout;
+							--specPortDff7 <= cpuDout;
 							rtcRamAddressRd := unsigned(cpuDout);
 						--elsif cpuA = x"bff7" and specPortEff7(7) = '1' then	
 							--rtcRam( to_integer( unsigned( specPortDff7 ) ) ) := cpuDout;
@@ -981,10 +981,10 @@ begin
 							
 						elsif addressReg( 7 downto 0 ) = x"08" then
 							cpuTraceReq <= ARM_AD(0);
-						elsif addressReg( 7 downto 0 ) = x"09" then
-							cpuBP0_en <= ARM_AD(0);
-						elsif addressReg( 7 downto 0 ) = x"0A" then
-							cpuBP0 <= ARM_AD;
+						--elsif addressReg( 7 downto 0 ) = x"09" then
+							--cpuBP0_en <= ARM_AD(0);
+						--elsif addressReg( 7 downto 0 ) = x"0A" then
+							--cpuBP0 <= ARM_AD;
 							
 						elsif addressReg( 7 downto 0 ) = x"10" then
 							keyboard( 9 downto 0 ) <= ARM_AD( 12 downto 8 ) & ARM_AD( 4 downto 0 );
@@ -1055,10 +1055,10 @@ begin
 							cpuTurbo <= unsigned( ARM_AD(7 downto 0) );
 						elsif addressReg( 7 downto 0 ) = x"43" then
 							videoMode <= unsigned( ARM_AD(7 downto 0) );
-						elsif addressReg( 7 downto 0 ) = x"44" then
-							subcarrierDelta( 15 downto 0 ) <= unsigned( ARM_AD( 15 downto 0 ) );
-						elsif addressReg( 7 downto 0 ) = x"45" then
-							subcarrierDelta( 23 downto 16 ) <= unsigned( ARM_AD( 7 downto 0 ) );
+						--elsif addressReg( 7 downto 0 ) = x"44" then
+							--subcarrierDelta( 15 downto 0 ) <= unsigned( ARM_AD( 15 downto 0 ) );
+						--elsif addressReg( 7 downto 0 ) = x"45" then
+							--subcarrierDelta( 23 downto 16 ) <= unsigned( ARM_AD( 7 downto 0 ) );
 						elsif addressReg( 7 downto 0 ) = x"46" then
 							dacMode <= unsigned( ARM_AD(7 downto 0) );
 						elsif addressReg( 7 downto 0 ) = x"47" then
@@ -1232,8 +1232,8 @@ begin
 
 				if cpuHaltReq = '1' then
 					cpuHaltAck <= '1';
-				elsif cpuBP0_en = '1' and cpuSavePC = cpuBP0 then
-					cpuHaltAck <= '1';
+				--elsif cpuBP0_en = '1' and cpuSavePC = cpuBP0 then
+					--cpuHaltAck <= '1';
 				end if;			
 								
 			end if;

@@ -37,8 +37,8 @@ void WriteChar( byte x, byte y, char c )
 {
     if( x < 32 && y < 24 )
     {
-        if( (byte) c < 0x20 && (byte) c >= 0x80 ) c = 0;
-        else c -= 0x20;
+        //if( (byte) c < 0x20 && (byte) c >= 0x80 ) c = 0;
+        //else c -= 0x20;
 
         word address = x + ( y & 0x07 ) * 32 + ( y & 0x18 ) * 32 * 8;
         const byte *tablePos = &specChars[ (byte) c * 8 ];
@@ -85,6 +85,14 @@ void WriteStr( byte x, byte y, const char *str, byte size = 0 )
     }
 }
 
+void WriteStrAttr( byte x, byte y, const char *str, byte attr, byte size = 0 )
+{
+    if( size == 0 ) size = strlen( str );
+
+    WriteStr( x, y, str, size );
+    WriteAttr( x, y, attr, size );
+}
+
 void Beep()
 {
     byte specPortFe = SystemBus_Read( 0xc00016 );
@@ -98,52 +106,56 @@ void Beep()
     }
 }
 
-byte GetKey( bool wait = true )
+word prevKey = KEY_NONE;
+word keyFlags;
+
+void InitKeys()
 {
-    static word prevKey = KEY_NONE;
+    prevKey = KEY_NONE;
+}
+
+word GetKeysFlags()
+{
+    return keyFlags;
+}
+
+word ReadKeyAdv()
+{
     static dword keyRepeatTime = 0;
+    Timer_Routine();
 
-    word keyCode, keyFlags;
-
-    while( true )
+    word keyCode;
+    while( ReadKey( keyCode, keyFlags ) )
     {
-        Timer_Routine();
-
-        while( ReadKey( keyCode, keyFlags ) )
+        if( ( keyFlags & fKeyRelease ) == 0 )
         {
-            if( ( keyFlags & fKeyRelease ) == 0 )
-            {
-                if( keyCode != KEY_ESC && keyCode != KEY_F12 )
-                {
-                    prevKey = keyCode;
-                    keyRepeatTime = Timer_GetTickCounter() + 50;
-                }
-                break;
-            }
-            else
-            {
-                prevKey = KEY_NONE;
-            }
-
-            keyCode = KEY_NONE;
+            prevKey = keyCode;
+            keyRepeatTime = Timer_GetTickCounter() + 50;
+            return keyCode;
+        }
+        else
+        {
+            prevKey = KEY_NONE;
         }
 
-        if( keyCode != KEY_NONE ) break;
-
-        if( (int) ( Timer_GetTickCounter() - keyRepeatTime ) >= 0 )
-        {
-            keyCode = prevKey;
-            keyRepeatTime = Timer_GetTickCounter() + 5;
-            break;
-        }
-
-        if( !wait ) break;
+        keyCode = KEY_NONE;
     }
 
-    if( keyCode != KEY_NONE ) Beep();
+    if( prevKey != KEY_NONE && (int) ( Timer_GetTickCounter() - keyRepeatTime ) >= 0 )
+    {
+        keyCode = prevKey;
+        keyRepeatTime = Timer_GetTickCounter() + 5;
+    }
 
+    return keyCode;
+}
+
+char CodeToChar( word keyCode )
+{
     switch( keyCode )
     {
+        case KEY_NONE : return 0;
+
         case KEY_ESC : return K_ESC;
         case KEY_RETURN : return K_RETURN;
         case KEY_BACKSPACE : return K_BACKSPACE;
@@ -152,6 +164,19 @@ byte GetKey( bool wait = true )
         case KEY_DOWN : return K_DOWN;
         case KEY_LEFT : return K_LEFT;
         case KEY_RIGHT : return K_RIGHT;
+
+        case KEY_F1 : return K_F1;
+        case KEY_F2 : return K_F2;
+        case KEY_F3 : return K_F3;
+        case KEY_F4 : return K_F4;
+        case KEY_F5 : return K_F5;
+        case KEY_F6 : return K_F6;
+        case KEY_F7 : return K_F7;
+        case KEY_F8 : return K_F8;
+        case KEY_F9 : return K_F9;
+        case KEY_F10 : return K_F10;
+        case KEY_F11 : return K_F11;
+        case KEY_F12 : return K_F12;
 
         case KEY_SPACE : return ' ';
         case KEY_COMMA : return ',';
@@ -202,6 +227,21 @@ byte GetKey( bool wait = true )
     return 0;
 }
 
+char GetKey( bool wait = true )
+{
+    do
+    {
+        word keyCode = ReadKeyAdv();
+
+        if( keyCode != KEY_NONE )
+        {
+            Beep();
+            return CodeToChar( keyCode );
+        }
+    } while( wait );
+
+    return 0;
+}
 
 const int FILES_SIZE = 10000;
 //const int FILES_SIZE = ( 0x400000 - 0x201000 ) / ( sizeof( FRECORD ) / 2 );
@@ -257,7 +297,7 @@ int files_table_start;
 int files_sel;
 char files_lastName[ _MAX_LFN + 1 ] = "";
 
-const int FILES_PER_ROW = 16;
+const int FILES_PER_ROW = 18;
 byte selx = 0, sely = 0;
 
 byte comp_name( int a, int b )
@@ -376,7 +416,7 @@ void read_dir()
         {
             mark = ( mark + 1 ) & 0x03;
             const char marks[ 4 ] = { '/', '-', '\\', '|' };
-            WriteChar( 0, 19, marks[ mark ] );
+            WriteChar( 0, 22, marks[ mark ] );
         }
     }
 
@@ -471,33 +511,39 @@ byte get_sel_attr( FRECORD &fr )
 
 void show_table()
 {
-	byte i;
-	display_path( path, 0, 19, 32 );
+	display_path( path, 0, FILES_PER_ROW + 3, 32 );
 
     FRECORD fr;
 
-    for ( i = 0; i < FILES_PER_ROW * 2; i++ )
+    for ( int i = 0; i < FILES_PER_ROW; i++ )
     {
-        int col = ( i / FILES_PER_ROW ) * 16;
-        int row = ( i % FILES_PER_ROW ) + 2;
-        int pos = i + files_table_start;
-
-        ReadRecord( fr, pos );
-
-        char sname[ 16 ];
-        make_short_name( sname, sizeof( sname ), fr.name );
-
-        //if( ( fr.attr & AM_DIR ) == 0 ) strlwr( sname );
-        //else strupr( sname );
-
-        if ( pos < files_size )
+        for ( int j = 0; j < 2; j++ )
         {
-            WriteAttr( col, row, get_sel_attr( fr ), 16 );
+            int col = j * 16;
+            int row = i + 2;
+            int pos = i + j * FILES_PER_ROW + files_table_start;
 
-            WriteStr( col, row, " ", 1 );
-            WriteStr( col + 1, row, sname, 15 );
+            ReadRecord( fr, pos );
+
+            char sname[ 16 ];
+            make_short_name( sname, sizeof( sname ), fr.name );
+
+            //if( ( fr.attr & AM_DIR ) == 0 ) strlwr( sname );
+            //else strupr( sname );
+
+            if ( pos < files_size )
+            {
+                WriteAttr( col, row, get_sel_attr( fr ), 16 );
+
+                WriteStr( col, row, " ", 1 );
+                WriteStr( col + 1, row, sname, 15 );
+            }
+            else
+            {
+                WriteAttr( col, row, 0, 16 );
+                WriteStr( col, row, "", 16 );
+            }
         }
-        else WriteStr( col, row, "", 16 );
 	}
 
 	if ( too_many_files )
@@ -545,7 +591,8 @@ void hide_sel()
     ReadRecord( fr, files_sel );
 
     if ( files_size != 0 ) WriteAttr( selx * 16, 2 + sely, get_sel_attr( fr ), 16 );
-    WriteStr( 0, 20, "", 32 );
+    WriteStr( 0, FILES_PER_ROW + 4, "", 32 );
+    WriteStr( 0, FILES_PER_ROW + 5, "", 32 );
 }
 
 void show_sel( bool redraw = false )
@@ -559,9 +606,27 @@ void show_sel( bool redraw = false )
         FRECORD fr;
         ReadRecord( fr, files_sel );
 
-        char sname[ 32 + 1 ];
-        make_short_name( sname, sizeof( sname ), fr.name );
-        WriteStr( 0, 20, sname, 32 );
+        char sname[ PATH_SIZE ];
+        make_short_name( sname, 33, fr.name );
+        WriteStr( 0, FILES_PER_ROW + 4, sname, 32 );
+
+        FILINFO fInfo;
+        char lfn[ 1 ];
+        fInfo.lfname = lfn;
+        fInfo.lfsize = sizeof( lfn );
+
+        sniprintf( sname, sizeof(sname), "%s%s", path, fr.name );
+        if ( ( fr.attr & AM_DIR ) == 0 && f_stat( sname, &fInfo ) == FR_OK )
+        {
+            sniprintf( sname, sizeof(sname), "size: %7u.%.2u kB", (unsigned int)(fInfo.fsize >> 10), (unsigned int)(((fInfo.fsize % 1024) * 6400) >> 16 ) );
+            WriteStr( 0, FILES_PER_ROW + 5, sname, 0 );
+        }
+        else
+        {
+            WriteStr( 0, FILES_PER_ROW + 5, "", 32 );
+        }
+
+
     }
 }
 
@@ -616,9 +681,9 @@ void InitScreen()
     WriteLine( 1, 3 );
     WriteLine( 1, 5 );
 
-    WriteAttr( 0, 18, 0x06, 32 );
-    WriteLine( 18, 3 );
-    WriteLine( 18, 5 );
+    WriteAttr( 0, FILES_PER_ROW + 2, 0x06, 32 );
+    WriteLine( FILES_PER_ROW + 2, 3 );
+    WriteLine( FILES_PER_ROW + 2, 5 );
 }
 
 int cpuStopNesting = 0;
@@ -717,6 +782,139 @@ const char *Shell_GetPath()
     return path;
 }
 
+void Shell_Pause()
+{
+    CPU_Stop();
+    InitKeys();
+    GetKey();
+    CPU_Start();
+}
+
+void Shell_Window( int x, int y, int w, int h, const char *title, byte attr )
+{
+    int titleSize = strlen( title );
+    int titlePos = ( w - titleSize ) / 2;
+
+    for( int i = 0; i < h; i++ )
+        for( int j = 0; j < w; j++ )
+        {
+            char current = ' ';
+
+            if( i == 0 && j == 0 ) current = 0x82;
+            else if( i == 0 && j == w - 1 ) current = 0x83;
+            else if( i == h - 1 && j == 0 ) current = 0x84;
+            else if( i == h - 1 && j == w - 1 ) current = 0x85;
+            else if( i == 0 || i == h - 1 ) current = 0x80;
+            else if( j == 0 || j == w - 1 ) current = 0x81;
+
+            if( i == 0 )
+            {
+                if( j >= titlePos && j < ( titlePos + titleSize ) )
+                {
+                    current = title[ j - titlePos ];
+                }
+                else if( j == ( titlePos - 1 ) || j == ( titlePos + titleSize ) )
+                {
+                    current = ' ';
+                }
+            }
+
+            WriteAttr( x + j, y + i, attr );
+            WriteChar( x + j, y + i, current );
+        }
+}
+
+void Shell_MessageBox( const char *title, const char *str )
+{
+    int w = max( strlen( title ) + 6, strlen( str ) + 4 );
+    int h = 4;
+
+    int x = ( 32 - w ) / 2;
+    int y = ( 22 - h ) / 2;
+
+    Shell_Window( x, y, w, h, title, 0027 );
+
+    WriteStr( x + 2, ++y, str );
+    WriteStrAttr( 16 - 2, ++y, " OK ", 0052 );
+
+    while( true )
+    {
+        byte key = GetKey();
+        if( key == K_ESC || key == K_RETURN ) break;
+    }
+}
+
+void Shell_Delete( const char *name )
+{
+    if( strcmp( name, ".." ) == 0 ) return;
+
+    int w = 24;
+    int h = 5;
+
+    int x = ( 32 - w ) / 2;
+    int y = ( 22 - h ) / 2;
+
+    char sname[ PATH_SIZE ];
+    make_short_name( sname, 21, name );
+    strcat( sname, "?" );
+
+    Shell_Window( x, y, w, h, "Delete", 0050 );
+
+    WriteStr( x + 1, ++y, "Do you wish to delete" );
+    WriteStr( x + 2, ++y, sname );
+
+    int i = 0;
+    WriteStr( 16 - 5, ++y, " Yes " );
+    WriteStr( 16, y, " No " );
+
+    while( true )
+    {
+        WriteAttr( 16 - 5, y, i == 0 ? 0151 : 0050, 5 );
+        WriteAttr( 16, y, i == 1 ? 0151 : 0050, 4 );
+
+        byte key = GetKey();
+
+        if( key == K_ESC ) i = 1;
+        if( key == K_ESC || key == K_RETURN ) break;
+
+        i = ( i + 1 ) % 2;
+    }
+
+    if( i != 0 ) return;
+
+    sniprintf( sname, sizeof(sname), "%s%s", path, name );
+
+    FILINFO fInfo;
+    char lfn[ 1 ];
+    fInfo.lfname = lfn;
+    fInfo.lfsize = sizeof( lfn );
+
+    if ( f_stat( sname, &fInfo ) != FR_OK )
+    {
+        return;
+    }
+
+    if( ( fInfo.fattrib & AM_DIR ) != 0 )
+    {
+        show_table();
+        Shell_MessageBox( "Error", "Cannot delete the folder !" );
+        return;
+    }
+
+    if( f_unlink( sname ) == FR_OK )
+    {
+        int last_files_sel = files_sel;
+        read_dir();
+        files_sel = last_files_sel;
+    }
+    else
+    {
+        show_table();
+        Shell_MessageBox( "Error", "Cannot delete the file !" );
+        return;
+    }
+}
+
 bool Shell_Browser()
 {
     bool nextWindow = false;
@@ -724,7 +922,9 @@ bool Shell_Browser()
     CPU_Stop();
 
     SystemBus_Write( 0xc00020, 0 );  // use bank 0
+
     InitScreen();
+    InitKeys();
 
     read_dir();
     show_sel( true );
@@ -790,6 +990,12 @@ bool Shell_Browser()
             hide_sel();
             leave_dir();
             show_sel();
+        }
+        else if ( key == K_F8 )
+        {
+            hide_sel();
+            Shell_Delete( fr.name );
+            show_sel( true );
         }
 		else if ( key == K_RETURN )
 		{
@@ -1046,14 +1252,14 @@ CMenuItem mainMenu[] = {
     CMenuItem( 1, 9, "AY mode: ", GetParam( iniParameters, "AY mode" ) ),
     CMenuItem( 1, 10, "BDI mode: ", GetParam( iniParameters, "BDI mode" ) ),
 
-    CMenuItem( 1, 11, "Joystick emulation: ", GetParam( iniParameters, "Joystick emulation" ) ),
-    CMenuItem( 1, 12, "Joystick 1: ", GetParam( iniParameters, "Joystick 1" ) ),
-    CMenuItem( 1, 13, "Joystick 2: ", GetParam( iniParameters, "Joystick 2" ) ),
-    CMenuItem( 1, 14, "Mouse Sensitivity: ", GetParam( iniParameters, "Mouse Sensitivity" ) ),
+    CMenuItem( 1, 12, "Joystick emulation: ", GetParam( iniParameters, "Joystick emulation" ) ),
+    CMenuItem( 1, 13, "Joystick 1: ", GetParam( iniParameters, "Joystick 1" ) ),
+    CMenuItem( 1, 14, "Joystick 2: ", GetParam( iniParameters, "Joystick 2" ) ),
+    CMenuItem( 1, 15, "Mouse Sensitivity: ", GetParam( iniParameters, "Mouse Sensitivity" ) ),
 
-    CMenuItem( 1, 15, "Video mode: ", GetParam( iniParameters, "Video mode" ) ),
-    CMenuItem( 1, 16, "Video aspect ratio: ", GetParam( iniParameters, "Video aspect ratio" ) ),
-    CMenuItem( 1, 17, "Audio DAC mode: ", GetParam( iniParameters, "Audio DAC mode" ) ),
+    CMenuItem( 1, 17, "Video mode: ", GetParam( iniParameters, "Video mode" ) ),
+    CMenuItem( 1, 18, "Video aspect ratio: ", GetParam( iniParameters, "Video aspect ratio" ) ),
+    CMenuItem( 1, 19, "Audio DAC mode: ", GetParam( iniParameters, "Audio DAC mode" ) ),
 };
 
 bool Shell_SettingsMenu()
@@ -1090,6 +1296,7 @@ bool Shell_Menu( CMenuItem *menu, int menuSize )
     CPU_Stop();
 
     InitScreen();
+    InitKeys();
 
     for( int i = 0; i < menuSize; i++ )
     {
@@ -1303,6 +1510,7 @@ void Debugger_Enter()
     SystemBus_Write( 0xc00020, 0 );  // use bank 0
 
     ClrScr( 0x07 );
+    InitKeys();
 
     char str[ 0x20 ];
     byte CurX = 0, CurY = 0, CurXold, CurYold, half = 0, editAddr = 0, editAddrPos = 3;

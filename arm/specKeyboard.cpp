@@ -157,12 +157,64 @@ void DecodeKey( word keyCode, word keyFlags )
                     break;
             }
         }
+        else if ( fKeyAlt & keyFlags )
+        {
+            int kc;
+
+            switch ( keyCode )
+            {
+                case KEY_0:
+                    kc = 0;
+                    break;
+                case KEY_1:
+                    kc = 1;
+                    break;
+                case KEY_2:
+                    kc = 2;
+                    break;
+                case KEY_3:
+                    kc = 3;
+                    break;
+                case KEY_4:
+                    kc = 4;
+                    break;
+                case KEY_5:
+                    kc = 5;
+                    break;
+                case KEY_6:
+                    kc = 6;
+                    break;
+                case KEY_7:
+                    kc = 7;
+                    break;
+                case KEY_8:
+                    kc = 8;
+                    break;
+                case KEY_9:
+                    kc = 9;
+                    break;
+                default:
+                    kc = -1;
+                    break;
+            }
+            if ( kc >= 0 )
+            {
+                char snaName[16];
+                sniprintf( snaName, sizeof(snaName), "!slot_%.1d.sna", kc );
+                SaveSnapshot( Shell_GetPath(), snaName );
+            }
+        }
+
         else
         {
             switch( keyCode )
             {
                 case KEY_ESC :
                     Debugger_Enter();
+                    break;
+
+                case KEY_PAUSE :
+                    Shell_Pause();
                     break;
 
                 case KEY_F1 :

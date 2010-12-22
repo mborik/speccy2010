@@ -7,11 +7,25 @@
 const byte K_ESC = 0x1b;
 const byte K_RETURN = 0x0d;
 const byte K_BACKSPACE = 0x08;
+const byte K_TAB = 0x09;
 
 const byte K_UP = 0x01;
 const byte K_DOWN = 0x02;
 const byte K_LEFT = 0x03;
 const byte K_RIGHT = 0x04;
+
+const byte K_F1 = 0x05;
+const byte K_F2 = 0x06;
+const byte K_F3 = 0x07;
+const byte K_F4 = 0x0a;
+const byte K_F5 = 0x0b;
+const byte K_F6 = 0x0c;
+const byte K_F7 = 0x0e;
+const byte K_F8 = 0x10;
+const byte K_F9 = 0x11;
+const byte K_F10 = 0x12;
+const byte K_F11 = 0x13;
+const byte K_F12 = 0x14;
 
 class CMenuItem
 {
@@ -53,6 +67,7 @@ bool Shell_Browser();
 bool Shell_Menu( CMenuItem *menu, int menuSize );
 bool Shell_SettingsMenu();
 bool Shell_DisksMenu();
+void Shell_Pause();
 
 const char *Shell_GetPath();
 

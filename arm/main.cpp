@@ -801,7 +801,7 @@ int mouseResetTimer = 0;
 CFifo keyboard( 0x10 );
 CFifo joystick( 0x10 );
 
-dword Timer_GetTickCounter()
+dword Timer_GetTickCounter()        // 100 Hz
 {
     return tickCounter;
 }
@@ -1243,6 +1243,12 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
 
                 keyCode |= ( (word) keyPrefix << 8 );
                 keyPrefix = 0x00;
+
+                if( keyCode == KEY_PRNTSCR_SKIP || keyCode == KEY_PAUSE_SKIP )
+                {
+                    keyCode = KEY_NONE;
+                    continue;
+                }
 
                 //char str[ 0x20 ];
                 //sniprintf( str, sizeof(str), "keyCode - 0x%.4x\n", keyCode );

@@ -85,7 +85,9 @@
 
 #define KEY_PRNTSCR         0xE012
 #define KEY_SCROLLOCK       0x7E
-#define KEY_PAUSE           0xE114
+#define KEY_PAUSE           0x77
+#define KEY_PRNTSCR_SKIP    0xE07C
+#define KEY_PAUSE_SKIP      0xE114
 
 #define KEY_INSERT          0xE070
 #define KEY_HOME            0xE06C
