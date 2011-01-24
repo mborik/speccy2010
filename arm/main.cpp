@@ -315,6 +315,16 @@ DWORD get_fattime()
                 ( currentTime.tm_min << 5 ) | ( currentTime.tm_sec >> 1 );
 }
 
+bool FileExists( const char *str )
+{
+    FILINFO finfo;
+    char lfn[1];
+    finfo.lfname = lfn;
+    finfo.lfsize = 0;
+
+    if( f_stat( str, &finfo ) == FR_OK ) return true;
+    else return false;
+}
 
 bool ReadLine( FIL *file, CString &str )
 {
@@ -670,8 +680,12 @@ bool Spectrum_LoadRomPage( int page, const char *romFileName )
 	    if( f_read( &romImage, &data, 2, &res ) != FR_OK ) break;
 	    if( res == 0 ) break;
 
+        word temp;
+	    //temp = SystemBus_Read( addr );
+        //if( temp != data ) __TRACE( "a: 0x%.4x -> r: 0x%.4x w: 0x%.4x\n", addr << 1, temp, data );
+
         SystemBus_Write( addr, data );
-        word temp = SystemBus_Read( addr );
+        temp = SystemBus_Read( addr );
 
         if( temp != data )
         {
@@ -1109,7 +1123,7 @@ void BDI_Routine()
 
     while( ( trdosStatus & 1 ) != 0 )
     {
-        bool trdosWr = ( ( trdosStatus >> 1 ) & 1 ) != 0;
+        bool trdosWr = ( trdosStatus & 0x02 ) != 0;
         byte trdosAddr = SystemBus_Read( 0xc0001a );
 
         static int counter = 0;
@@ -1201,21 +1215,29 @@ void BDI_Routine()
 
 static word pressedKeys[4] = { KEY_NONE, KEY_NONE, KEY_NONE, KEY_NONE };
 
+word prevKey = KEY_NONE;
+dword keyRepeatTime = 0;
+
+word keyFlags = 0;
+
+word ReadKeyFlags()
+{
+    return keyFlags;
+}
+
 bool ReadKey( word &_keyCode, word &_keyFlags )
 {
-    _keyCode = KEY_NONE;
-    _keyFlags = 0;
-
-    static word keyFlags = 0x0000;
     static byte keyPrefix = 0x00;
+    static bool keyRelease = false;
+
+    _keyCode = KEY_NONE;
+    _keyFlags = keyFlags;
 
     while( _keyCode == KEY_NONE && keyboard.GetCntr() > 0 )
     {
         word keyCode = keyboard.ReadByte();
 
-        //char str[ 0x20 ];
-        //sniprintf( str, sizeof(str), "key - 0x%.2x\n", keyCode );
-        //UART0_WriteText( str );
+        //__TRACE( "keyCode - 0x%.2x\n", keyCode );
 
         if( kbdInited == 0 && keyCode == 0xfa )
         {
@@ -1225,48 +1247,32 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
         {
             kbdInited = KBD_OK;
             keyFlags = 0;
+            keyPrefix = 0x00;
+            keyRelease = false;
 
             __TRACE( "PS/2 keyboard init OK..\n" );
         }
         else if( kbdInited == KBD_OK )
         {
             if( keyCode == 0xfa || keyCode == 0xfe ) Keyboard_SendNext( keyCode );
-            else if ( keyCode == 0xf0 ) keyFlags |= fKeyRelease;
+            else if ( keyCode == 0xf0 ) keyRelease = true;
             else if ( keyCode == 0xe0 || keyCode == 0xe1 )
             {
                 keyPrefix = keyCode;
             }
             else
             {
-                word keyRelease = ( keyFlags & fKeyRelease );
-                keyFlags &= ~fKeyRelease;
-
                 keyCode |= ( (word) keyPrefix << 8 );
                 keyPrefix = 0x00;
 
                 if( keyCode == KEY_PRNTSCR_SKIP || keyCode == KEY_PAUSE_SKIP )
                 {
                     keyCode = KEY_NONE;
+                    keyRelease = false;
                     continue;
                 }
 
-                //char str[ 0x20 ];
-                //sniprintf( str, sizeof(str), "keyCode - 0x%.4x\n", keyCode );
-                //UART0_WriteText( str );
-
-                word tempFlag = 0;
-                if( keyCode == KEY_LSHIFT ) tempFlag = fKeyShiftLeft;
-                else if( keyCode == KEY_RSHIFT ) tempFlag = fKeyShiftRight;
-                else if( keyCode == KEY_LCTRL ) tempFlag = fKeyCtrlLeft;
-                else if( keyCode == KEY_RCTRL ) tempFlag = fKeyCtrlRight;
-                else if( keyCode == KEY_LALT ) tempFlag = fKeyAltLeft;
-                else if( keyCode == KEY_RALT ) tempFlag = fKeyAltRight;
-
-                if( tempFlag != 0 )
-                {
-                    if( keyRelease == 0 ) keyFlags |= tempFlag;
-                    else keyFlags &= ~tempFlag;
-                }
+                //__TRACE( "# keyCode - 0x%.4x, 0x%.4x\n", keyCode, (word) keyRelease );
 
                 int i;
                 const int pressedKeysCount = sizeof( pressedKeys ) / sizeof( word );
@@ -1276,7 +1282,7 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
                 {
                     if( pressedKeys[ i ] == keyCode )
                     {
-                        if( keyRelease != 0 )
+                        if( keyRelease )
                         {
                             pressedKeys[ i ] = KEY_NONE;
                             result = true;
@@ -1286,7 +1292,7 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
                     }
                 }
 
-                if( i >= pressedKeysCount && keyRelease == 0 )
+                if( i >= pressedKeysCount && !keyRelease )
                 {
                     for( i = 0; i < pressedKeysCount; i++ )
                     {
@@ -1299,11 +1305,39 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
                     }
                 }
 
-                if( result )
+                if( !result )
                 {
-                    _keyCode = keyCode;
-                    _keyFlags = keyFlags | keyRelease;
+                    keyCode = KEY_NONE;
+                    keyRelease = false;
+                    continue;
                 }
+
+                word tempFlag = 0;
+                if( keyCode == KEY_LSHIFT ) tempFlag = fKeyShiftLeft;
+                else if( keyCode == KEY_RSHIFT ) tempFlag = fKeyShiftRight;
+                else if( keyCode == KEY_LCTRL ) tempFlag = fKeyCtrlLeft;
+                else if( keyCode == KEY_RCTRL ) tempFlag = fKeyCtrlRight;
+                else if( keyCode == KEY_LALT ) tempFlag = fKeyAltLeft;
+                else if( keyCode == KEY_RALT ) tempFlag = fKeyAltRight;
+
+                if( tempFlag != 0 )
+                {
+                    if( !keyRelease ) keyFlags |= tempFlag;
+                    else keyFlags &= ~tempFlag;
+                }
+
+                if( !keyRelease )
+                {
+                    if( keyCode == KEY_CAPSLOCK ) keyFlags = keyFlags ^ fKeyCaps;
+                    else if( keyCode == KEY_LSHIFT && ( keyFlags & fKeyCtrlLeft ) != 0 ) keyFlags = keyFlags ^ fKeyRus;
+                    else if( keyCode == KEY_LCTRL && ( keyFlags & fKeyShiftLeft ) != 0 ) keyFlags = keyFlags ^ fKeyRus;
+                }
+
+                _keyCode = keyCode;
+                _keyFlags = keyFlags;
+
+                if( keyRelease ) _keyFlags |= fKeyRelease;
+                keyRelease = false;
             }
         }
     }
@@ -1319,13 +1353,13 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
         //UART0_WriteText( str );
 
         word keyCode = KEY_NONE;
-        word keyFlags2 = 0;
+        word tempFlag = 0;
 
-        if( ( joyCode & 0x80 )  ) keyFlags2 = fKeyRelease;
+        if( ( joyCode & 0x80 )  ) tempFlag = fKeyRelease;
         joyCode &= 0x7f;
 
-        if( joyCode < 16 ) keyFlags2 |= fKeyJoy1;
-        else keyFlags2 |= fKeyJoy2;
+        if( joyCode < 16 ) tempFlag |= fKeyJoy1;
+        else tempFlag |= fKeyJoy2;
         joyCode &= 0x0f;
 
         switch( joyCode )
@@ -1342,11 +1376,53 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
         if( keyCode != KEY_NONE )
         {
             _keyCode = keyCode;
-            _keyFlags = keyFlags2;
+            _keyFlags |= tempFlag;
+        }
+    }
+
+    //-------------------------------------------------------------------------
+
+    if( _keyCode != KEY_NONE )
+    {
+        //__TRACE( "# keyCode - 0x%.4x, 0x%.4x\n", _keyCode, _keyFlags );
+
+        DecodeKeySpec( _keyCode, _keyFlags );
+
+        if( ( _keyFlags & fKeyRelease ) == 0 )
+        {
+            prevKey = _keyCode;
+            keyRepeatTime = Timer_GetTickCounter() + 50;
+        }
+        else
+        {
+            prevKey = KEY_NONE;
         }
     }
 
     return _keyCode != KEY_NONE;
+}
+
+word ReadKeySimple( bool norepeat )
+{
+    Timer_Routine();
+
+    word keyCode;
+    word keyFlags;
+
+    while( ReadKey( keyCode, keyFlags ) )
+    {
+        if( ( keyFlags & fKeyRelease ) == 0 ) return keyCode;
+    }
+
+    if( norepeat ) return KEY_NONE;
+
+    if( prevKey != KEY_NONE && (int) ( Timer_GetTickCounter() - keyRepeatTime ) >= 0 )
+    {
+        keyRepeatTime = Timer_GetTickCounter() + 5;
+        return prevKey;
+    }
+
+    return KEY_NONE;
 }
 
 void Keyboard_Routine()
@@ -1356,6 +1432,7 @@ void Keyboard_Routine()
     while( ReadKey( keyCode, keyFlags ) )
     {
         DecodeKey( keyCode, keyFlags );
+        //__TRACE( "% keyCode - 0x%.4x, 0x%.4x\n", keyCode, keyFlags );
     }
 }
 
@@ -1423,6 +1500,10 @@ void Serial_Routine()
 
             if( strcmp( cmd, "test stack" ) == 0 ) TestStack();
             else if( strcmp( cmd, "log bdi" ) == 0 ) LOG_BDI_PORTS = true;
+            else if( strcmp( cmd, "update rom" ) == 0 )
+            {
+                Spectrum_InitRom();
+            }
             else if( strcmp( cmd, "log wait off" ) == 0 ) LOG_WAIT = false;
             else if( strcmp( cmd, "log wait" ) == 0 ) LOG_WAIT = true;
             //else if( strcmp( cmd, "test heap" ) == 0 ) TestHeap();
@@ -1632,6 +1713,33 @@ void portEXIT_CRITICAL()
         }
     }
 }
+
+const char *GetFatErrorMsg( int id )
+{
+    const char *fatErrorMsg[] = {
+       	"FR_OK",
+        "FR_DISK_ERR",
+        "FR_INT_ERR",
+        "FR_NOT_READY",
+        "FR_NO_FILE",
+        "FR_NO_PATH",
+        "FR_INVALID_NAME",
+        "FR_DENIED",
+        "FR_EXIST",
+        "FR_INVALID_OBJECT",
+        "FR_WRITE_PROTECTED",
+        "FR_INVALID_DRIVE",
+        "FR_NOT_ENABLED",
+        "FR_NO_FILESYSTEM",
+        "FR_MKFS_ABORTED",
+        "FR_TIMEOUT",
+        "FR_LOCKED",
+        "FR_NOT_ENOUGH_CORE",
+    };
+
+    return fatErrorMsg[ id ];
+}
+
 
 //---------------------------------------------------------------------------------------------
 

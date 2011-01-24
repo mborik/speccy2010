@@ -9,39 +9,48 @@
 
 #include "specTape.h"
 #include "specKeyboard.h"
-#include "specChars.h"
 #include "specShell.h"
 #include "specConfig.h"
 #include "specSnapshot.h"
 #include "specBetadisk.h"
 
+#include "specChars.h"
+#include "specCharsA.h"
+#include "specCharsB.h"
+
 #include "string.h"
 
+const dword SDRAM_PAGES = 0x200;
+const dword SDRAM_PAGE_SIZE = 0x4000;
+
+const dword VIDEO_PAGE = 0x108;
+const dword VIDEO_PAGE_PTR = VIDEO_PAGE * SDRAM_PAGE_SIZE;
 
 void WriteDisplay( word address, byte data )
 {
-    SystemBus_Write( 0x420000 + address, data );
+    SystemBus_Write( VIDEO_PAGE_PTR + address, data );
 }
 
 void ClrScr( byte attr )
 {
-    SystemBus_Write( 0xc00021, 0x8000 | 0x108 );            // Enable Video
-    SystemBus_Write( 0xc00022, 0x8000 | ( ( attr >> 3 ) & 0x03 ) );
-
     int i = 0;
-    for( ; i < 0x1800; i++ ) SystemBus_Write( 0x420000 + i, 0 );
-    for( ; i < 0x1b00; i++ ) SystemBus_Write( 0x420000 + i, attr );
+    for( ; i < 0x1800; i++ ) SystemBus_Write( VIDEO_PAGE_PTR + i, 0 );
+    for( ; i < 0x1b00; i++ ) SystemBus_Write( VIDEO_PAGE_PTR + i, attr );
 }
 
 void WriteChar( byte x, byte y, char c )
 {
+    const byte *charTable = specChars;
+    if( specConfig.specFont == 1 ) charTable = specCharsA;
+    else if( specConfig.specFont == 2 ) charTable = specCharsB;
+
     if( x < 32 && y < 24 )
     {
         //if( (byte) c < 0x20 && (byte) c >= 0x80 ) c = 0;
         //else c -= 0x20;
 
         word address = x + ( y & 0x07 ) * 32 + ( y & 0x18 ) * 32 * 8;
-        const byte *tablePos = &specChars[ (byte) c * 8 ];
+        const byte *tablePos = &charTable[ (byte) c * 8 ];
 
         for( byte i = 0; i < 8; i++ )
         {
@@ -106,195 +115,127 @@ void Beep()
     }
 }
 
-word prevKey = KEY_NONE;
-word keyFlags;
-
-void InitKeys()
-{
-    prevKey = KEY_NONE;
-}
-
-word GetKeysFlags()
-{
-    return keyFlags;
-}
-
-word ReadKeyAdv()
-{
-    static dword keyRepeatTime = 0;
-    Timer_Routine();
-
-    word keyCode;
-    while( ReadKey( keyCode, keyFlags ) )
-    {
-        if( ( keyFlags & fKeyRelease ) == 0 )
-        {
-            prevKey = keyCode;
-            keyRepeatTime = Timer_GetTickCounter() + 50;
-            return keyCode;
-        }
-        else
-        {
-            prevKey = KEY_NONE;
-        }
-
-        keyCode = KEY_NONE;
-    }
-
-    if( prevKey != KEY_NONE && (int) ( Timer_GetTickCounter() - keyRepeatTime ) >= 0 )
-    {
-        keyCode = prevKey;
-        keyRepeatTime = Timer_GetTickCounter() + 5;
-    }
-
-    return keyCode;
-}
-
-char CodeToChar( word keyCode )
-{
-    switch( keyCode )
-    {
-        case KEY_NONE : return 0;
-
-        case KEY_ESC : return K_ESC;
-        case KEY_RETURN : return K_RETURN;
-        case KEY_BACKSPACE : return K_BACKSPACE;
-
-        case KEY_UP : return K_UP;
-        case KEY_DOWN : return K_DOWN;
-        case KEY_LEFT : return K_LEFT;
-        case KEY_RIGHT : return K_RIGHT;
-
-        case KEY_F1 : return K_F1;
-        case KEY_F2 : return K_F2;
-        case KEY_F3 : return K_F3;
-        case KEY_F4 : return K_F4;
-        case KEY_F5 : return K_F5;
-        case KEY_F6 : return K_F6;
-        case KEY_F7 : return K_F7;
-        case KEY_F8 : return K_F8;
-        case KEY_F9 : return K_F9;
-        case KEY_F10 : return K_F10;
-        case KEY_F11 : return K_F11;
-        case KEY_F12 : return K_F12;
-
-        case KEY_SPACE : return ' ';
-        case KEY_COMMA : return ',';
-        case KEY_PERIOD : return '.';
-        case KEY_SLASH : return '/';
-
-        case KEY_LEFTBRACKET : return '[';
-        case KEY_RIGHTBRACKET : return ']';
-
-        case KEY_0 : return '0';
-        case KEY_1 : return '1';
-        case KEY_2 : return '2';
-        case KEY_3 : return '3';
-        case KEY_4 : return '4';
-        case KEY_5 : return '5';
-        case KEY_6 : return '6';
-        case KEY_7 : return '7';
-        case KEY_8 : return '8';
-        case KEY_9 : return '9';
-        case KEY_A : return 'a';
-        case KEY_B : return 'b';
-        case KEY_C : return 'c';
-        case KEY_D : return 'd';
-        case KEY_E : return 'e';
-        case KEY_F : return 'f';
-        case KEY_G : return 'g';
-        case KEY_H : return 'h';
-        case KEY_I : return 'i';
-        case KEY_J : return 'j';
-        case KEY_K : return 'k';
-        case KEY_L : return 'l';
-        case KEY_M : return 'm';
-        case KEY_N : return 'n';
-        case KEY_O : return 'o';
-        case KEY_P : return 'p';
-        case KEY_Q : return 'q';
-        case KEY_R : return 'r';
-        case KEY_S : return 's';
-        case KEY_T : return 't';
-        case KEY_U : return 'u';
-        case KEY_V : return 'v';
-        case KEY_W : return 'w';
-        case KEY_X : return 'x';
-        case KEY_Y : return 'y';
-        case KEY_Z : return 'z';
-    }
-
-    return 0;
-}
-
 char GetKey( bool wait = true )
 {
     do
     {
-        word keyCode = ReadKeyAdv();
+        word keyCode = ReadKeySimple();
 
         if( keyCode != KEY_NONE )
         {
-            Beep();
-            return CodeToChar( keyCode );
+            char c = CodeToChar( keyCode );
+            if( c != 0 ) Beep();
+            return c;
         }
     } while( wait );
 
     return 0;
 }
 
-const int FILES_SIZE = 10000;
-//const int FILES_SIZE = ( 0x400000 - 0x201000 ) / ( sizeof( FRECORD ) / 2 );
+dword sdramHeapPtr = VIDEO_PAGE_PTR + SDRAM_PAGE_SIZE;
 
-struct FRECORD
+dword GetHeapMemory()
 {
-	byte attr;
-	char name[ _MAX_LFN + 1 ];
-};
+    return ( SDRAM_PAGES * SDRAM_PAGE_SIZE ) - ( sdramHeapPtr + 4 );
+}
 
-bool WriteRecord( FRECORD &rec, int i )
+dword Malloc( word recordCount, word recordSize )
 {
-    if( i > FILES_SIZE ) return false;
+    dword size = recordSize;
+    if( ( size & 1 ) != 0 ) size++;
 
-    dword addr = 0x800000 | ( 0x220000 + ( ( sizeof( FRECORD ) + 1 ) / 2 ) * i );
-    byte *ptr = ( byte* ) &rec;
+    size *= recordCount;
+    if( sdramHeapPtr + 4 + size > SDRAM_PAGES * SDRAM_PAGE_SIZE ) return 0;
 
-    for( word j = 0; j < sizeof( FRECORD ); j += 2 )
+    dword result = sdramHeapPtr;
+    sdramHeapPtr += 4 + size;
+
+    dword addr = 0x800000 | ( result >> 1 );
+    SystemBus_Write( addr++, recordSize );
+    SystemBus_Write( addr++, recordCount );
+
+    return result;
+}
+
+void Free( dword sdramPtr )
+{
+    if( sdramPtr != 0 ) sdramHeapPtr = sdramPtr;
+}
+
+bool Read( void *rec, dword sdramPtr, word pos )
+{
+    if( sdramPtr == 0 ) return false;
+
+    dword addr = 0x800000 | ( sdramPtr >> 1 );
+    word recordSize = SystemBus_Read( addr++ );
+    word recordCount = SystemBus_Read( addr++ );
+
+    if( pos >= recordCount ) return false;
+
+    addr += ( ( recordSize + 1 ) >> 1 ) * pos;
+    byte *ptr = (byte*) rec;
+
+    while( recordSize > 0 )
     {
-        SystemBus_Write( addr, ptr[0] | ( ptr[1] << 8 ) );
+        word data = SystemBus_Read( addr++ );
 
-        addr++;
+        *ptr++ = (byte) data;
+        recordSize--;
+
+        if( recordSize > 0 )
+        {
+            *ptr++ = (byte) ( data >> 8 );
+            recordSize--;
+        }
+    }
+
+    return true;
+}
+
+bool Write( void *rec, dword sdramPtr, word pos )
+{
+    if( sdramPtr == 0 ) return false;
+
+    dword addr = 0x800000 | ( sdramPtr >> 1 );
+    word recordSize = SystemBus_Read( addr++ );
+    word recordCount = SystemBus_Read( addr++ );
+
+    if( pos >= recordCount ) return false;
+
+    addr += ( ( recordSize + 1 ) >> 1 ) * pos;
+    byte *ptr = (byte*) rec;
+
+    for( word i = 0; i < recordSize; i += 2 )
+    {
+        SystemBus_Write( addr++, ptr[0] | ( ptr[1] << 8 ) );
         ptr += 2;
     }
 
     return true;
 }
 
-bool ReadRecord( FRECORD &rec, int i )
+const int FILES_SIZE = 10000;
+
+struct FRECORD
 {
-    if( i > FILES_SIZE ) return false;
+	dword size;
+	byte attr;
+	byte sel;
+	word date;
+	word time;
+	char name[ _MAX_LFN + 1 ];
+};
 
-    dword addr = 0x800000 | ( 0x220000 + ( ( sizeof( FRECORD ) + 1 ) / 2 ) * i );
-    byte *ptr = ( byte* ) &rec;
-
-    for( word j = 0; j < sizeof( FRECORD ); j += 2 )
-    {
-        word data = SystemBus_Read( addr );
-
-        addr++;
-        *ptr++ = (byte) data;
-        *ptr++ = (byte) ( data >> 8 );
-    }
-
-    return true;
-}
-
+dword table_buffer = 0;
 char path[ PATH_SIZE ] = "";
+char destinationPath[ PATH_SIZE ] = "/";
 
 int files_size = 0;
 bool too_many_files = false;
+
 int files_table_start;
 int files_sel;
+int files_sel_number = 0;
 char files_lastName[ _MAX_LFN + 1 ] = "";
 
 const int FILES_PER_ROW = 18;
@@ -303,8 +244,8 @@ byte selx = 0, sely = 0;
 byte comp_name( int a, int b )
 {
     FRECORD ra, rb;
-    ReadRecord( ra, a );
-    ReadRecord( rb, b );
+    Read( &ra, table_buffer, a );
+    Read( &rb, table_buffer, b );
 
     strlwr( ra.name );
     strlwr( rb.name );
@@ -317,11 +258,11 @@ byte comp_name( int a, int b )
 void swap_name( int a, int b )
 {
     FRECORD ra, rb;
-    ReadRecord( ra, a );
-    ReadRecord( rb, b );
+    Read( &ra, table_buffer, a );
+    Read( &rb, table_buffer, b );
 
-    WriteRecord( ra, b );
-    WriteRecord( rb, a );
+    Write( &ra, table_buffer, b );
+    Write( &rb, table_buffer, a );
 }
 
 void qsort( int l, int h )
@@ -351,22 +292,34 @@ void qsort( int l, int h )
 	WDT_Kick();
 }
 
+void CycleMark()
+{
+    const char marks[ 4 ] = { '/', '-', '\\', '|' };
+    static int mark = 0;
+
+    WriteChar( 0, FILES_PER_ROW + 4, marks[ mark ] );
+    mark = ( mark + 1 ) & 3;
+}
+
 void read_dir()
 {
-    byte mark = 0;
+    if( table_buffer == 0 ) table_buffer = Malloc( FILES_SIZE, sizeof( FRECORD ) );
 
 	files_size = 0;
 	too_many_files = false;
 	files_table_start = 0;
 	files_sel = 0;
+	files_sel_number = 0;
 
     FRECORD fr;
 
     if( strlen( path ) != 0 )
     {
         fr.attr = AM_DIR;
+        fr.sel = 0;
+        fr.size = 0;
         strcpy( fr.name, ".." );
-        WriteRecord( fr, files_size++ );
+        Write( &fr, table_buffer, files_size++ );
     }
 
     DIR dir;
@@ -390,6 +343,17 @@ void read_dir()
         if ( r != FR_OK || fi.fname[0] == 0 ) break;
         if ( fi.fattrib & ( AM_HID | AM_SYS ) ) continue;
 
+        if( lfn[0] == 0 ) strcpy( lfn, fi.fname );
+
+        if( path[0] == 0 )
+        {
+            char temp[ 11 ];
+            sniprintf( temp, sizeof(temp), "%s", lfn );
+            strlwr( temp );
+
+            if( strcmp( temp, "roms" ) == 0 || strcmp( temp, "speccy2010" ) == 0 ) continue;
+        }
+
         if( files_size >= FILES_SIZE )
         {
             too_many_files = true;
@@ -400,24 +364,19 @@ void read_dir()
             break;
         }
 
-        if( lfn[0] == 0 ) strcpy( lfn, fi.fname );
-
-        //if ( fi.fattrib & ( AM_DIR ) ) strupr( lfn );
-        //else strlwr( lfn );
-
+        fr.sel = 0;
         fr.attr = fi.fattrib;
+        fr.size = fi.fsize;
+        fr.date = fi.fdate;
+        fr.time = fi.ftime;
+
         strcpy( fr.name, lfn );
-        WriteRecord( fr, files_size );
+        Write( &fr, table_buffer, files_size );
 
         files_size++;
         WDT_Kick();
 
-        if( ( files_size & 0x3f ) == 0 )
-        {
-            mark = ( mark + 1 ) & 0x03;
-            const char marks[ 4 ] = { '/', '-', '\\', '|' };
-            WriteChar( 0, 22, marks[ mark ] );
-        }
+        if( ( files_size & 0x3f ) == 0 ) CycleMark();
     }
 
     if( files_size > 0 && files_size < 0x100 ) qsort( 0, files_size - 1 );
@@ -428,7 +387,7 @@ void read_dir()
 
         for ( int i = 0; i < files_size; i++ )
         {
-            ReadRecord( fr, i );
+            Read( &fr, table_buffer, i );
             if( strcmp( fr.name, files_lastName ) == 0 )
             {
                 files_sel = i;
@@ -506,6 +465,8 @@ byte get_sel_attr( FRECORD &fr )
         else result = 005;
     }
 
+    if( fr.sel ) result = ( result & 077) | 010;
+
     return result;
 }
 
@@ -523,7 +484,7 @@ void show_table()
             int row = i + 2;
             int pos = i + j * FILES_PER_ROW + files_table_start;
 
-            ReadRecord( fr, pos );
+            Read( &fr, table_buffer, pos );
 
             char sname[ 16 ];
             make_short_name( sname, sizeof( sname ), fr.name );
@@ -535,7 +496,9 @@ void show_table()
             {
                 WriteAttr( col, row, get_sel_attr( fr ), 16 );
 
-                WriteStr( col, row, " ", 1 );
+                if( fr.sel ) WriteChar( col, row, 0x95 );
+                else WriteChar( col, row, ' ' );
+
                 WriteStr( col + 1, row, sname, 15 );
             }
             else
@@ -588,9 +551,16 @@ bool calc_sel()
 void hide_sel()
 {
     FRECORD fr;
-    ReadRecord( fr, files_sel );
+    Read( &fr, table_buffer, files_sel );
 
-    if ( files_size != 0 ) WriteAttr( selx * 16, 2 + sely, get_sel_attr( fr ), 16 );
+    if ( files_size != 0 )
+    {
+        WriteAttr( selx * 16, 2 + sely, get_sel_attr( fr ), 16 );
+
+        if( fr.sel ) WriteChar( selx * 16, 2 + sely, 0x95 );
+        else WriteChar( selx * 16, 2 + sely, ' ' );
+    }
+
     WriteStr( 0, FILES_PER_ROW + 4, "", 32 );
     WriteStr( 0, FILES_PER_ROW + 5, "", 32 );
 }
@@ -601,32 +571,46 @@ void show_sel( bool redraw = false )
 
     if ( files_size != 0 )
     {
+        FRECORD fr;
+        Read( &fr, table_buffer, files_sel );
+
         WriteAttr( selx * 16, 2 + sely, 071, 16 );
 
-        FRECORD fr;
-        ReadRecord( fr, files_sel );
+        if( fr.sel ) WriteChar( selx * 16, 2 + sely, 0x95 );
+        else WriteChar( selx * 16, 2 + sely, ' ' );
 
         char sname[ PATH_SIZE ];
         make_short_name( sname, 33, fr.name );
         WriteStr( 0, FILES_PER_ROW + 4, sname, 32 );
 
-        FILINFO fInfo;
-        char lfn[ 1 ];
-        fInfo.lfname = lfn;
-        fInfo.lfsize = sizeof( lfn );
-
-        sniprintf( sname, sizeof(sname), "%s%s", path, fr.name );
-        if ( ( fr.attr & AM_DIR ) == 0 && f_stat( sname, &fInfo ) == FR_OK )
+        if ( files_sel_number > 0  )
         {
-            sniprintf( sname, sizeof(sname), "size: %7u.%.2u kB", (unsigned int)(fInfo.fsize >> 10), (unsigned int)(((fInfo.fsize % 1024) * 6400) >> 16 ) );
-            WriteStr( 0, FILES_PER_ROW + 5, sname, 0 );
+            sniprintf( sname, sizeof(sname), "selected %u item%s", files_sel_number, files_sel_number > 1 ? "s" : "" );
+            WriteStr( 0, FILES_PER_ROW + 5, sname, 32 );
         }
         else
         {
-            WriteStr( 0, FILES_PER_ROW + 5, "", 32 );
+            if( fr.date == 0 )
+            {
+                WriteStr( 0, FILES_PER_ROW + 5, "", 15 );
+            }
+            else
+            {
+                sniprintf( sname, sizeof(sname), "%.2u.%.2u.%.2u  %.2u:%.2u", fr.date & 0x1f,
+                                                                            ( fr.date >> 5 ) & 0x0f,
+                                                                            ( 80 + ( fr.date >> 9 ) ) % 100,
+                                                                            (fr.time >> 11 ) & 0x1f,
+                                                                            (fr.time >> 5 ) & 0x3f );
+                WriteStr( 0, FILES_PER_ROW + 5, sname, 15 );
+            }
+
+            if ( ( fr.attr & AM_DIR ) != 0 ) sniprintf( sname, sizeof(sname), "      Folder" );
+            else if( fr.size < 9999 ) sniprintf( sname, sizeof(sname), "%10u B", fr.size );
+            else if( fr.size < 0x100000 ) sniprintf( sname, sizeof(sname), "%6u.%.2u kB", fr.size >> 10, ( ( fr.size & 0x3ff ) * 100 ) >> 10 );
+            else sniprintf( sname, sizeof(sname), "%6u.%.2u MB", fr.size >> 20, ( ( fr.size & 0xfffff ) * 100 ) >> 20 );
+
+            WriteStr( 20, FILES_PER_ROW + 5, sname, 12 );
         }
-
-
     }
 }
 
@@ -650,7 +634,7 @@ void leave_dir()
 
         for ( files_sel = 0; files_sel < files_size; files_sel++ )
         {
-            ReadRecord( fr, files_sel );
+            Read( &fr, table_buffer, files_sel );
             if ( strcmp( fr.name, dir_name ) == 0 ) break;
         }
 
@@ -668,11 +652,14 @@ void leave_dir()
 
 void InitScreen()
 {
-    ClrScr( 0x07 );
+    byte attr = 0x07;
+    ClrScr( attr );
+
+    SystemBus_Write( 0xc00021, 0x8000 | VIDEO_PAGE );                   // Enable shell videopage
+    SystemBus_Write( 0xc00022, 0x8000 | ( ( attr >> 3 ) & 0x03 ) );     // Enable shell border
 
     char str[33];
     sniprintf( str, sizeof(str), " -= Speccy2010, v%d.%.2d, r%.4d =-\n", VER_MAJOR, VER_MINIR, REV );
-
 
     WriteStr( 0, 0, str );
     WriteAttr( 0, 0, 0x44, strlen( str ) );
@@ -694,7 +681,7 @@ void CPU_Start()
     {
         if( cpuStopNesting == 1 )
         {
-            //ResetKeyboard();
+            ResetKeyboard();
             SystemBus_Write( 0xc00000, 0x0000 );
             SystemBus_Write( 0xc00008, 0x0001 );
             BDI_StartTimer();
@@ -785,8 +772,7 @@ const char *Shell_GetPath()
 void Shell_Pause()
 {
     CPU_Stop();
-    InitKeys();
-    GetKey();
+    GetKey( true );
     CPU_Start();
 }
 
@@ -824,95 +810,673 @@ void Shell_Window( int x, int y, int w, int h, const char *title, byte attr )
         }
 }
 
-void Shell_MessageBox( const char *title, const char *str )
+enum { MB_NO, MB_OK, MB_YESNO };
+
+bool Shell_MessageBox( const char *title, const char *str, const char *str2 = "", const char *str3 = "", int type = MB_OK, byte attr = 027, byte attrSel = 052 )
 {
-    int w = max( strlen( title ) + 6, strlen( str ) + 4 );
-    int h = 4;
+    int w = 12;
+    int h = 3;
+
+    if( w < (int) strlen( title ) + 6 ) w = strlen( title ) + 6;
+    if( w < (int) strlen( str ) + 2 ) w = strlen( str ) + 2;
+
+    if( str2[0] != 0 )
+    {
+        if( w < (int) strlen( str2 ) + 2 ) w = strlen( str2 ) + 2;
+        h++;
+
+        if( str3[0] != 0 )
+        {
+            if( w < (int) strlen( str3 ) + 2 ) w = strlen( str3 ) + 2;
+            h++;
+        }
+    }
+
+    if( type != MB_NO ) h++;
 
     int x = ( 32 - w ) / 2;
     int y = ( 22 - h ) / 2;
 
-    Shell_Window( x, y, w, h, title, 0027 );
+    Shell_Window( x, y, w, h, title, attr );
+    x++;
+    y++;
 
-    WriteStr( x + 2, ++y, str );
-    WriteStrAttr( 16 - 2, ++y, " OK ", 0052 );
+    WriteStr( x, y++, str );
+    if( str2[0] != 0 )
+    {
+        WriteStr( x, y++, str2 );
+        if( str3[0] != 0 ) WriteStr( x, y++, str3 );
+    }
+
+    bool result = true;
+    if( type == MB_NO ) return true;
 
     while( true )
     {
+        if( type == MB_OK )
+        {
+            WriteStrAttr( 16 - 2, y, " OK ", attrSel );
+        }
+        else
+        {
+            WriteStrAttr( 16 - 5, y, " Yes ", result ? attrSel : attr );
+            WriteStrAttr( 16, y, " No ", result ? attr : attrSel );
+        }
+
         byte key = GetKey();
+
+        if( key == K_ESC ) result = false;
         if( key == K_ESC || key == K_RETURN ) break;
+
+        if( type == MB_YESNO ) result = !result;
+    }
+
+    return result;
+}
+
+bool Shell_InputBox( const char *title, const char *str, CString &buff )
+{
+    int w = 22;
+    int h = 4;
+
+    if( w < (int) strlen( title ) + 6 ) w = strlen( title ) + 6;
+    if( w < (int) strlen( str ) + 2 ) w = strlen( str ) + 2;
+
+    int x = ( 32 - w ) / 2;
+    int y = ( 22 - h ) / 2;
+
+    Shell_Window( x, y, w, h, title, 0050 );
+
+    x++;
+    y++;
+    w -= 2;
+
+    WriteStr( x, y++, str );
+    WriteAttr( x, y, 0150, w );
+
+    int p = strlen( buff );
+    int s = 0;
+
+    while( true )
+    {
+        while( ( p - s ) >= w ) s++;
+        while( ( p - s ) < 0 ) s--;
+        while( s > 0 && ( s + w - 1 ) > buff.Length() ) s--;
+
+        for( int i = 0; i < w; i++ )
+        {
+            WriteChar( x + i, y, buff.GetSymbol( s + i ) );
+            WriteAttr( x + i, y, i == ( p - s ) ? 0106 : 0150 );
+        }
+
+        char key = GetKey();
+
+        if( key == K_RETURN ) return true;
+        else if( key == K_ESC ) return false;
+        else if( key == K_LEFT && p > 0 ) p--;
+        else if( key == K_RIGHT && p < buff.Length() ) p++;
+        else if( key == K_HOME ) p = 0;
+        else if( key == K_END ) p = buff.Length();
+        else if( key == K_BACKSPACE && p > 0 ) buff.Delete( --p, 1 );
+        else if( key == K_DELETE && p < buff.Length() ) buff.Delete( p, 1 );
+        else if( (byte) key >= 0x20 ) buff.Insert( p++, key );
     }
 }
 
-void Shell_Delete( const char *name )
+class CTextReader
 {
-    if( strcmp( name, ".." ) == 0 ) return;
+    FIL fil;
+    dword buffer;
 
-    int w = 24;
-    int h = 5;
+    int lines;
+    dword nextLinePos;
+    bool white;
 
-    int x = ( 32 - w ) / 2;
-    int y = ( 22 - h ) / 2;
+public:
+    static const int LINES_MAX = 0x4000;
 
-    char sname[ PATH_SIZE ];
-    make_short_name( sname, 21, name );
-    strcat( sname, "?" );
+public:
+    CTextReader( const char *fullName, int size );
+    ~CTextReader();
 
-    Shell_Window( x, y, w, h, "Delete", 0050 );
+    int GetLines() { return lines; }
+    void SetLine( int i );
+    char GetChar();
+};
 
-    WriteStr( x + 1, ++y, "Do you wish to delete" );
-    WriteStr( x + 2, ++y, sname );
+CTextReader::CTextReader( const char *fullName, int size )
+{
+    buffer = Malloc( LINES_MAX, sizeof( fil.fptr ) );
 
-    int i = 0;
-    WriteStr( 16 - 5, ++y, " Yes " );
-    WriteStr( 16, y, " No " );
-
-    while( true )
+    if( f_open( &fil, fullName, FA_READ ) != FR_OK )
     {
-        WriteAttr( 16 - 5, y, i == 0 ? 0151 : 0050, 5 );
-        WriteAttr( 16, y, i == 1 ? 0151 : 0050, 4 );
-
-        byte key = GetKey();
-
-        if( key == K_ESC ) i = 1;
-        if( key == K_ESC || key == K_RETURN ) break;
-
-        i = ( i + 1 ) % 2;
-    }
-
-    if( i != 0 ) return;
-
-    sniprintf( sname, sizeof(sname), "%s%s", path, name );
-
-    FILINFO fInfo;
-    char lfn[ 1 ];
-    fInfo.lfname = lfn;
-    fInfo.lfsize = sizeof( lfn );
-
-    if ( f_stat( sname, &fInfo ) != FR_OK )
-    {
+        lines = -1;
         return;
     }
 
-    if( ( fInfo.fattrib & AM_DIR ) != 0 )
+    lines = 0;
+    Write( &fil.fptr, buffer, lines++ );
+
+    white = false;
+    char c;
+    int pos = 0;
+
+    int lastPos = 0;
+    dword lastPtr = 0;
+    bool prevWhite = false;
+
+    while( fil.fptr < fil.fsize && lines < LINES_MAX )
     {
-        show_table();
-        Shell_MessageBox( "Error", "Cannot delete the folder !" );
-        return;
+        dword res;
+        f_read( &fil, &c, 1, &res );
+
+        if( c == '\r' ) continue;
+
+        if( c == '\t' || c == ' ' )
+        {
+            if( white ) continue;
+            else white = true;
+        }
+        else white = false;
+
+        pos++;
+
+        if( !white && prevWhite )
+        {
+            lastPos = pos - 1;
+            lastPtr = fil.fptr - 1;
+        }
+
+        if( c == '\n' || ( !white && pos > size ) )
+        {
+            if( c == '\n' )
+            {
+                lastPos = pos;
+                lastPtr = fil.fptr;
+            }
+            else if( lastPtr == 0 )
+            {
+                lastPos = pos - 1;
+                lastPtr = fil.fptr - 1;
+            }
+
+            Write( &lastPtr, buffer, lines++ );
+
+            white = false;
+            pos -= lastPos;
+
+            lastPos = 0;
+            lastPtr = 0;
+        }
+
+        prevWhite = white;
     }
 
-    if( f_unlink( sname ) == FR_OK )
+    f_lseek( &fil, 0 );
+}
+
+CTextReader::~CTextReader()
+{
+    f_close( &fil );
+    Free( buffer );
+}
+
+void CTextReader::SetLine( int i )
+{
+    if( i >= 0 && i < lines )
     {
-        int last_files_sel = files_sel;
-        read_dir();
-        files_sel = last_files_sel;
+        dword ptr;
+        Read( &ptr, buffer, i );
+        f_lseek( &fil, ptr );
+
+        if( i + 1 < lines ) Read( &nextLinePos, buffer, i + 1 );
+        else nextLinePos = fil.fsize;
     }
     else
     {
-        show_table();
-        Shell_MessageBox( "Error", "Cannot delete the file !" );
+        f_lseek( &fil, fil.fsize );
+    }
+
+    white = false;
+}
+
+char CTextReader::GetChar()
+{
+    char result;
+    dword res;
+
+    while( true )
+    {
+        if( fil.fptr >= nextLinePos ) return ' ';
+
+        f_read( &fil, &result, 1, &res );
+        if( result == '\r' ) continue;
+
+        if( result == '\n' || result == '\t' || result == ' ' )
+        {
+            if( white ) continue;
+
+            result = ' ';
+            white = true;
+        }
+        else
+        {
+            white = false;
+        }
+
+        break;
+    }
+
+    return result;
+}
+
+void Shell_Viewer( const char *fullName )
+{
+    CTextReader reader( fullName, 32 );
+    if( reader.GetLines() < 0 )
+    {
+        Shell_MessageBox( "Error", "Cannot open file !" );
         return;
     }
+
+    if( reader.GetLines() == reader.LINES_MAX )
+    {
+        Shell_MessageBox( "Error", "Lines number > LINES_MAX !" );
+    }
+
+    for( int j = 0; j < FILES_PER_ROW; j++ ) WriteAttr( 0, 2 + j, 007, 32 );
+
+    int pos = 0;
+    int maxPos = max( 0, reader.GetLines() - FILES_PER_ROW );
+
+    byte key = 0;
+    while( key != K_ESC )
+    {
+        int p = 100;
+        if( maxPos > 0 ) p = pos * 10000 / maxPos;
+
+        char str[ 10 ];
+        sniprintf( str, sizeof( str ), "%d.%.2d %%", p / 100, p % 100 );
+        WriteStr( 0, FILES_PER_ROW + 5, str, 32 );
+
+        for( int j = 0; j < FILES_PER_ROW; j++ )
+        {
+            reader.SetLine( pos + j );
+            for( int i = 0; i < 32; i++ ) WriteChar( i, 2 + j, reader.GetChar() );
+        }
+
+        key = GetKey();
+
+        if( key == K_DOWN ) pos = min( pos + 1, maxPos );
+        else if ( key == K_UP) pos = max( pos - 1, 0 );
+		else if ( key == K_PAGEDOWN || key == K_RIGHT ) pos = min( pos + FILES_PER_ROW, maxPos );
+		else if ( key == K_PAGEUP || key == K_LEFT ) pos = max( pos - FILES_PER_ROW, 0 );
+		else if ( key == K_HOME ) pos = 0;
+		else if ( key == K_END ) pos = maxPos;
+    }
+}
+
+bool Shell_CopyItem( const char *srcName, const char *dstName, bool move = false )
+{
+    int res;
+
+    const char *sname = &dstName[ strlen(dstName) ];
+    while( sname != dstName && sname[-1] != '/' ) sname--;
+
+    char shortName[ 20 ];
+    make_short_name( shortName, sizeof( shortName ), sname );
+
+    show_table();
+    Shell_MessageBox( "Processing", shortName, "", "", MB_NO, 050 );
+
+    if( move )
+    {
+        res = f_rename( srcName, dstName );
+    }
+    else
+    {
+        FILINFO finfo;
+        char lfn[1];
+        finfo.lfname = lfn;
+        finfo.lfsize = 0;
+
+        FIL src, dst;
+        UINT size;
+
+        byte buff[ 0x100 ];
+
+        //dword block;
+        //dword blockSize = GetHeapMemory() / sizeof( buff );
+
+        res = f_open( &src, srcName, FA_READ | FA_OPEN_ALWAYS );
+        if( res != FR_OK ) goto copyExit1;
+
+        if( f_stat( dstName, &finfo ) == FR_OK )
+        {
+            res = FR_EXIST;
+            goto copyExit2;
+        }
+
+        res = f_open( &dst, dstName, FA_WRITE | FA_CREATE_ALWAYS );
+        if( res != FR_OK ) goto copyExit2;
+
+        size = src.fsize;
+        //block = Malloc( blockSize, sizeof( buff ) );
+
+        while( size > 0 )
+        {
+            UINT currentSize = min( size, sizeof(buff) );
+            UINT r;
+
+            res = f_read( &src, buff, currentSize, &r );
+            if( res != FR_OK ) break;
+
+            res = f_write( &dst, buff, currentSize, &r );
+            if( res != FR_OK ) break;
+
+            size -= currentSize;
+            if( ( src.fptr & 0x300 ) == 0 ) CycleMark();
+        }
+
+        //FreeBlock( block );
+
+        f_close( &dst );
+        if( res != FR_OK ) f_unlink( dstName );
+
+    copyExit2:
+        f_close( &src );
+
+    copyExit1:
+        ;
+    }
+
+    if( res == FR_OK ) return true;
+
+    if( move ) Shell_MessageBox( "Error", "Cannot move/rename to", shortName, GetFatErrorMsg( res ) );
+    else Shell_MessageBox( "Error", "Cannot copy to", shortName, GetFatErrorMsg( res ) );
+
+    show_table();
+
+    return false;
+}
+
+bool Shell_Copy( const char *_name, bool move )
+{
+    CString name;
+
+    if( ( ReadKeyFlags() & fKeyShift ) != 0 ) name = _name;
+    else name = destinationPath;
+
+    const char *title = move ? "Move/Rename" : "Copy";
+    if( !Shell_InputBox( title, "Enter new name/path :", name ) ) return false;
+
+    bool newPath = false;
+
+    char pname[ PATH_SIZE ];
+    char pnameNew[ PATH_SIZE ];
+
+    if( name.GetSymbol( 0 ) == '/' )
+    {
+        if( name.GetSymbol( name.Length() - 1 ) != '/' ) name += '/';
+        newPath = true;
+    }
+
+    if( files_sel_number == 0 || !newPath )
+    {
+        sniprintf( pname, sizeof( pname ), "%s%s", path, _name );
+
+        if( newPath ) sniprintf( pnameNew, sizeof( pnameNew ), "%s%s", name.String() + 1, _name );
+        else sniprintf( pnameNew, sizeof( pnameNew ), "%s%s", path, name.String() );
+
+        if( Shell_CopyItem( pname, pnameNew, move ) && !newPath && move )
+        {
+            sniprintf( files_lastName, sizeof( files_lastName ), "%s", name.String() );
+        }
+    }
+    else
+    {
+        FRECORD fr;
+
+        for ( int i = 0; i < files_size; i++ )
+        {
+            Read( &fr, table_buffer, i );
+
+            if( fr.sel )
+            {
+                sniprintf( pname, sizeof( pname ), "%s%s", path, fr.name );
+                sniprintf( pnameNew, sizeof( pnameNew ), "%s%s", name.String() + 1, fr.name );
+
+                if( !Shell_CopyItem( pname, pnameNew, move ) ) break;
+
+                fr.sel = false;
+                files_sel_number--;
+
+                Write( &fr, table_buffer, i );
+            }
+        }
+    }
+
+    return !newPath || move;
+}
+
+bool Shell_CreateFolder()
+{
+    CString name = "";
+    if( !Shell_InputBox( "Create folder", "Enter name :", name ) ) return false;
+
+    char pname[ PATH_SIZE ];
+    sniprintf( pname, sizeof( pname ), "%s%s", path, name.String() );
+
+    int res = f_mkdir( pname );
+    if( res == FR_OK )
+    {
+        sniprintf( files_lastName, sizeof( files_lastName ), "%s", name.String() );
+        return true;
+    }
+
+    char shortName[ 20 ];
+    make_short_name( shortName, sizeof( shortName ), name );
+
+    Shell_MessageBox( "Error", "Cannot create the folder", shortName, GetFatErrorMsg( res ) );
+    show_table();
+
+    return false;
+}
+
+bool Shell_DeleteItem( const char *name )
+{
+    int res = f_unlink( name );
+    if( res == FR_OK ) return true;
+
+    const char *sname = &name[ strlen(name) ];
+    while( sname != name && sname[-1] != '/' ) sname--;
+
+    char shortName[ 20 ];
+    make_short_name( shortName, sizeof( shortName ), sname );
+
+    Shell_MessageBox( "Error", "Cannot delete the item", shortName, GetFatErrorMsg( res ) );
+    show_table();
+
+    return false;
+}
+
+bool Shell_Delete( const char *name )
+{
+    if( files_sel_number == 0 && strcmp( name, ".." ) == 0 ) return false;
+
+    char sname[ PATH_SIZE ];
+
+    if( files_sel_number > 0 ) sniprintf( sname, sizeof(sname), "selected %u item%s", files_sel_number, files_sel_number > 1 ? "s" : "" );
+    else make_short_name( sname, 21, name );
+
+    strcat( sname, "?" );
+
+    if( !Shell_MessageBox( "Delete", "Do you wish to delete", sname, "", MB_YESNO, 0050, 0151 ) ) return false;
+
+    if( files_sel_number == 0 )
+    {
+        sniprintf( sname, sizeof(sname), "%s%s", path, name );
+        Shell_DeleteItem( sname );
+    }
+    else
+    {
+        FRECORD fr;
+
+        for ( int i = 0; i < files_size; i++ )
+        {
+            Read( &fr, table_buffer, i );
+
+            if( fr.sel )
+            {
+                sniprintf( sname, sizeof(sname), "%s%s", path, fr.name );
+                if( !Shell_DeleteItem( sname ) ) break;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool Shell_EmptyTrd( const char *_name )
+{
+    char name[ PATH_SIZE ];
+    bool result = false;
+
+    if( strlen( _name ) == 0 )
+    {
+        CString newName = "empty.trd";
+        if( !Shell_InputBox( "Format", "Enter name :", newName ) ) return false;
+        show_table();
+        sniprintf( name, sizeof( name ), "%s", newName.String() );
+        result = true;
+
+        char *ext = name + strlen( name );
+        while( ext > name && *ext != '.' ) ext--;
+        strlwr( ext );
+
+        if( strcmp( ext, ".trd" ) != 0 ) sniprintf( name, sizeof( name ), "%s.trd", newName.String() );
+        else sniprintf( name, sizeof( name ), "%s", newName.String() );
+    }
+    else
+    {
+        sniprintf( name, sizeof( name ), "%s", _name );
+
+        char *ext = name + strlen( name );
+        while( ext > name && *ext != '.' ) ext--;
+        strlwr( ext );
+
+        if( strcmp( ext, ".trd" ) != 0 ) return false;
+
+        make_short_name( name, 21, _name );
+        strcat( name, "?" );
+
+        if( !Shell_MessageBox( "Format", "Do you wish to format", name, "", MB_YESNO, 0050, 0151 ) ) return false;
+        show_table();
+
+        sniprintf( name, sizeof( name ), "%s", _name );
+    }
+
+    CString label = name;
+    label.TrimRight( 4 );
+    if( label.Length() > 8 ) label.TrimRight( label.Length() - 8 );
+
+    if( !Shell_InputBox( "Format", "Enter disk label :", label ) ) return false;
+    show_table();
+
+    char pname[ PATH_SIZE ];
+    sniprintf( pname, sizeof(pname), "%s%s", path, name );
+
+    const byte zero[ 0x10 ] = { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 };
+    const byte sysArea[] = { 0x00, 0x00, 0x01, 0x16, 0x00, 0xf0, 0x09, 0x10 };
+    char sysLabel[ 8 ];
+    strncpy( sysLabel, label.String(), sizeof( sysLabel ) );
+
+    int res;
+    UINT r;
+    FIL dst;
+
+    {
+        res = f_open( &dst, pname, FA_WRITE | FA_OPEN_ALWAYS );
+        if( res != FR_OK ) goto formatExit1;
+
+        for( int i = 0; i < 256 * 16; i += sizeof( zero )  )
+        {
+            res = f_write( &dst, zero, sizeof( zero ), &r );
+            if( res != FR_OK ) break;
+        }
+        if( res != FR_OK ) goto formatExit2;
+
+        res = f_lseek( &dst, 0x8e0 );
+        if( res != FR_OK ) goto formatExit2;
+
+        res = f_write( &dst, sysArea, sizeof( sysArea ), &r );
+        if( res != FR_OK ) goto formatExit2;
+
+        res = f_lseek( &dst, 0x8f5 );
+        if( res != FR_OK ) goto formatExit2;
+
+        res = f_write( &dst, sysLabel, sizeof( sysLabel ), &r );
+        if( res != FR_OK ) goto formatExit2;
+
+        res = f_lseek( &dst, 256 * 16 * 2 * 80 - sizeof( zero ) );
+        if( res != FR_OK ) goto formatExit2;
+
+        res = f_write( &dst, zero, sizeof( zero ), &r );
+        if( res != FR_OK ) goto formatExit2;
+
+
+    formatExit2:
+        f_close( &dst );
+
+    formatExit1:
+        ;
+    }
+
+    if( res != FR_OK )
+    {
+        Shell_MessageBox( "Error", "Cannot format", name, GetFatErrorMsg( res ) );
+    }
+
+    return result;
+}
+
+void Shell_SaveSnapshot()
+{
+    CPU_Stop();
+    SystemBus_Write( 0xc00020, 0 );  // use bank 0
+
+    byte specPortFe = SystemBus_Read( 0xc00016 );
+    byte specPort7ffd = SystemBus_Read( 0xc00017 );
+
+    byte page = ( specPort7ffd & ( 1 << 3 ) ) != 0 ? 7 : 5;
+
+    dword src = 0x800000 | ( page << 13 );
+    dword dst = 0x800000 | ( VIDEO_PAGE << 13 );
+
+    word data;
+
+    for( int i = 0x0000; i < 0x1b00; i += 2 )
+    {
+        data = SystemBus_Read( src++ );
+        SystemBus_Write( dst++, data );
+    }
+
+    SystemBus_Write( 0xc00021, 0x8000 | VIDEO_PAGE );               // Enable shell videopage
+    SystemBus_Write( 0xc00022, 0x8000 | ( specPortFe & 0x07 ) );    // Enable shell border
+
+    CString name = UpdateSnaName();
+    bool result = Shell_InputBox( "Save snapshot", "Enter name :", name );
+
+    SystemBus_Write( 0xc00021, 0 ); //armVideoPage
+    SystemBus_Write( 0xc00022, 0 ); //armBorder
+
+    if( result )
+    {
+        sniprintf( specConfig.snaName, sizeof( specConfig.snaName ), "%s", name.String() );
+        SaveSnapshot( specConfig.snaName );
+    }
+
+    CPU_Start();
 }
 
 bool Shell_Browser()
@@ -924,7 +1488,6 @@ bool Shell_Browser()
     SystemBus_Write( 0xc00020, 0 );  // use bank 0
 
     InitScreen();
-    InitKeys();
 
     read_dir();
     show_sel( true );
@@ -934,7 +1497,7 @@ bool Shell_Browser()
         byte key = GetKey();
 
         FRECORD fr;
-        ReadRecord( fr, files_sel );
+        Read( &fr, table_buffer, files_sel );
 
         sniprintf( files_lastName, sizeof( files_lastName ), "%s", fr.name );
 
@@ -948,6 +1511,45 @@ bool Shell_Browser()
 			else if ( key == K_DOWN ) files_sel++;
 
 			show_sel();
+		}
+		else if ( key == ' ' && files_size > 0 )
+		{
+            if( strcmp( fr.name, ".." ) != 0 )
+            {
+                if( fr.sel ) files_sel_number--;
+                else files_sel_number++;
+
+                fr.sel = ( fr.sel + 1 ) % 2;
+                Write( &fr, table_buffer, files_sel );
+            }
+
+			hide_sel();
+			files_sel++;
+			show_sel();
+		}
+		else if ( ( key == '+' || key == '=' || key == '-' || key == '/' || key == '\\' ) && files_size > 0 )
+		{
+			hide_sel();
+			files_sel_number = 0;
+
+		    for( int i = 0; i < files_size; i++ )
+		    {
+                Read( &fr, table_buffer, i );
+
+                if( strcmp( fr.name, ".." ) != 0 )
+                {
+                    if( key == '+' || key == '=' ) fr.sel = 1;
+                    else if( key == '-' ) fr.sel = 0;
+                    else if( key == '/' || key == '\\' ) fr.sel = ( fr.sel + 1 ) % 2;
+
+                    if( fr.sel ) files_sel_number++;
+                    Write( &fr, table_buffer, i );
+                }
+
+                if( ( i & 0x3f ) == 0 ) CycleMark();
+		    }
+
+			show_sel( true );
 		}
         else if( key == K_ESC ) break;
         else if( key == '[' || key == ']' )
@@ -991,10 +1593,69 @@ bool Shell_Browser()
             leave_dir();
             show_sel();
         }
+        else if ( key == K_F1 )
+        {
+            WriteStr( 0, FILES_PER_ROW + 4, "speccy2010.hlp", 32 );
+            Shell_Viewer( "speccy2010.hlp" );
+
+            show_sel( true );
+        }
+        else if ( key == K_F2 )
+        {
+            sniprintf( destinationPath, sizeof( destinationPath ), "/%s", path );
+        }
+        else if ( key == K_F3 )
+        {
+            if ( ( fr.attr & AM_DIR ) == 0 )
+            {
+                char fullName[ PATH_SIZE ];
+                sniprintf( fullName, sizeof( fullName ), "%s%s", path, fr.name );
+                Shell_Viewer( fullName );
+
+                show_sel( true );
+            }
+        }
+        else if ( key == K_F4 )
+        {
+            hide_sel();
+            if( Shell_EmptyTrd( "" ) ) read_dir();;
+            show_sel( true );
+        }
+        else if ( key == K_F5 )
+        {
+            hide_sel();
+            if( Shell_Copy( fr.name, false ) ) read_dir();
+            show_sel( true );
+        }
+        else if ( key == K_F6 )
+        {
+            hide_sel();
+            if( Shell_Copy( fr.name, true ) ) read_dir();
+            show_sel( true );
+        }
+        else if ( key == K_F7 )
+        {
+            hide_sel();
+            if( Shell_CreateFolder() ) read_dir();
+            show_sel( true );
+        }
         else if ( key == K_F8 )
         {
             hide_sel();
-            Shell_Delete( fr.name );
+
+            if( Shell_Delete( fr.name ) )
+            {
+                int last_files_sel = files_sel;
+                read_dir();
+                files_sel = last_files_sel;
+            }
+
+            show_sel( true );
+        }
+        else if ( key == K_F9 )
+        {
+            hide_sel();
+            if( Shell_EmptyTrd( fr.name ) ) read_dir();;
             show_sel( true );
         }
 		else if ( key == K_RETURN )
@@ -1034,16 +1695,14 @@ bool Shell_Browser()
 
 				if ( strcmp( ext, ".tap" ) == 0 || strcmp( ext, ".tzx" ) == 0 )
 				{
+				    sniprintf( specConfig.snaName, sizeof( specConfig.snaName ), "/%s.00.sna", fullName );
+
 				    Tape_SelectFile( fullName );
 				    break;
 				}
 				else if ( strcmp( ext, ".sna" ) == 0 )
 				{
-                    //char str[ 0x20 ];
-                    //sniprintf( str, sizeof(str), "oldPc - 0x%.4x\n", SystemBus_Read( 0xc00001 ) );
-                    //UART0_WriteText( str );
-                    //sniprintf( str, sizeof(str), "oldINT - 0x%.4x\n", SystemBus_Read( 0xc00002 ) );
-                    //UART0_WriteText( str );
+                    sniprintf( specConfig.snaName, sizeof( specConfig.snaName ), "/%s", fullName );
 
                     if( LoadSnapshot( fullName ) )
                     {
@@ -1054,6 +1713,8 @@ bool Shell_Browser()
 				{
 				    if( fdc_open_image( 0, fullName ) )
 				    {
+				        sniprintf( specConfig.snaName, sizeof( specConfig.snaName ), "/%s.00.sna", fullName );
+
 				        floppy_disk_wp( 0, &specConfig.specImages[0].readOnly );
 
 				        strcpy( specConfig.specImages[ 0 ].name, fullName );
@@ -1081,7 +1742,7 @@ bool Shell_Browser()
                         FIL image;
                         if( f_open( &image, fullName, FA_READ ) == FR_OK )
                         {
-                            dword addr = 0x420000;
+                            dword addr = VIDEO_PAGE_PTR;
 
                             for( dword pos = 0; pos < 0x1b00; pos++ )
                             {
@@ -1105,7 +1766,7 @@ bool Shell_Browser()
                                 files_sel++;
                                 if( files_sel >= files_size ) files_sel = 0;
 
-                                ReadRecord( fr, files_sel );
+                                Read( &fr, table_buffer, files_sel );
                                 strlwr( fr.name );
 
                                 ext = fr.name + strlen( fr.name );
@@ -1238,28 +1899,29 @@ void CMenuItem::UpdateState( int _state )
 }
 
 CMenuItem mainMenu[] = {
-    CMenuItem( 1, 3, "Date: ", "00" ),
-    CMenuItem( 9, 3, ".", "00" ),
-    CMenuItem( 12, 3, ".", "00" ),
+    CMenuItem( 1, 2, "Date: ", "00" ),
+    CMenuItem( 9, 2, ".", "00" ),
+    CMenuItem( 12, 2, ".", "00" ),
 
-    CMenuItem( 1, 4, "Time: ", "00" ),
-    CMenuItem( 9, 4, ":", "00" ),
-    CMenuItem( 12, 4, ":", "0000" ),
+    CMenuItem( 1, 3, "Time: ", "00" ),
+    CMenuItem( 9, 3, ":", "00" ),
+    CMenuItem( 12, 3, ":", "0000" ),
 
-    CMenuItem( 1, 6, "ROM/RAM: ", GetParam( iniParameters, "ROM/RAM" ) ),
-    CMenuItem( 1, 7, "Timings: ", GetParam( iniParameters, "Timings" ) ),
-    CMenuItem( 1, 8, "Turbo: ", GetParam( iniParameters, "Turbo" ) ),
-    CMenuItem( 1, 9, "AY mode: ", GetParam( iniParameters, "AY mode" ) ),
-    CMenuItem( 1, 10, "BDI mode: ", GetParam( iniParameters, "BDI mode" ) ),
+    CMenuItem( 1, 5, "ROM/RAM: ", GetParam( iniParameters, "ROM/RAM" ) ),
+    CMenuItem( 1, 6, "Timings: ", GetParam( iniParameters, "Timings" ) ),
+    CMenuItem( 1, 7, "Turbo: ", GetParam( iniParameters, "Turbo" ) ),
+    CMenuItem( 1, 8, "AY mode: ", GetParam( iniParameters, "AY mode" ) ),
+    CMenuItem( 1, 9, "BDI mode: ", GetParam( iniParameters, "BDI mode" ) ),
 
-    CMenuItem( 1, 12, "Joystick emulation: ", GetParam( iniParameters, "Joystick emulation" ) ),
-    CMenuItem( 1, 13, "Joystick 1: ", GetParam( iniParameters, "Joystick 1" ) ),
-    CMenuItem( 1, 14, "Joystick 2: ", GetParam( iniParameters, "Joystick 2" ) ),
-    CMenuItem( 1, 15, "Mouse Sensitivity: ", GetParam( iniParameters, "Mouse Sensitivity" ) ),
+    CMenuItem( 1, 11, "Joystick emulation: ", GetParam( iniParameters, "Joystick emulation" ) ),
+    CMenuItem( 1, 12, "Joystick 1: ", GetParam( iniParameters, "Joystick 1" ) ),
+    CMenuItem( 1, 13, "Joystick 2: ", GetParam( iniParameters, "Joystick 2" ) ),
+    CMenuItem( 1, 14, "Mouse Sensitivity: ", GetParam( iniParameters, "Mouse Sensitivity" ) ),
 
-    CMenuItem( 1, 17, "Video mode: ", GetParam( iniParameters, "Video mode" ) ),
-    CMenuItem( 1, 18, "Video aspect ratio: ", GetParam( iniParameters, "Video aspect ratio" ) ),
-    CMenuItem( 1, 19, "Audio DAC mode: ", GetParam( iniParameters, "Audio DAC mode" ) ),
+    CMenuItem( 1, 16, "Video mode: ", GetParam( iniParameters, "Video mode" ) ),
+    CMenuItem( 1, 17, "Video aspect ratio: ", GetParam( iniParameters, "Video aspect ratio" ) ),
+    CMenuItem( 1, 18, "Audio DAC mode: ", GetParam( iniParameters, "Audio DAC mode" ) ),
+    CMenuItem( 1, 19, "Font: ", GetParam( iniParameters, "Font" ) ),
 };
 
 bool Shell_SettingsMenu()
@@ -1296,7 +1958,6 @@ bool Shell_Menu( CMenuItem *menu, int menuSize )
     CPU_Stop();
 
     InitScreen();
-    InitKeys();
 
     for( int i = 0; i < menuSize; i++ )
     {
@@ -1382,6 +2043,13 @@ bool Shell_Menu( CMenuItem *menu, int menuSize )
                     if( param->GetType() == PTYPE_LIST )
                     {
                         param->SetValue( ( param->GetValue() + 1 ) % ( param->GetValueMax() + 1 ) );
+
+                        if( param == GetParam( iniParameters, "Font" ) )
+                        {
+                            InitScreen();
+                            for( int i = 0; i < menuSize; i++ ) menu[i].Redraw();
+                        }
+
                         menu[ menuPos ].UpdateData();
                     }
                     else if( param->GetType() == PTYPE_INT )
@@ -1510,7 +2178,8 @@ void Debugger_Enter()
     SystemBus_Write( 0xc00020, 0 );  // use bank 0
 
     ClrScr( 0x07 );
-    InitKeys();
+    SystemBus_Write( 0xc00021, 0x8000 | VIDEO_PAGE );       // Enable shell videopage
+    SystemBus_Write( 0xc00022, 0x8000 | 0 );                // Enable shell border
 
     char str[ 0x20 ];
     byte CurX = 0, CurY = 0, CurXold, CurYold, half = 0, editAddr = 0, editAddrPos = 3;
@@ -1649,8 +2318,9 @@ void Debugger_Enter()
 
             addr = SystemBus_Read( 0xC00001 );
             CurX = addr & 0x0007;
+            CurY = 0;
         }
-        if( key == 's' ) SaveSnapshot( Shell_GetPath(), 0 );
+        if( key == 's' ) SaveSnapshot( UpdateSnaName() );
         if( key == 'm' ) editAddr = 1;
         if( key != 0 )
         {

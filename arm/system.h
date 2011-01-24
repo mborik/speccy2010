@@ -1,7 +1,7 @@
 //  patches to toolchain
 // uncomment mthumb-interwork in gcc/config/t-arm-elf
 // 	--disable-hosted-libstdcxx
-// 	empty crt0.s
+// 	empty crt0.s in newlib/libgloss
 
 #ifndef _SYSTEM_
 #define _SYSTEM_
@@ -10,17 +10,14 @@
 
 #define VER_MAJOR 1
 #define VER_MINIR 0
-#define REV 47
+#define REV 48
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-    #include "75x_lib.h"
-
-    //#include "usbstorage/usb_lib.h"
-    //#include "usbstorage/card_io.h"
+    #include "libstr/inc/75x_lib.h"
 
     #include "fatfs/ff.h"
     #include "fatfs/diskio.h"
@@ -85,26 +82,31 @@ extern "C"
     void SystemBus_Write( word data );
     void SystemBus_Write( dword address, word data );
 
+    bool FileExists( const char *str );
     bool ReadLine( FIL *file, CString &str );
     bool WriteText( FIL *file, const char *str );
     bool WriteLine( FIL *file, const char *str );
 
     const word fKeyRelease = ( 1 << 0 );
+    const word fKeyJoy1 = ( 1 << 2 );
+    const word fKeyJoy2 = ( 1 << 3 );
 
-    const word fKeyShiftLeft = ( 1 << 2 );
-    const word fKeyShiftRight = ( 1 << 3 );
+    const word fKeyShiftLeft = ( 1 << 4 );
+    const word fKeyShiftRight = ( 1 << 5 );
     const word fKeyShift = fKeyShiftLeft | fKeyShiftRight;
-    const word fKeyCtrlLeft = ( 1 << 4 );
-    const word fKeyCtrlRight = ( 1 << 5 );
+    const word fKeyCtrlLeft = ( 1 << 6 );
+    const word fKeyCtrlRight = ( 1 << 7 );
     const word fKeyCtrl = fKeyCtrlLeft | fKeyCtrlRight;
-    const word fKeyAltLeft = ( 1 << 6 );
-    const word fKeyAltRight = ( 1 << 7 );
+    const word fKeyAltLeft = ( 1 << 8 );
+    const word fKeyAltRight = ( 1 << 9 );
     const word fKeyAlt = fKeyAltLeft | fKeyAltRight;
 
-    const word fKeyJoy1 = ( 1 << 8 );
-    const word fKeyJoy2 = ( 1 << 9 );
+    const word fKeyCaps = ( 1 << 10 );
+    const word fKeyRus = ( 1 << 11 );
 
     bool ReadKey( word &key, word &flags );
+    word ReadKeySimple( bool norepeat = false );
+    word ReadKeyFlags();
 
     void Timer_Routine();
     dword Timer_GetTickCounter();
@@ -114,8 +116,8 @@ extern "C"
     bool RTC_GetTime( tm *newTime );
     bool RTC_SetTime( tm *newTime );
 
-#endif
+    const char *GetFatErrorMsg( int id );
 
 #endif
 
-
+#endif

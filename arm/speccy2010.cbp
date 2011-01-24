@@ -18,7 +18,7 @@
 					<Add option="-Wl,-Map=_release/speccy2010.map" />
 				</Linker>
 				<ExtraCommands>
-					<Add after="arm-none-eabi-objcopy.exe -O binary _release/speccy2010.elf _release/speccy2010.bin" />
+					<Add after="arm-none-eabi-objcopy -O binary _release/speccy2010.elf _release/speccy2010.bin" />
 				</ExtraCommands>
 			</Target>
 			<Target title="Debug">
@@ -180,69 +180,27 @@
 		<Unit filename="libnosys\write.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="libstr\inc\75x_adc.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_can.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_cfg.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_conf.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_dma.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_eic.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_extit.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_gpio.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_i2c.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_lib.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_map.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_mrcc.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_pwm.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_rtc.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_smi.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_ssp.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_tb.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_tim.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_type.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_uart.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
-		<Unit filename="libstr\inc\75x_wdg.h">
-			<Option target="&lt;{~None~}&gt;" />
-		</Unit>
+		<Unit filename="libstr\inc\75x_adc.h" />
+		<Unit filename="libstr\inc\75x_can.h" />
+		<Unit filename="libstr\inc\75x_cfg.h" />
+		<Unit filename="libstr\inc\75x_conf.h" />
+		<Unit filename="libstr\inc\75x_dma.h" />
+		<Unit filename="libstr\inc\75x_eic.h" />
+		<Unit filename="libstr\inc\75x_extit.h" />
+		<Unit filename="libstr\inc\75x_gpio.h" />
+		<Unit filename="libstr\inc\75x_i2c.h" />
+		<Unit filename="libstr\inc\75x_lib.h" />
+		<Unit filename="libstr\inc\75x_map.h" />
+		<Unit filename="libstr\inc\75x_mrcc.h" />
+		<Unit filename="libstr\inc\75x_pwm.h" />
+		<Unit filename="libstr\inc\75x_rtc.h" />
+		<Unit filename="libstr\inc\75x_smi.h" />
+		<Unit filename="libstr\inc\75x_ssp.h" />
+		<Unit filename="libstr\inc\75x_tb.h" />
+		<Unit filename="libstr\inc\75x_tim.h" />
+		<Unit filename="libstr\inc\75x_type.h" />
+		<Unit filename="libstr\inc\75x_uart.h" />
+		<Unit filename="libstr\inc\75x_wdg.h" />
 		<Unit filename="libstr\src\75x_adc.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -306,6 +264,8 @@
 		<Unit filename="specBetadisk.cpp" />
 		<Unit filename="specBetadisk.h" />
 		<Unit filename="specChars.h" />
+		<Unit filename="specCharsA.h" />
+		<Unit filename="specCharsB.h" />
 		<Unit filename="specConfig.cpp" />
 		<Unit filename="specConfig.h" />
 		<Unit filename="specKeyMap.cpp" />

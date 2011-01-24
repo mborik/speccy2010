@@ -3,8 +3,10 @@
 
 #include "system.h"
 
-void SaveSnapshot( const char *path, const char *name );
+void SaveSnapshot( const char *name );
 bool LoadSnapshot( const char *fileName );
+
+const char *UpdateSnaName();
 
 #endif
 

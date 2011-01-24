@@ -1,6 +1,7 @@
 #ifndef STRING_H_INCLUDED
 #define STRING_H_INCLUDED
 
+#include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 
@@ -69,7 +70,7 @@ public:
 
 //-----------------------------------------------------------------------------------------
 
-#include "system.h"
+//#include "system.h"
 
 inline CString &CString::operator=( const CString & s )
 {
@@ -79,7 +80,7 @@ inline CString &CString::operator=( const CString & s )
 
 inline CString &CString::operator=( const char * _str )
 {
-	portENTER_CRITICAL();
+	//portENTER_CRITICAL();
 
     if ( _str )
     {
@@ -97,14 +98,14 @@ inline CString &CString::operator=( const char * _str )
         if ( SetBufferSize( length + 1 ) ) str[0] = '\0';
     }
 
-	portEXIT_CRITICAL();
+	//portEXIT_CRITICAL();
 
     return *this;
 }
 
 inline CString &CString::Set( const char *_str, unsigned int maxSize )
 {
-	portENTER_CRITICAL();
+	//portENTER_CRITICAL();
 
     if ( _str )
     {
@@ -122,7 +123,7 @@ inline CString &CString::Set( const char *_str, unsigned int maxSize )
         if ( SetBufferSize( length + 1 ) ) str[0] = '\0';
     }
 
-	portEXIT_CRITICAL();
+	//portEXIT_CRITICAL();
 
     return *this;
 }
@@ -132,7 +133,7 @@ inline CString &CString::Format( const char *format, ... )
     va_list ap;
     va_start( ap, format );
 
-	portENTER_CRITICAL();
+	//portENTER_CRITICAL();
 
     while( true )
     {
@@ -148,7 +149,7 @@ inline CString &CString::Format( const char *format, ... )
         }
     }
 
-	portEXIT_CRITICAL();
+	//portEXIT_CRITICAL();
 
     va_end(ap);
     return *this;
@@ -230,7 +231,7 @@ inline int CString::GetBufferSize() const
 
 inline int CString::SetBufferSize( int _size )
 {
-	portENTER_CRITICAL();
+	//portENTER_CRITICAL();
 
     if ( _size < CSTRING_DEF_MIN_SIZE ) _size = CSTRING_DEF_MIN_SIZE;
 
@@ -254,7 +255,7 @@ inline int CString::SetBufferSize( int _size )
         else size = 0;
     }
 
-	portEXIT_CRITICAL();
+	//portEXIT_CRITICAL();
 
     return size;
 }

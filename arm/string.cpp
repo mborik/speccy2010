@@ -38,7 +38,7 @@ CString &CString::operator+=( const CString & _s )
 {
     if ( str )
     {
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
 
         int slen = _s.length;
 
@@ -49,7 +49,7 @@ CString &CString::operator+=( const CString & _s )
         }
         else length = 0;
 
-		portEXIT_CRITICAL();
+		//portEXIT_CRITICAL();
     }
 
     return *this;
@@ -59,7 +59,7 @@ CString &CString::operator+=( const char * _str )
 {
     if ( str && _str )
     {
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
 
         int slen = strlen( _str );
 
@@ -70,7 +70,7 @@ CString &CString::operator+=( const char * _str )
         }
         else length = 0;
 
-		portEXIT_CRITICAL();
+		//portEXIT_CRITICAL();
     }
 
     return *this;
@@ -80,7 +80,7 @@ CString &CString::operator+=( char c )
 {
     if ( c )
     {
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
 
         if ( SetBufferSize( length + 2 ) )
         {
@@ -89,7 +89,7 @@ CString &CString::operator+=( char c )
         }
         else length = 0;
 
-		portEXIT_CRITICAL();
+		//portEXIT_CRITICAL();
     }
 
     return *this;
@@ -99,7 +99,7 @@ CString &CString::TrimRight( int i )
 {
     if ( str )
     {
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
 
         if ( i >= length )
         {
@@ -112,7 +112,7 @@ CString &CString::TrimRight( int i )
             str[ length ] = '\0';
         }
 
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
     }
 
     return *this;
@@ -122,7 +122,7 @@ CString &CString::TrimLeft( int i )
 {
     if ( str )
     {
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
 
         if ( i >= length )
         {
@@ -136,7 +136,7 @@ CString &CString::TrimLeft( int i )
                 str[ j ] = str[ i++ ];
         }
 
-		portEXIT_CRITICAL();
+		//portEXIT_CRITICAL();
     }
 
     return *this;
@@ -146,7 +146,7 @@ CString &CString::Delete( int i, int num )
 {
     if ( str )
     {
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
 
         if ( i < 0 )
         {
@@ -169,7 +169,7 @@ CString &CString::Delete( int i, int num )
                 str[ j ] = str[ j + num ];
         }
 
-		portEXIT_CRITICAL();
+		//portEXIT_CRITICAL();
     }
 
     return *this;
@@ -179,7 +179,7 @@ CString &CString::Insert( int i, const CString &_s )
 {
     if ( str )
     {
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
 
         if ( i < 0 ) i = 0;
         else if ( i > length ) i = length;
@@ -196,7 +196,7 @@ CString &CString::Insert( int i, const CString &_s )
         }
         else length = 0;
 
-		portEXIT_CRITICAL();
+		//portEXIT_CRITICAL();
     }
 
     return *this;
@@ -206,7 +206,7 @@ CString &CString::Insert( int i, const char *_str )
 {
     if ( str && _str )
     {
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
 
         if ( i < 0 ) i = 0;
         else if ( i > length ) i = length;
@@ -223,7 +223,7 @@ CString &CString::Insert( int i, const char *_str )
         }
         else length = 0;
 
-		portEXIT_CRITICAL();
+		//portEXIT_CRITICAL();
     }
 
     return *this;
@@ -233,7 +233,7 @@ CString &CString::Insert( int i, char c )
 {
     if ( str && c )
     {
-		portENTER_CRITICAL();
+		//portENTER_CRITICAL();
 
         if ( i < 0 ) i = 0;
         else if ( i > length ) i = length;
@@ -248,7 +248,7 @@ CString &CString::Insert( int i, char c )
         }
         else length = 0;
 
-		portEXIT_CRITICAL();
+		//portEXIT_CRITICAL();
     }
 
     return *this;

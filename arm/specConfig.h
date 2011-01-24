@@ -1,8 +1,7 @@
 #ifndef SPEC_CONFIG_H_INCLUDED
 #define SPEC_CONFIG_H_INCLUDED
 
-#include "types.h"
-#include "string.h"
+#include "system.h"
 #include "settings.h"
 
 #define ADVANCED_BETADISK 1
@@ -32,8 +31,11 @@ struct CSpecConfig
 	int specJoyMode1;
 	int specJoyMode2;
 	int specMouseSensitivity;
+    int specFont;
 
 	CDiskImage specImages[4];
+
+	char snaName[ PATH_SIZE ];
 };
 
 extern CSpecConfig specConfig;

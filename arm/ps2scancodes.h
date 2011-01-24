@@ -81,12 +81,12 @@
 #define KEY_RALT            0xE011
 #define KEY_RWIN            0xE027
 #define KEY_MENU            0xE02F
-#define KEY_RCTRL            0xE014
+#define KEY_RCTRL           0xE014
 
-#define KEY_PRNTSCR         0xE012
+#define KEY_PRNTSCR         0xE07C
 #define KEY_SCROLLOCK       0x7E
 #define KEY_PAUSE           0x77
-#define KEY_PRNTSCR_SKIP    0xE07C
+#define KEY_PRNTSCR_SKIP    0xE012 // иногда приходит сам по себе !
 #define KEY_PAUSE_SKIP      0xE114
 
 #define KEY_INSERT          0xE070

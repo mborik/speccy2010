@@ -1,25 +1,30 @@
 /*---------------------------------------------------------------------------/
-/  FatFs - FAT file system module include file  R0.07e       (C)ChaN, 2009
+/  FatFs - FAT file system module include file  R0.08a    (C)ChaN, 2010
 /----------------------------------------------------------------------------/
 / FatFs module is a generic FAT file system module for small embedded systems.
 / This is a free software that opened for education, research and commercial
 / developments under license policy of following trems.
 /
-/  Copyright (C) 2009, ChaN, all right reserved.
+/  Copyright (C) 2010, ChaN, all right reserved.
 /
 / * The FatFs module is a free software and there is NO WARRANTY.
 / * No restriction on use. You can use, modify and redistribute it for
 /   personal, non-profit or commercial product UNDER YOUR RESPONSIBILITY.
 / * Redistributions of source code must retain the above copyright notice.
+/
 /----------------------------------------------------------------------------*/
 
 #ifndef _FATFS
-#define _FATFS	0x007E
+#define _FATFS	8255	/* Revision ID */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "integer.h"	/* Basic integer types */
 #include "ffconf.h"		/* FatFs configuration options */
 
-#if _FATFS != _FFCONFIG
+#if _FATFS != _FFCONF
 #error Wrong configuration file (ffconf.h).
 #endif
 
@@ -219,171 +224,143 @@
 
 
 
-/* Character code support macros */
-
-#define IsUpper(c)	(((c)>='A')&&((c)<='Z'))
-#define IsLower(c)	(((c)>='a')&&((c)<='z'))
-
-#if _DF1S		/* DBCS configuration */
-
-#ifdef _DF2S	/* Two 1st byte areas */
-#define IsDBCS1(c)	(((BYTE)(c) >= _DF1S && (BYTE)(c) <= _DF1E) || ((BYTE)(c) >= _DF2S && (BYTE)(c) <= _DF2E))
-#else			/* One 1st byte area */
-#define IsDBCS1(c)	((BYTE)(c) >= _DF1S && (BYTE)(c) <= _DF1E)
-#endif
-
-#ifdef _DS3S	/* Three 2nd byte areas */
-#define IsDBCS2(c)	(((BYTE)(c) >= _DS1S && (BYTE)(c) <= _DS1E) || ((BYTE)(c) >= _DS2S && (BYTE)(c) <= _DS2E) || ((BYTE)(c) >= _DS3S && (BYTE)(c) <= _DS3E))
-#else			/* Two 2nd byte areas */
-#define IsDBCS2(c)	(((BYTE)(c) >= _DS1S && (BYTE)(c) <= _DS1E) || ((BYTE)(c) >= _DS2S && (BYTE)(c) <= _DS2E))
-#endif
-
-#else			/* SBCS configuration */
-
-#define IsDBCS1(c)	0
-#define IsDBCS2(c)	0
-
-#endif /* _DF1S */
-
-
-
-/* Definitions corresponds to multi partition */
+/* Definitions of volume management */
 
 #if _MULTI_PARTITION		/* Multiple partition configuration */
-
-typedef struct _PARTITION {
+#define LD2PD(vol) (VolToPart[vol].pd)	/* Get physical drive# */
+#define LD2PT(vol) (VolToPart[vol].pt)	/* Get partition# */
+typedef struct {
 	BYTE pd;	/* Physical drive# */
 	BYTE pt;	/* Partition # (0-3) */
 } PARTITION;
-
-extern
-const PARTITION Drives[];			/* Logical drive# to physical location conversion table */
-#define LD2PD(drv) (Drives[drv].pd)	/* Get physical drive# */
-#define LD2PT(drv) (Drives[drv].pt)	/* Get partition# */
+extern const PARTITION VolToPart[];	/* Volume - Physical location resolution table */
 
 #else						/* Single partition configuration */
-
-#define LD2PD(drv) (drv)	/* Physical drive# is equal to the logical drive# */
-#define LD2PT(drv) 0		/* Always mounts the 1st partition */
-
-#endif
-
-
-
-/* Definitions corresponds to multiple sector size */
-
-#if _MAX_SS == 512		/* Single sector size */
-#define	SS(fs)	512U
-
-#elif _MAX_SS == 1024 || _MAX_SS == 2048 || _MAX_SS == 4096	/* Multiple sector size */
-#define	SS(fs)	((fs)->s_size)
-
-#else
-#error Sector size must be 512, 1024, 2048 or 4096.
+#define LD2PD(vol) (vol)	/* Logical drive# is bound to the same physical drive# */
+#define LD2PT(vol) 0		/* Always mounts the 1st partition */
 
 #endif
 
 
 
-/* Type of file name on FatFs API */
+/* Type of path name strings on FatFs API */
 
-#if _LFN_UNICODE && _USE_LFN
-typedef WCHAR XCHAR;	/* Unicode */
-#else
-typedef char XCHAR;		/* SBCS, DBCS */
+#if _LFN_UNICODE			/* Unicode string */
+#if !_USE_LFN
+#error _LFN_UNICODE must be 0 in non-LFN cfg.
+#endif
+#ifndef _INC_TCHAR
+typedef WCHAR TCHAR;
+#define _T(x) L ## x
+#define _TEXT(x) L ## x
+#endif
+
+#else						/* ANSI/OEM string */
+#ifndef _INC_TCHAR
+typedef char TCHAR;
+#define _T(x) x
+#define _TEXT(x) x
+#endif
+
 #endif
 
 
 
-/* File system object structure */
+/* File system object structure (FATFS) */
 
-typedef struct _FATFS_ {
-	BYTE	fs_type;	/* FAT sub type */
-	BYTE	drive;		/* Physical drive number */
-	BYTE	csize;		/* Number of sectors per cluster */
-	BYTE	n_fats;		/* Number of FAT copies */
-	BYTE	wflag;		/* win[] dirty flag (1:must be written back) */
-	BYTE	fsi_flag;	/* fsinfo dirty flag (1:must be written back) */
-	WORD	id;			/* File system mount ID */
-	WORD	n_rootdir;	/* Number of root directory entries (0 on FAT32) */
-#if _FS_REENTRANT
-	_SYNC_t	sobj;		/* Identifier of sync object */
-#endif
+typedef struct {
+	BYTE	fs_type;		/* FAT sub-type (0:Not mounted) */
+	BYTE	drv;			/* Physical drive number */
+	BYTE	csize;			/* Sectors per cluster (1,2,4...128) */
+	BYTE	n_fats;			/* Number of FAT copies (1,2) */
+	BYTE	wflag;			/* win[] dirty flag (1:must be written back) */
+	BYTE	fsi_flag;		/* fsinfo dirty flag (1:must be written back) */
+	WORD	id;				/* File system mount ID */
+	WORD	n_rootdir;		/* Number of root directory entries (FAT12/16) */
 #if _MAX_SS != 512
-	WORD	s_size;		/* Sector size */
+	WORD	ssize;			/* Bytes per sector (512,1024,2048,4096) */
+#endif
+#if _FS_REENTRANT
+	_SYNC_t	sobj;			/* Identifier of sync object */
 #endif
 #if !_FS_READONLY
-	DWORD	last_clust;	/* Last allocated cluster */
-	DWORD	free_clust;	/* Number of free clusters */
-	DWORD	fsi_sector;	/* fsinfo sector */
+	DWORD	last_clust;		/* Last allocated cluster */
+	DWORD	free_clust;		/* Number of free clusters */
+	DWORD	fsi_sector;		/* fsinfo sector (FAT32) */
 #endif
 #if _FS_RPATH
-	DWORD	cdir;		/* Current directory (0:root)*/
+	DWORD	cdir;			/* Current directory start cluster (0:root) */
 #endif
-	DWORD	sects_fat;	/* Sectors per fat */
-	DWORD	max_clust;	/* Maximum cluster# + 1. Number of clusters is max_clust - 2 */
-	DWORD	fatbase;	/* FAT start sector */
-	DWORD	dirbase;	/* Root directory start sector (Cluster# on FAT32) */
-	DWORD	database;	/* Data start sector */
-	DWORD	winsect;	/* Current sector appearing in the win[] */
-	BYTE	win[_MAX_SS];/* Disk access window for Directory/FAT */
+	DWORD	n_fatent;		/* Number of FAT entries (= number of clusters + 2) */
+	DWORD	fsize;			/* Sectors per FAT */
+	DWORD	fatbase;		/* FAT start sector */
+	DWORD	dirbase;		/* Root directory start sector (FAT32:Cluster#) */
+	DWORD	database;		/* Data start sector */
+	DWORD	winsect;		/* Current sector appearing in the win[] */
+	BYTE	win[_MAX_SS];	/* Disk access window for Directory, FAT (and Data on tiny cfg) */
 } FATFS;
 
 
 
-/* Directory object structure */
+/* File object structure (FIL) */
 
-typedef struct _DIR_ {
-	FATFS*	fs;			/* Pointer to the owner file system object */
-	WORD	id;			/* Owner file system mount ID */
-	WORD	index;		/* Current read/write index number */
-	DWORD	sclust;		/* Table start cluster (0:Static table) */
-	DWORD	clust;		/* Current cluster */
-	DWORD	sect;		/* Current sector */
-	BYTE*	dir;		/* Pointer to the current SFN entry in the win[] */
-	BYTE*	fn;			/* Pointer to the SFN (in/out) {file[8],ext[3],status[1]} */
-#if _USE_LFN
-	WCHAR*	lfn;		/* Pointer to the LFN working buffer */
-	WORD	lfn_idx;	/* Last matched LFN index number (0xFFFF:No LFN) */
-#endif
-} DIR;
-
-
-
-/* File object structure */
-
-typedef struct _FIL_ {
-	FATFS*	fs;			/* Pointer to the owner file system object */
-	WORD	id;			/* Owner file system mount ID */
-	BYTE	flag;		/* File status flags */
-	BYTE	csect;		/* Sector address in the cluster */
-	DWORD	fptr;		/* File R/W pointer */
-	DWORD	fsize;		/* File size */
-	DWORD	org_clust;	/* File start cluster */
-	DWORD	curr_clust;	/* Current cluster */
-	DWORD	dsect;		/* Current data sector */
+typedef struct {
+	FATFS*	fs;				/* Pointer to the owner file system object */
+	WORD	id;				/* Owner file system mount ID */
+	BYTE	flag;			/* File status flags */
+	BYTE	pad1;
+	DWORD	fptr;			/* File read/write pointer (0 on file open) */
+	DWORD	fsize;			/* File size */
+	DWORD	org_clust;		/* File start cluster (0 when fsize==0) */
+	DWORD	curr_clust;		/* Current cluster */
+	DWORD	dsect;			/* Current data sector */
 #if !_FS_READONLY
-	DWORD	dir_sect;	/* Sector containing the directory entry */
-	BYTE*	dir_ptr;	/* Ponter to the directory entry in the window */
+	DWORD	dir_sect;		/* Sector containing the directory entry */
+	BYTE*	dir_ptr;		/* Ponter to the directory entry in the window */
+#endif
+#if _USE_FASTSEEK
+	DWORD*	cltbl;			/* Pointer to the cluster link map table (null on file open) */
+#endif
+#if _FS_SHARE
+	UINT	lockid;			/* File lock ID (index of file semaphore table) */
 #endif
 #if !_FS_TINY
-	BYTE	buf[_MAX_SS];/* File R/W buffer */
+	BYTE	buf[_MAX_SS];	/* File data read/write buffer */
 #endif
 } FIL;
 
 
 
-/* File status structure */
+/* Directory object structure (DIR) */
 
-typedef struct _FILINFO_ {
-	DWORD	fsize;		/* File size */
-	WORD	fdate;		/* Last modified date */
-	WORD	ftime;		/* Last modified time */
-	BYTE	fattrib;	/* Attribute */
-	char	fname[13];	/* Short file name (8.3 format) */
+typedef struct {
+	FATFS*	fs;				/* Pointer to the owner file system object */
+	WORD	id;				/* Owner file system mount ID */
+	WORD	index;			/* Current read/write index number */
+	DWORD	sclust;			/* Table start cluster (0:Root dir) */
+	DWORD	clust;			/* Current cluster */
+	DWORD	sect;			/* Current sector */
+	BYTE*	dir;			/* Pointer to the current SFN entry in the win[] */
+	BYTE*	fn;				/* Pointer to the SFN (in/out) {file[8],ext[3],status[1]} */
 #if _USE_LFN
-	XCHAR*	lfname;		/* Pointer to the LFN buffer */
-	int 	lfsize;		/* Size of LFN buffer [chrs] */
+	WCHAR*	lfn;			/* Pointer to the LFN working buffer */
+	WORD	lfn_idx;		/* Last matched LFN index number (0xFFFF:No LFN) */
+#endif
+} DIR;
+
+
+
+/* File status structure (FILINFO) */
+
+typedef struct {
+	DWORD	fsize;			/* File size */
+	WORD	fdate;			/* Last modified date */
+	WORD	ftime;			/* Last modified time */
+	BYTE	fattrib;		/* Attribute */
+	TCHAR	fname[13];		/* Short file name (8.3 format) */
+#if _USE_LFN
+	TCHAR*	lfname;			/* Pointer to the LFN buffer */
+	UINT 	lfsize;			/* Size of LFN buffer in TCHAR */
 #endif
 } FILINFO;
 
@@ -392,22 +369,25 @@ typedef struct _FILINFO_ {
 /* File function return code (FRESULT) */
 
 typedef enum {
-	FR_OK = 0,			/* 0 */
-	FR_DISK_ERR,		/* 1 */
-	FR_INT_ERR,			/* 2 */
-	FR_NOT_READY,		/* 3 */
-	FR_NO_FILE,			/* 4 */
-	FR_NO_PATH,			/* 5 */
-	FR_INVALID_NAME,	/* 6 */
-	FR_DENIED,			/* 7 */
-	FR_EXIST,			/* 8 */
-	FR_INVALID_OBJECT,	/* 9 */
-	FR_WRITE_PROTECTED,	/* 10 */
-	FR_INVALID_DRIVE,	/* 11 */
-	FR_NOT_ENABLED,		/* 12 */
-	FR_NO_FILESYSTEM,	/* 13 */
-	FR_MKFS_ABORTED,	/* 14 */
-	FR_TIMEOUT			/* 15 */
+	FR_OK = 0,				/* (0) Succeeded */
+	FR_DISK_ERR,			/* (1) A hard error occured in the low level disk I/O layer */
+	FR_INT_ERR,				/* (2) Assertion failed */
+	FR_NOT_READY,			/* (3) The physical drive cannot work */
+	FR_NO_FILE,				/* (4) Could not find the file */
+	FR_NO_PATH,				/* (5) Could not find the path */
+	FR_INVALID_NAME,		/* (6) The path name format is invalid */
+	FR_DENIED,				/* (7) Acces denied due to prohibited access or directory full */
+	FR_EXIST,				/* (8) Acces denied due to prohibited access */
+	FR_INVALID_OBJECT,		/* (9) The file/directory object is invalid */
+	FR_WRITE_PROTECTED,		/* (10) The physical drive is write protected */
+	FR_INVALID_DRIVE,		/* (11) The logical drive number is invalid */
+	FR_NOT_ENABLED,			/* (12) The volume has no work area */
+	FR_NO_FILESYSTEM,		/* (13) There is no valid FAT volume on the physical drive */
+	FR_MKFS_ABORTED,		/* (14) The f_mkfs() aborted due to any parameter error */
+	FR_TIMEOUT,				/* (15) Could not get a grant to access the volume within defined period */
+	FR_LOCKED,				/* (16) The operation is rejected according to the file shareing policy */
+	FR_NOT_ENOUGH_CORE,		/* (17) LFN working buffer could not be allocated */
+	FR_TOO_MANY_OPEN_FILES	/* (18) Number of open files > _FS_SHARE */
 } FRESULT;
 
 
@@ -416,63 +396,83 @@ typedef enum {
 /* FatFs module application interface                           */
 
 FRESULT f_mount (BYTE, FATFS*);						/* Mount/Unmount a logical drive */
-FRESULT f_open (FIL*, const XCHAR*, BYTE);			/* Open or create a file */
+FRESULT f_open (FIL*, const TCHAR*, BYTE);			/* Open or create a file */
 FRESULT f_read (FIL*, void*, UINT, UINT*);			/* Read data from a file */
-FRESULT f_write (FIL*, const void*, UINT, UINT*);	/* Write data to a file */
 FRESULT f_lseek (FIL*, DWORD);						/* Move file pointer of a file object */
 FRESULT f_close (FIL*);								/* Close an open file object */
-FRESULT f_opendir (DIR*, const XCHAR*);				/* Open an existing directory */
+FRESULT f_opendir (DIR*, const TCHAR*);				/* Open an existing directory */
 FRESULT f_readdir (DIR*, FILINFO*);					/* Read a directory item */
-FRESULT f_stat (const XCHAR*, FILINFO*);			/* Get file status */
-FRESULT f_getfree (const XCHAR*, DWORD*, FATFS**);	/* Get number of free clusters on the drive */
+FRESULT f_stat (const TCHAR*, FILINFO*);			/* Get file status */
+
+#if !_FS_READONLY
+FRESULT f_write (FIL*, const void*, UINT, UINT*);	/* Write data to a file */
+FRESULT f_getfree (const TCHAR*, DWORD*, FATFS**);	/* Get number of free clusters on the drive */
 FRESULT f_truncate (FIL*);							/* Truncate file */
 FRESULT f_sync (FIL*);								/* Flush cached data of a writing file */
-FRESULT f_unlink (const XCHAR*);					/* Delete an existing file or directory */
-FRESULT	f_mkdir (const XCHAR*);						/* Create a new directory */
-FRESULT f_chmod (const XCHAR*, BYTE, BYTE);			/* Change attriburte of the file/dir */
-FRESULT f_utime (const XCHAR*, const FILINFO*);		/* Change timestamp of the file/dir */
-FRESULT f_rename (const XCHAR*, const XCHAR*);		/* Rename/Move a file or directory */
+FRESULT f_unlink (const TCHAR*);					/* Delete an existing file or directory */
+FRESULT	f_mkdir (const TCHAR*);						/* Create a new directory */
+FRESULT f_chmod (const TCHAR*, BYTE, BYTE);			/* Change attriburte of the file/dir */
+FRESULT f_utime (const TCHAR*, const FILINFO*);		/* Change timestamp of the file/dir */
+FRESULT f_rename (const TCHAR*, const TCHAR*);		/* Rename/Move a file or directory */
+#endif
+
+#if _USE_FORWARD
 FRESULT f_forward (FIL*, UINT(*)(const BYTE*,UINT), UINT, UINT*);	/* Forward data to the stream */
-FRESULT f_mkfs (BYTE, BYTE, WORD);					/* Create a file system on the drive */
-FRESULT f_chdir (const XCHAR*);						/* Change current directory */
+#endif
+
+#if _USE_MKFS
+FRESULT f_mkfs (BYTE, BYTE, UINT);					/* Create a file system on the drive */
+#endif
+
+#if _FS_RPATH
 FRESULT f_chdrive (BYTE);							/* Change current drive */
+FRESULT f_chdir (const TCHAR*);						/* Change current directory */
+FRESULT f_getcwd (TCHAR*, UINT);					/* Get current directory */
+#endif
 
 #if _USE_STRFUNC
-int f_putc (int, FIL*);								/* Put a character to the file */
-int f_puts (const char*, FIL*);						/* Put a string to the file */
-int f_printf (FIL*, const char*, ...);				/* Put a formatted string to the file */
-char* f_gets (char*, int, FIL*);					/* Get a string from the file */
+int f_putc (TCHAR, FIL*);							/* Put a character to the file */
+int f_puts (const TCHAR*, FIL*);					/* Put a string to the file */
+int f_printf (FIL*, const TCHAR*, ...);				/* Put a formatted string to the file */
+TCHAR* f_gets (TCHAR*, int, FIL*);					/* Get a string from the file */
+#ifndef EOF
+#define EOF (-1)
+#endif
+#endif
+
 #define f_eof(fp) (((fp)->fptr == (fp)->fsize) ? 1 : 0)
 #define f_error(fp) (((fp)->flag & FA__ERROR) ? 1 : 0)
-#ifndef EOF
-#define EOF -1
-#endif
-#endif
+#define f_tell(fp) ((fp)->fptr)
+#define f_size(fp) ((fp)->fsize)
 
 
 
 /*--------------------------------------------------------------*/
-/* User defined functions                                       */
+/* Additional user defined functions                            */
 
-/* Real time clock */
+/* RTC function */
 #if !_FS_READONLY
-DWORD get_fattime (void);	/* 31-25: Year(0-127 org.1980), 24-21: Month(1-12), 20-16: Day(1-31) */
-							/* 15-11: Hour(0-23), 10-5: Minute(0-59), 4-0: Second(0-29 *2) */
+DWORD get_fattime (void);
 #endif
 
-/* Unicode - OEM code conversion */
-#if _USE_LFN
-WCHAR ff_convert (WCHAR, UINT);
-WCHAR ff_wtoupper (WCHAR);
+/* Unicode support functions */
+#if _USE_LFN						/* Unicode - OEM code conversion */
+WCHAR ff_convert (WCHAR, UINT);		/* OEM-Unicode bidirectional conversion */
+WCHAR ff_wtoupper (WCHAR);			/* Unicode upper-case conversion */
+#if _USE_LFN == 3					/* Memory functions */
+void* ff_memalloc (UINT);			/* Allocate memory block */
+void ff_memfree (void*);			/* Free memory block */
+#endif
 #endif
 
 /* Sync functions */
 #if _FS_REENTRANT
-BOOL ff_cre_syncobj(BYTE, _SYNC_t*);
-BOOL ff_del_syncobj(_SYNC_t);
-BOOL ff_req_grant(_SYNC_t);
-void ff_rel_grant(_SYNC_t);
+int ff_cre_syncobj (BYTE, _SYNC_t*);/* Create a sync object */
+int ff_del_syncobj (_SYNC_t);		/* Delete a sync object */
+int ff_req_grant (_SYNC_t);			/* Lock sync object */
+void ff_rel_grant (_SYNC_t);		/* Unlock sync object */
 #endif
+
 
 
 
@@ -484,7 +484,9 @@ void ff_rel_grant(_SYNC_t);
 
 #define	FA_READ				0x01
 #define	FA_OPEN_EXISTING	0x00
-#if _FS_READONLY == 0
+#define FA__ERROR			0x80
+
+#if !_FS_READONLY
 #define	FA_WRITE			0x02
 #define	FA_CREATE_NEW		0x04
 #define	FA_CREATE_ALWAYS	0x08
@@ -492,7 +494,6 @@ void ff_rel_grant(_SYNC_t);
 #define FA__WRITTEN			0x20
 #define FA__DIRTY			0x40
 #endif
-#define FA__ERROR			0x80
 
 
 /* FAT sub type (FATFS.fs_type) */
@@ -514,67 +515,8 @@ void ff_rel_grant(_SYNC_t);
 #define AM_MASK	0x3F	/* Mask of defined bits */
 
 
-/* FatFs refers the members in the FAT structures with byte offset instead
-/ of structure member because there are incompatibility of the packing option
-/ between various compilers. */
-
-#define BS_jmpBoot			0
-#define BS_OEMName			3
-#define BPB_BytsPerSec		11
-#define BPB_SecPerClus		13
-#define BPB_RsvdSecCnt		14
-#define BPB_NumFATs			16
-#define BPB_RootEntCnt		17
-#define BPB_TotSec16		19
-#define BPB_Media			21
-#define BPB_FATSz16			22
-#define BPB_SecPerTrk		24
-#define BPB_NumHeads		26
-#define BPB_HiddSec			28
-#define BPB_TotSec32		32
-#define BS_55AA				510
-
-#define BS_DrvNum			36
-#define BS_BootSig			38
-#define BS_VolID			39
-#define BS_VolLab			43
-#define BS_FilSysType		54
-
-#define BPB_FATSz32			36
-#define BPB_ExtFlags		40
-#define BPB_FSVer			42
-#define BPB_RootClus		44
-#define BPB_FSInfo			48
-#define BPB_BkBootSec		50
-#define BS_DrvNum32			64
-#define BS_BootSig32		66
-#define BS_VolID32			67
-#define BS_VolLab32			71
-#define BS_FilSysType32		82
-
-#define	FSI_LeadSig			0
-#define	FSI_StrucSig		484
-#define	FSI_Free_Count		488
-#define	FSI_Nxt_Free		492
-
-#define MBR_Table			446
-
-#define	DIR_Name			0
-#define	DIR_Attr			11
-#define	DIR_NTres			12
-#define	DIR_CrtTime			14
-#define	DIR_CrtDate			16
-#define	DIR_FstClusHI		20
-#define	DIR_WrtTime			22
-#define	DIR_WrtDate			24
-#define	DIR_FstClusLO		26
-#define	DIR_FileSize		28
-#define	LDIR_Ord			0
-#define	LDIR_Attr			11
-#define	LDIR_Type			12
-#define	LDIR_Chksum			13
-#define	LDIR_FstClusLO		26
-
+/* Fast seek function */
+#define CREATE_LINKMAP	0xFFFFFFFF
 
 
 /*--------------------------------*/
@@ -592,5 +534,8 @@ void ff_rel_grant(_SYNC_t);
 #define	ST_DWORD(ptr,val)	*(BYTE*)(ptr)=(BYTE)(val); *(BYTE*)((ptr)+1)=(BYTE)((WORD)(val)>>8); *(BYTE*)((ptr)+2)=(BYTE)((DWORD)(val)>>16); *(BYTE*)((ptr)+3)=(BYTE)((DWORD)(val)>>24)
 #endif
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _FATFS */

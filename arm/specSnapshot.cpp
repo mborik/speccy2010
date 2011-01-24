@@ -172,8 +172,61 @@ void SavePage( FIL *file, byte page )
     }
 }
 
-void SaveSnapshot( const char *path, const char *name )
+void IncrementName( char *name )
 {
+    int p = strlen( name ) - 1;
+
+    while( p >= 0 )
+    {
+        if( name[p] >= '0' && name[p] < '9' )
+        {
+            name[p]++;
+            while( name[ ++p ] != 0 ) if( name[p] == '9' ) name[p] = '0';
+            return;
+        }
+        else p--;
+    }
+
+    strcpy( name, "" );
+}
+
+const char *UpdateSnaName()
+{
+    char result[ PATH_SIZE ] = "";
+
+    if( specConfig.snaName[0] != 0 )
+    {
+        if( specConfig.snaName[0] == '/' ) sniprintf( result, sizeof( result ), "%s", specConfig.snaName + 1 );
+        else sniprintf( result, sizeof( result ), "%s%s", Shell_GetPath(), specConfig.snaName );
+
+        while( result[0] != 0 && FileExists( result ) )
+        {
+            IncrementName( result );
+            IncrementName( specConfig.snaName );
+        }
+    }
+
+    return specConfig.snaName;
+}
+
+void SaveSnapshot( const char *name )
+{
+    char fileName[ PATH_SIZE ] = "";
+
+    if( name != 0 && name[0] != 0 )
+    {
+        if( name[0] == '/' ) sniprintf( fileName, sizeof( fileName ), "%s", name + 1 );
+        else sniprintf( fileName, sizeof( fileName ), "%s%s", Shell_GetPath(), name );
+    }
+    else
+    {
+        //tm time;
+        //RTC_GetTime( &time );
+        //sniprintf( fileName, sizeof( fileName ), "%s%.2d%.2d%.2d_%.2d%.2d%.2d.sna", Shell_GetPath(), time.tm_year - 100, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec );
+        sniprintf( fileName, sizeof( fileName ), "%sshot0000.sna", Shell_GetPath() );
+        while( fileName[0] != 0 && FileExists( fileName ) ) IncrementName( fileName );
+    }
+
     bool stopped = CPU_Stopped();
     if( !stopped ) CPU_Stop();
 
@@ -186,23 +239,8 @@ void SaveSnapshot( const char *path, const char *name )
     word specPc = SystemBus_Read( 0xc00001 );
     byte specInt = SystemBus_Read( 0xc00002 );
 
-    char fullName[ PATH_SIZE ];
-
-    if( path == 0 ) path = "";
-
-    if( name != 0 )
-    {
-        sniprintf( fullName, sizeof( fullName ), "%s%s", path, name );
-    }
-    else
-    {
-        tm time;
-        RTC_GetTime( &time );
-        sniprintf( fullName, sizeof( fullName ), "%s%.2d%.2d%.2d_%.2d%.2d%.2d.sna", path, time.tm_year - 100, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec );
-    }
-
     FIL snaFile;
-    if( f_open( &snaFile, fullName, FA_CREATE_ALWAYS | FA_READ | FA_WRITE ) == FR_OK )
+    if( f_open( &snaFile, fileName, FA_CREATE_ALWAYS | FA_READ | FA_WRITE ) == FR_OK )
     {
         dword addr;
         word i;

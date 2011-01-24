@@ -697,8 +697,34 @@ begin
 					
 				
 	ayDin <= cpuDout;
-	ayBC1 <= '1' when cpuM1 = '1' and cpuIORQ = '0' and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" else '0';
-	ayBDIR <= '1' when cpuM1 = '1' and cpuIORQ = '0' and cpuWR = '0' and cpuA( 15 ) = '1' and cpuA(1 downto 0) = "01" else '0';
+	--ayBC1 <= '1' when cpuM1 = '1' and cpuIORQ = '0' and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" else '0';
+	--ayBDIR <= '1' when cpuM1 = '1' and cpuIORQ = '0' and cpuWR = '0' and cpuA( 15 ) = '1' and cpuA(1 downto 0) = "01" else '0';
+	
+	process(memclk)
+	
+	begin
+				
+		if memclk'event and memclk = '1' then
+		
+			if cpuM1 = '1' and cpuIORQ = '0' and cpuA(1 downto 0) = "01" then
+				if cpuA( 15 downto 14 ) = "11" then
+					ayBC1 <= '1';
+				else
+					ayBC1 <= '0';
+				end if;
+				
+				if cpuWR = '0' and cpuA( 15 ) = '1' then
+					ayBDIR <= '1';
+				else
+					ayBDIR <= '0';
+				end if;		
+			else
+				ayBC1 <= '0';
+				ayBDIR <= '0';
+			end if;
+		
+		end if;                                                      
+	end process;
 	
     process( memclk )
     
@@ -710,6 +736,9 @@ begin
 		    
 		variable armReq : std_logic := '0';
 		variable rtcRamReq : std_logic := '0';
+		
+		variable portFfReq : std_logic := '0';
+		variable portAyReq : std_logic := '0';
 		
 		variable kbdTmp : std_logic_vector(4 downto 0);
 		variable cpuReq : std_logic;		
@@ -783,14 +812,6 @@ begin
 				memReq <= '0';
 				
 			end if;			
-
-			if ayDoutLe = '0' and ayMode /= 0 then
-				cpuDin <= ayDout;
-			end if;
-			
-			if specTrdosFlag = '0' and cpuA( 7 downto 0 ) = x"FF" and cpuIORQ = '0' and cpuRD = '0' then
-				cpuDin <= specPortFf;
-			end if;
 			
 			------------------------------------------------------------------------
 			
@@ -811,6 +832,16 @@ begin
 
 			----------------------------------------------------------------------------------
 			
+			if cpuRD /= '0' then
+				cpuDin <= x"ff";
+				portFfReq := '0';
+				portAyReq := '0';				
+			elsif portFfReq = '1' then
+				cpuDin <= specPortFf;
+			elsif portAyReq = '1' then
+				cpuDin <= ayDout;
+			end if;
+
 			if ulaWait /= '1' then
 				iCpuWr := iCpuWr(0) & cpuWR;
 				iCpuRd := iCpuRd(0) & cpuRD;     
@@ -937,6 +968,10 @@ begin
 					
 						if cpuA( 7 downto 0 ) = x"1F" then
 							cpuDin <= joystick;
+						elsif ayMode /= 0 and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" then
+							portAyReq := '1';
+						elsif cpuA( 7 downto 0 ) = x"FF" then
+							portFfReq := '1';
 						end if;
 											
 					end if;
@@ -1175,10 +1210,6 @@ begin
 					
 				end if;
 				
-			end if;
-			
-			if cpuRD /= '0' then
-				cpuDin <= x"ff";
 			end if;			
 			
 			---------------------------------------------------------

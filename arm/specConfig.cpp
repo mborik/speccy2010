@@ -19,14 +19,15 @@ const CParameter *GetIniParameters()
         CParameter( PTYPE_LIST, "Joystick 1", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode1 ),
         CParameter( PTYPE_LIST, "Joystick 2", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode2 ),
         CParameter( PTYPE_INT, "Mouse Sensitivity", "1|6|1", &specConfig.specMouseSensitivity ),
+        CParameter( PTYPE_LIST, "Font", "Bold|Classic|Alt", &specConfig.specFont ),
 
-        CParameter( PTYPE_STRING, "Disk A", (char*) sizeof(specConfig.specImages[0].name), &specConfig.specImages[0].name ),
+        CParameter( PTYPE_STRING, "Disk A", (char*) sizeof(specConfig.specImages[0].name), specConfig.specImages[0].name ),
         CParameter( PTYPE_LIST, "Disk A read only", "No|Yes", &specConfig.specImages[0].readOnly ),
-        CParameter( PTYPE_STRING, "Disk B", (char*) sizeof(specConfig.specImages[1].name), &specConfig.specImages[1].name ),
+        CParameter( PTYPE_STRING, "Disk B", (char*) sizeof(specConfig.specImages[1].name), specConfig.specImages[1].name ),
         CParameter( PTYPE_LIST, "Disk B read only", "No|Yes", &specConfig.specImages[1].readOnly ),
-        CParameter( PTYPE_STRING, "Disk C", (char*) sizeof(specConfig.specImages[2].name), &specConfig.specImages[2].name ),
+        CParameter( PTYPE_STRING, "Disk C", (char*) sizeof(specConfig.specImages[2].name), specConfig.specImages[2].name ),
         CParameter( PTYPE_LIST, "Disk C read only", "No|Yes", &specConfig.specImages[2].readOnly ),
-        CParameter( PTYPE_STRING, "Disk D", (char*) sizeof(specConfig.specImages[3].name), &specConfig.specImages[3].name ),
+        CParameter( PTYPE_STRING, "Disk D", (char*) sizeof(specConfig.specImages[3].name), specConfig.specImages[3].name ),
         CParameter( PTYPE_LIST, "Disk D read only", "No|Yes", &specConfig.specImages[3].readOnly ),
 
         CParameter( PTYPE_END )
@@ -41,6 +42,9 @@ void RestreConfig()
     specConfig.specVideoMode = 0;
     specConfig.specMouseSensitivity = 4;
     specConfig.specBdiMode = 1;
+    specConfig.specFont = 2;
+
+    strcpy( specConfig.snaName, "" );
 
     for( int i = 0; i < 4; i++ )
     {

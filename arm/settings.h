@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "string.h"
+#include "fatfs/ff.h"
 
 const int PTYPE_LIST = 0;
 const int PTYPE_STRING = 1;
