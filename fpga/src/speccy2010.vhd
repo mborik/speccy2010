@@ -228,20 +228,13 @@ architecture rtl of speccy2010_top is
 	signal videoV      : std_logic_vector(7 downto 0);   -- CompositeVideo
 	
     signal ayCLK		: std_logic;
-	signal ayBC1		: std_logic;
-	signal ayBDIR		: std_logic;
-	
-	--signal ayCS			: std_logic;
-	--signal ayASEL		: std_logic;
-	--signal ayWR			: std_logic;
+	signal ayADDR		: std_logic;
+	signal ayWR			: std_logic;
+	signal ayRD			: std_logic;
 	
 	signal ayDin        : std_logic_vector(7 downto 0);
 	signal ayDout       : std_logic_vector(7 downto 0);
-	signal ayDoutLe		: std_logic;
 
-	--signal ayA			: std_logic_vector(7 downto 0);	
-	--signal ayB			: std_logic_vector(7 downto 0);
-	--signal ayC			: std_logic_vector(7 downto 0);
 	signal ayOUT        : std_logic_vector(7 downto 0);
 	signal ayOUT_A      : std_logic_vector(7 downto 0);
 	signal ayOUT_B      : std_logic_vector(7 downto 0);
@@ -251,10 +244,9 @@ architecture rtl of speccy2010_top is
 	signal tdaWs		: std_logic := '1';
 	signal tdaBck		: std_logic := '1';
 	
-	signal cpuCLK_nowait	: std_logic;
+	signal cpuCLK_nowait		: std_logic;
 	signal cpuCLK_nowait_prev	: std_logic;
-	signal cpuCLK		: std_logic;
-	signal cpuCLK_prev		: std_logic;
+	signal cpuCLK				: std_logic;
 	
 	signal cpuWait		: std_logic;
 	signal cpuReset		: std_logic := '0';
@@ -317,9 +309,7 @@ begin
 		port map(
 			inclk0 => CLK_20,
 			c0     => memclk,
-			c1     => sysclk,
-			c2     => open
-		
+			c1     => sysclk		
 		);
 		
 	
@@ -355,27 +345,20 @@ begin
 		
 	U02 : entity work.YM2149
 		port map(
+			
 			RESET_L => not ( cpuReset or reset ),
-			
 			CLK     => sysclk,
-			I_DA    => ayDin,
-			O_DA    => ayDout,
-			O_DA_OE_L	=> ayDoutLe,
-			
 			ENA		=> ayCLK and not cpuHaltAck,
 			I_SEL_L => '1',
 			
-			I_IOA	=> x"00",
-			I_IOB	=> x"00",
+			I_DA    => ayDin,
+			O_DA    => ayDout,
 			
-			I_A9_L	=> '0',
-			I_A8	=> '1',
-			I_BDIR	=> ayBDIR,
-			I_BC2	=> '1',
-			I_BC1	=> ayBC1,
+			busctrl_addr => ayADDR,
+			busctrl_we => ayWR,
+			busctrl_re => ayRD,
 			
 			O_AUDIO	=> ayOUT,
-
 			O_AUDIO_A	=> ayOUT_A,
 			O_AUDIO_B	=> ayOUT_B,
 			O_AUDIO_C	=> ayOUT_C
@@ -697,34 +680,6 @@ begin
 					
 				
 	ayDin <= cpuDout;
-	--ayBC1 <= '1' when cpuM1 = '1' and cpuIORQ = '0' and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" else '0';
-	--ayBDIR <= '1' when cpuM1 = '1' and cpuIORQ = '0' and cpuWR = '0' and cpuA( 15 ) = '1' and cpuA(1 downto 0) = "01" else '0';
-	
-	process(memclk)
-	
-	begin
-				
-		if memclk'event and memclk = '1' then
-		
-			if cpuM1 = '1' and cpuIORQ = '0' and cpuA(1 downto 0) = "01" then
-				if cpuA( 15 downto 14 ) = "11" then
-					ayBC1 <= '1';
-				else
-					ayBC1 <= '0';
-				end if;
-				
-				if cpuWR = '0' and cpuA( 15 ) = '1' then
-					ayBDIR <= '1';
-				else
-					ayBDIR <= '0';
-				end if;		
-			else
-				ayBC1 <= '0';
-				ayBDIR <= '0';
-			end if;
-		
-		end if;                                                      
-	end process;
 	
     process( memclk )
     
@@ -738,7 +693,6 @@ begin
 		variable rtcRamReq : std_logic := '0';
 		
 		variable portFfReq : std_logic := '0';
-		variable portAyReq : std_logic := '0';
 		
 		variable kbdTmp : std_logic_vector(4 downto 0);
 		variable cpuReq : std_logic;		
@@ -835,18 +789,18 @@ begin
 			if cpuRD /= '0' then
 				cpuDin <= x"ff";
 				portFfReq := '0';
-				portAyReq := '0';				
+				ayRD <= '0';				
 			elsif portFfReq = '1' then
 				cpuDin <= specPortFf;
-			elsif portAyReq = '1' then
+			elsif ayRD = '1' then
 				cpuDin <= ayDout;
 			end if;
 
-			if ulaWait /= '1' then
-				iCpuWr := iCpuWr(0) & cpuWR;
-				iCpuRd := iCpuRd(0) & cpuRD;     
+			if cpuWR /= '0' then
+				ayADDR <= '0';
+				ayWR <= '0';
 			end if;
-			
+
 			--if cpuCLK_prev = '1' and cpuWR = '0' then
 			if iCpuWr = "10" then
 				
@@ -895,6 +849,11 @@ begin
 							rtcRamAddressRd := unsigned(cpuDout);
 						--elsif cpuA = x"bff7" and specPortEff7(7) = '1' then	
 							--rtcRam( to_integer( unsigned( specPortDff7 ) ) ) := cpuDout;
+						elsif ayMode /= 0 and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" then
+							ayADDR <= '1';
+						elsif ayMode /= 0 and cpuA( 15 downto 14 ) = "10" and cpuA(1 downto 0) = "01" then
+							ayWR <= '1';
+														
 						end if;
 						
 					end if;
@@ -969,7 +928,7 @@ begin
 						if cpuA( 7 downto 0 ) = x"1F" then
 							cpuDin <= joystick;
 						elsif ayMode /= 0 and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" then
-							portAyReq := '1';
+							ayRD <= '1';
 						elsif cpuA( 7 downto 0 ) = x"FF" then
 							portFfReq := '1';
 						end if;
@@ -1213,6 +1172,11 @@ begin
 			end if;			
 			
 			---------------------------------------------------------
+			
+			if ulaWait /= '1' then
+				iCpuWr := iCpuWr(0) & cpuWR;
+				iCpuRd := iCpuRd(0) & cpuRD;     
+			end if;
 
 			if ( ArmAle = "10" ) then
 				addressReg := unsigned( ARM_A ) & unsigned( ARM_AD );
@@ -1409,8 +1373,8 @@ begin
 	
 	cpuCLK_nowait <= clk7m and not ChrC_Cnt(0) when cpuTurbo = 0 else
 					clk7m when cpuTurbo = 1 else
-					clk14m when cpuTurbo = 2 else
-					clk28m;
+					clk14m;-- when cpuTurbo = 2 else
+					--clk28m;
 					
 	cpuCLK <= cpuCLK_nowait and not cpuWait;
 
@@ -1423,12 +1387,11 @@ begin
 		
 			refresh <= '0';
 				
-			if cpuHaltAck = '1' or specTrdosWait = '1' or ( cpuMREQ = '0' and cpuRFSH = '0' ) then
+			if cpuReset = '1' or cpuHaltAck = '1' or specTrdosWait = '1' or ( cpuMREQ = '0' and cpuRFSH = '0' ) then
 				refresh <= '1';
 			end if;
 			
 			cpuCLK_nowait_prev <= cpuCLK_nowait;
-			cpuCLK_prev <= cpuCLK;
 		
 			if cpuCLK_nowait = '1' then
 				
@@ -1942,44 +1905,44 @@ begin
 	process( sysclk )
 		
 	begin
-		if sysclk'event and sysclk = '1' and clk7m = '1' then
-			
-			if testVideo = 0 then
-			
-				if specY = '0' then
-			
-					rgbR <= specR & specR & "000000";
-					rgbG <= specG & specG & "000000";
-					rgbB <= specB & specB & "000000";
+		if sysclk'event and sysclk = '1' then
+			if clk7m = '1' then
+				if testVideo = 0 then
+					if specY = '0' then
+				
+						rgbR <= specR & specR & "000000";
+						rgbG <= specG & specG & "000000";
+						rgbB <= specB & specB & "000000";
+					
+					else
+				
+						rgbR <= specR & specR & specR & specR & specR & specR & specR & specR;
+						rgbG <= specG & specG & specG & specG & specG & specG & specG & specG;
+						rgbB <= specB & specB & specB & specB & specB & specB & specB & specB;
+						
+					end if;
 				
 				else
-			
-					rgbR <= specR & specR & specR & specR & specR & specR & specR & specR;
-					rgbG <= specG & specG & specG & specG & specG & specG & specG & specG;
-					rgbB <= specB & specB & specB & specB & specB & specB & specB & specB;
-					
-				end if;
-			
-			else
-			
-				rgbR <= x"00";
-				rgbG <= x"00";
-				rgbB <= x"00";
 				
-				if Paper = '0' then
+					rgbR <= x"00";
+					rgbG <= x"00";
+					rgbB <= x"00";
 					
-					if testVideo( 0 ) = '1' then rgbB <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
-					if testVideo( 1 ) = '1' then rgbR <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
-					if testVideo( 2 ) = '1' then rgbG <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
-				
-				elsif Blank_r = '1' and ( hCnt(3) xor vCnt(3) ) = '1' then
+					if Paper = '0' then
+						
+						if testVideo( 0 ) = '1' then rgbB <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
+						if testVideo( 1 ) = '1' then rgbR <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
+						if testVideo( 2 ) = '1' then rgbG <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
+					
+					elsif Blank_r = '1' and ( hCnt(3) xor vCnt(3) ) = '1' then
 
-					rgbR <= x"FF";
-					rgbG <= x"FF";
-					rgbB <= x"FF";
+						rgbR <= x"FF";
+						rgbG <= x"FF";
+						rgbB <= x"FF";
+						
+					end if;
 					
 				end if;
-				
 			end if;
 			
 		end if;

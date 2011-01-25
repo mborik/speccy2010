@@ -1176,6 +1176,12 @@ bool Shell_CopyItem( const char *srcName, const char *dstName, bool move = false
 
             size -= currentSize;
             if( ( src.fptr & 0x300 ) == 0 ) CycleMark();
+
+            if( GetKey( false ) == K_ESC )
+            {
+                res = FR_DISK_ERR;
+                break;
+            }
         }
 
         //FreeBlock( block );
@@ -1253,6 +1259,8 @@ bool Shell_Copy( const char *_name, bool move )
 
                 Write( &fr, table_buffer, i );
             }
+
+            if( GetKey( false ) == K_ESC ) break;
         }
     }
 
