@@ -39,7 +39,8 @@
 			</Target>
 		</Build>
 		<Compiler>
-			<Add option="-Os" />
+			<Add option="-mno-thumb-interwork" />
+			<Add option="-O2" />
 			<Add option="-Wall" />
 			<Add option="-mcpu=arm7tdmi" />
 			<Add option="-ffunction-sections" />

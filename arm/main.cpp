@@ -440,6 +440,17 @@ void FPGA_Config()
     __TRACE( "FPGA configuration started...\n" );
 
     GPIO_InitTypeDef  GPIO_InitStructure;
+
+	//BOOT0 pin
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+	GPIO_Init( GPIO0, &GPIO_InitStructure );
+
+    //Reset FPGA pin
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
+	GPIO_Init( GPIO1, &GPIO_InitStructure );
+
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_8;
 	GPIO_Init( GPIO1, &GPIO_InitStructure );
@@ -510,11 +521,10 @@ void FPGA_Config()
 	    fpgaConfigVersionPrev = 0;
 	}
 
-    GPIO1->PD &= ~( 1 << 13 );              // FPGA RESET LOW
-    DelayMs( 1 );
-    GPIO1->PD |= ( 1 << 13 );               // FPGA RESET HIGH
+    GPIO_WriteBit( GPIO1, GPIO_Pin_13, Bit_RESET );     // FPGA RESET LOW
+    DelayMs( 10 );
+    GPIO_WriteBit( GPIO1, GPIO_Pin_13, Bit_SET );     // FPGA RESET HIGH
 
-    DelayMs( 1 );
     if( SystemBus_TestConfiguration() == false )
     {
         __TRACE( "Wrong FPGA configuration...\n" );
@@ -522,6 +532,7 @@ void FPGA_Config()
     }
     else
     {
+
         FPGA_TestClock();
         Keyboard_Reset();
         Mouse_Reset();
@@ -838,14 +849,22 @@ void Mouse_Reset()
 void Keyboard_Reset()
 {
     word keyCode = SystemBus_Read( 0xc00032 );
-    while( ( keyCode & 0x8000 ) != 0 ) keyCode = SystemBus_Read( 0xc00032 );
+    while( ( keyCode & 0x8000 ) != 0 )
+    {
+        //__TRACE( "keyCode_Skip : 0x%.2x, 0x%.2x\n", keyCode & 0xff, ( keyCode >> 8 ) & 0x0f );
+        keyCode = SystemBus_Read( 0xc00032 );
+    }
 
     kbdInited = 0;
     SystemBus_Write( 0xc00032, 0xff );
+    //__TRACE( "Keyboard_Send : 0x%.2x\n", 0xff );
 
     kbdResetTimer = 0;
     keybordSendPos = 0;
     keybordSendSize = 0;
+
+    keyboard.Clean();
+    joystick.Clean();
 }
 void Keyboard_Send( const byte *data, int size )
 {
@@ -862,8 +881,6 @@ void Keyboard_Send( const byte *data, int size )
 
 void Keyboard_SendNext( byte code )
 {
-    //__TRACE( "Keyboard_Received : 0x%.2x\n", code );
-
     if( code == 0xfa ) keybordSendPos++;
     if( keybordSendPos >= keybordSendSize ) return;
 
@@ -929,6 +946,8 @@ void Timer_Routine()
             word keyCode = SystemBus_Read( 0xc00032 );
             while( ( keyCode & 0x8000 ) != 0 )
             {
+                //__TRACE( "keyCode : 0x%.2x, 0x%.2x\n", keyCode & 0xff, ( keyCode >> 8 ) & 0x0f );
+
                 keyboard.WriteByte( (byte) keyCode );
                 keyCode = SystemBus_Read( 0xc00032 );
             }
@@ -964,11 +983,14 @@ void Timer_Routine()
                     mouseBuffPos = 0;
 
                     __TRACE( "PS/2 mouse init OK..\n" );
+
+                    SystemBus_Write( 0xc0001e, 0x5555 );
+                    SystemBus_Write( 0xc0001f, 0xff );
                 }
                 else if( mouseInited == MOUSE_OK )
                 {
-                    static dword x = 0x12345678;
-                    static dword y = 0x12345678;
+                    static dword x = 0x55555555;
+                    static dword y = 0x55555555;
 
                     mouseBuff[ mouseBuffPos++ ] = mouseCode;
 
@@ -1006,8 +1028,17 @@ void Timer_Routine()
                         y += dy;
 
                         byte buttons = 0xff;
-                        if( ( mouseBuff[0] & ( 1 << 0 ) ) != 0 ) buttons ^= ( 1 << 1 );
-                        if( ( mouseBuff[0] & ( 1 << 1 ) ) != 0 ) buttons ^= ( 1 << 0 );
+                        if( !specConfig.specMouseSwap )
+                        {
+                            if( ( mouseBuff[0] & ( 1 << 0 ) ) != 0 ) buttons ^= ( 1 << 1 );
+                            if( ( mouseBuff[0] & ( 1 << 1 ) ) != 0 ) buttons ^= ( 1 << 0 );
+                        }
+                        else
+                        {
+                            if( ( mouseBuff[0] & ( 1 << 0 ) ) != 0 ) buttons ^= ( 1 << 0 );
+                            if( ( mouseBuff[0] & ( 1 << 1 ) ) != 0 ) buttons ^= ( 1 << 1 );
+                        }
+
                         if( ( mouseBuff[0] & ( 1 << 2 ) ) != 0 ) buttons ^= ( 1 << 2 );
 
                         byte sx = x >> (byte)( ( 6 - specConfig.specMouseSensitivity ) );
@@ -1044,6 +1075,27 @@ void Timer_Routine()
                 mouseResetTimer++;
                 if( mouseResetTimer > 200 ) Mouse_Reset();
             }
+
+            //-------------------------------------------------
+            // reset FPGA
+
+            /*
+            static bool resetFPGA = false;
+
+            if( GPIO_ReadBit( GPIO0, GPIO_Pin_0 ) == Bit_RESET )
+            {
+                resetFPGA = true;
+            }
+            else if( resetFPGA )
+            {
+                __TRACE( "Reset FPGA..\n" );
+
+                GPIO_WriteBit( GPIO1, GPIO_Pin_13, Bit_RESET );
+                DelayMs( 1 );
+                GPIO_WriteBit( GPIO1, GPIO_Pin_13, Bit_SET );
+
+                resetFPGA = false;
+            }*/
 
             //-------------------------------------------------
 
@@ -1547,8 +1599,20 @@ void __TRACE( const char *str, ... )
         for( int i = 0; i <= cmdSize; i++ ) uart0.WriteFile( (byte*) &delChar, 1 );
     }
 
-    UART0_WriteText( fullStr );
-    traceNewLine = fullStr[ strlen( fullStr ) - 1 ] == '\n';
+    char lastChar = 0;
+    char *strPos = fullStr;
+
+    while( *strPos != 0 )
+    {
+        lastChar = *strPos++;
+
+        if( lastChar == '\n' ) uart0.WriteFile( (byte*) "\r\n", 2 );
+        else uart0.WriteFile( (byte*) &lastChar, 1 );
+
+        WDT_Kick();
+    }
+
+    traceNewLine = ( lastChar == '\n' );
 
     if( traceNewLine )
     {
@@ -1593,7 +1657,9 @@ int main()
 
 	InitStack();
 
+    __TRACE( "\n" );
     __TRACE( "Speccy2010, ver %d.%d, rev %d !\n", VER_MAJOR, VER_MINIR, REV );
+
     if( !pllStatusOK ) __TRACE( "PLL initialization error !\n" );
     DelayMs( 100 );
 

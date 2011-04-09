@@ -9,7 +9,7 @@ const CParameter *GetIniParameters()
     {
         CParameter( PTYPE_LIST, "ROM/RAM", "ZX Spectrum 48|Pentagon 128|Pentagon 1024", &specConfig.specRom ),
         CParameter( PTYPE_LIST, "Timings", "ZX Spectrum 48|ZX Spectrum 128|Pentagon|Scorpion", &specConfig.specSync ),
-        CParameter( PTYPE_LIST, "Turbo", "None|x2|x4|x8", &specConfig.specTurbo ),
+        CParameter( PTYPE_LIST, "Turbo", "None|x2|x4|x8(unstable)", &specConfig.specTurbo ),
         CParameter( PTYPE_LIST, "AY mode", "None|ABC|ACB|Mono", &specConfig.specAyMode ),
         CParameter( PTYPE_LIST, "BDI mode", "Slow|Fast", &specConfig.specBdiMode ),
         CParameter( PTYPE_LIST, "Video mode", "Composite/S-Video|PAL RGB|VGA 50Hz|VGA 60Hz|VGA 75Hz", &specConfig.specVideoMode ),
@@ -19,6 +19,7 @@ const CParameter *GetIniParameters()
         CParameter( PTYPE_LIST, "Joystick 1", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode1 ),
         CParameter( PTYPE_LIST, "Joystick 2", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode2 ),
         CParameter( PTYPE_INT, "Mouse Sensitivity", "1|6|1", &specConfig.specMouseSensitivity ),
+        CParameter( PTYPE_LIST, "Swap mouse buttons", "Off|On", &specConfig.specMouseSwap ),
         CParameter( PTYPE_LIST, "Font", "Bold|Classic|Alt", &specConfig.specFont ),
 
         CParameter( PTYPE_STRING, "Disk A", (char*) sizeof(specConfig.specImages[0].name), specConfig.specImages[0].name ),
@@ -41,6 +42,8 @@ void RestreConfig()
 {
     specConfig.specVideoMode = 0;
     specConfig.specMouseSensitivity = 4;
+    specConfig.specMouseSwap = 0;
+
     specConfig.specBdiMode = 1;
     specConfig.specFont = 2;
 

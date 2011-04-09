@@ -786,6 +786,13 @@ begin
 
 			----------------------------------------------------------------------------------
 			
+			if ulaWait /= '1' and cpuTurbo = 3 then
+				iCpuWr := iCpuWr(0) & cpuWR;
+				iCpuRd := iCpuRd(0) & cpuRD;     
+			end if;
+
+			----------------------------------------------------------------------------------
+
 			if cpuRD /= '0' then
 				cpuDin <= x"ff";
 				portFfReq := '0';
@@ -1373,8 +1380,8 @@ begin
 	
 	cpuCLK_nowait <= clk7m and not ChrC_Cnt(0) when cpuTurbo = 0 else
 					clk7m when cpuTurbo = 1 else
-					clk14m;-- when cpuTurbo = 2 else
-					--clk28m;
+					clk14m when cpuTurbo = 2 else
+					clk28m;
 					
 	cpuCLK <= cpuCLK_nowait and not cpuWait;
 

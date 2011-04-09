@@ -315,6 +315,10 @@ void DecodeKey( word keyCode, word keyFlags )
                     if( !Tape_Started() ) Tape_Start();
                     else Tape_Stop();
                     break;
+
+                case KEY_INSERT :
+                    specConfig.specMouseSwap = !specConfig.specMouseSwap;
+                    break;
             }
         }
     }

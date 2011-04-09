@@ -745,9 +745,6 @@ void CPU_Reset( bool res )
     }
 
     fdc_reset();
-
-    //if( res ) GPIO1->PD |= ( 1 << 13 );               // RESET HIGH
-    //else GPIO1->PD &= ~( 1 << 13 );                   // RESET LOW
 }
 
 void CPU_ModifyPC( word pc, byte istate )
@@ -1925,6 +1922,7 @@ CMenuItem mainMenu[] = {
     CMenuItem( 1, 12, "Joystick 1: ", GetParam( iniParameters, "Joystick 1" ) ),
     CMenuItem( 1, 13, "Joystick 2: ", GetParam( iniParameters, "Joystick 2" ) ),
     CMenuItem( 1, 14, "Mouse Sensitivity: ", GetParam( iniParameters, "Mouse Sensitivity" ) ),
+    CMenuItem( 1, 15, "Swap mouse buttons: ", GetParam( iniParameters, "Swap mouse buttons" ) ),
 
     CMenuItem( 1, 16, "Video mode: ", GetParam( iniParameters, "Video mode" ) ),
     CMenuItem( 1, 17, "Video aspect ratio: ", GetParam( iniParameters, "Video aspect ratio" ) ),

@@ -31,6 +31,7 @@ struct CSpecConfig
 	int specJoyMode1;
 	int specJoyMode2;
 	int specMouseSensitivity;
+	int specMouseSwap;
     int specFont;
 
 	CDiskImage specImages[4];

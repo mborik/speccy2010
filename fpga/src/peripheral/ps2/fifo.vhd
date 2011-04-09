@@ -27,6 +27,9 @@ end fifo;
 
 architecture rtl of fifo is
 
+	signal out_ready	: std_logic := '0';
+	signal in_full		: std_logic := '0';
+	
 begin
 		
 	process (clk_i, rst_i)
@@ -34,9 +37,9 @@ begin
 		type buffType is array( 0 to fifo_depth - 1 ) of std_logic_vector( fifo_width - 1 downto 0 );
 		variable buff : buffType;
 		
-		variable readPtr : integer := 0;
-		variable writePtr : integer := 0;
-		variable dataSize : integer := 0;
+		subtype small_int is integer range 0 to fifo_depth - 1;		
+		variable readPtr : small_int := 0;
+		variable writePtr : small_int := 0;
 	
 	begin
 	
@@ -44,56 +47,43 @@ begin
 		
 			if rst_i = '1' then
 				
-				out_ready_o <= '0';
+				out_ready <= '0';
+				in_full <= '0';
+
 				readPtr  := 0;
 				writePtr := 0;
-				dataSize := 0;
 			
 			else
 			
-				data_o <= buff( readPtr );
-
-				if dataSize < fifo_depth then
-					in_full_o <= '0';
-				else 
-					in_full_o <= '1';
-				end if;
+				data_o <= buff( readPtr );				
+				out_ready_o <= out_ready;
 				
-				if wr_i = '1' and dataSize < fifo_depth then
+				if wr_i = '1' and in_full = '0' then
 					
-					buff( writePtr ) := data_i;
+					buff( writePtr ) := data_i;					
+					writePtr := writePtr + 1;					
 					
-					writePtr := writePtr + 1;
-					if writePtr = fifo_depth then
-						writePtr := 0;
-					end if;
-					
-					if dataSize = 0 then							
-						data_o <= data_i;
-						out_ready_o <= '1';
+					out_ready <= '1';
+					if writePtr = readPtr then
+						in_full <= '1';
 					end if;
 					
 				end if;
 				
-				if rd_i = '1' and dataSize > 0 then
+				if rd_i = '1' and out_ready = '1' then
 					
-					readPtr := readPtr + 1;				
-					if readPtr = fifo_depth then
-						readPtr := 0;
+					readPtr := readPtr + 1;					
+					out_ready_o <= '0';
+					
+					in_full <= '0';					
+					if writePtr = readPtr then
+						out_ready <= '0';
 					end if;
-					
-					if dataSize = 1 then
-						out_ready_o <= '0';
-					end if;				
 					
 				end if;
 				
-				if wr_i = '1' and rd_i = '0' then
-					dataSize := dataSize + 1;
-				elsif wr_i = '0' and rd_i = '1' then
-					dataSize := dataSize - 1;
-				end if;
-
+				in_full_o <= in_full;
+				
 			end if;
 			
 		end if;

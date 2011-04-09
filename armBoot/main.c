@@ -113,7 +113,7 @@ void UART0_Init( GPIO_TypeDef *tx_gpio, dword tx_pin, GPIO_TypeDef *rx_gpio, dwo
 	UART0_SetBaudRate( 115200 );
 }
 
-void UART0_WriteFile( byte *s, dword cnt )
+void UART0_WriteFile( const byte *s, dword cnt )
 {
 	while( cnt )
 	{
@@ -232,7 +232,7 @@ int main()
 	pllStatusOK = MRCC_Config();
 
     UART0_Init( GPIO0, GPIO_Pin_11, GPIO0, GPIO_Pin_10 );
-    __TRACE( "Speccy2010 boot ver 1.0!\n" );
+    __TRACE( "Speccy2010 boot ver 1.1!\n" );
 
     SPI_Config();
     SD_Init();
@@ -245,7 +245,18 @@ int main()
 
 void __TRACE( const char *str )
 {
-	UART0_WriteFile( (byte*) str, strlen(str) );
+    char lastChar = 0;
+    const char *strPos = str;
+
+    while( *strPos != 0 )
+    {
+        lastChar = *strPos++;
+
+        if( lastChar == '\n' ) UART0_WriteFile( (byte*) "\r\n", 2 );
+        else UART0_WriteFile( (byte*) &lastChar, 1 );
+
+        WDT_Kick();
+    }
 }
 
 void WDT_Kick()
