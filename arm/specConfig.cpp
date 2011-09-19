@@ -7,6 +7,8 @@ const CParameter *GetIniParameters()
 {
     const static CParameter _iniParameters[] =
     {
+        CParameter( PTYPE_STRING, "FPGA config", (char*) sizeof(specConfig.fpgaConfigName), specConfig.fpgaConfigName ),
+
         CParameter( PTYPE_LIST, "ROM/RAM", "ZX Spectrum 48|Pentagon 128|Pentagon 1024", &specConfig.specRom ),
         CParameter( PTYPE_LIST, "Timings", "ZX Spectrum 48|ZX Spectrum 128|Pentagon|Scorpion", &specConfig.specSync ),
         CParameter( PTYPE_LIST, "Turbo", "None|x2|x4|x8(unstable)", &specConfig.specTurbo ),
@@ -40,6 +42,8 @@ const CParameter *GetIniParameters()
 
 void RestreConfig()
 {
+    strcpy( specConfig.fpgaConfigName, "speccy" );
+
     specConfig.specVideoMode = 0;
     specConfig.specMouseSensitivity = 4;
     specConfig.specMouseSwap = 0;

@@ -41,7 +41,7 @@ static int trd_open(struct flp_image *img, dword size)
 	    img->side_cnt = 2;
 	}
 
-	img->trk_cnt = size / ( img->side_cnt * STD_SEC_CNT * STD_SEC_SIZE );
+	img->trk_cnt = ( size + img->side_cnt * STD_SEC_CNT * STD_SEC_SIZE - 1 ) / ( img->side_cnt * STD_SEC_CNT * STD_SEC_SIZE );
 
 	floppy_std_params(img);
 

@@ -10,7 +10,7 @@
 
 #define VER_MAJOR 1
 #define VER_MINIR 0
-#define REV 50
+#define REV 51
 
 #ifdef __cplusplus
 extern "C"
@@ -74,6 +74,12 @@ extern "C"
 
 #ifdef __cplusplus
     #include "string.h"
+
+    const dword FPGA_NONE = 0x00000000;
+    const dword FPGA_SPECCY2010 = 0x00000001;
+    const dword FPGA_ZET = 0x00000002;
+
+    extern dword fpgaStatus;
 
     bool SystemBus_TestConfiguration();
     void SystemBus_SetAddress( dword address );

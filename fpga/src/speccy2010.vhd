@@ -712,6 +712,7 @@ begin
 		if memclk'event and memclk = '1' then
         
 			if reset = '1' then				
+				addressReg := x"c000f0";
 				cpuReset <= '0';
 				cpuHaltReq <= '0';
 			end if;		
@@ -1072,7 +1073,7 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"50" then
 							counter20_en <= ARM_AD(0);
 							counterMem_en <= ARM_AD(0);
-							
+						
 						end if;
 						
 					elsif addressReg( 23 downto 8 ) = x"c001" then																	
@@ -1155,6 +1156,9 @@ begin
 							ARM_AD <= std_logic_vector( counterMem( 15 downto 0 ) );
 						elsif addressReg( 7 downto 0 ) = x"53" then
 							ARM_AD <= std_logic_vector( counterMem( 31 downto 16 ) );
+							
+						elsif addressReg( 7 downto 0 ) = x"f0" then
+							ARM_AD <= x"f001";
 							
 						else
 							ARM_AD <= x"ffff";							

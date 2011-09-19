@@ -18,6 +18,8 @@ struct CDiskImage
 
 struct CSpecConfig
 {
+    char fpgaConfigName[ 16 ];
+
 	int specRom;
 	int specUseBank0;
 	int specSync;

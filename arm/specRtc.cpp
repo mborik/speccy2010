@@ -15,6 +15,8 @@ byte RTC_ToDec( byte dat )
 
 void RTC_Update()
 {
+    if( fpgaStatus != FPGA_SPECCY2010 ) return;
+
     rtcData[ 0x0a ] |= 0x80;
     SystemBus_Write( 0xc0010a, rtcData[ 0x0a ] );
 

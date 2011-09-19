@@ -373,11 +373,13 @@ bool WriteLine( FIL *file, const char *str )
 #define nSTATUS() GPIO_ReadBit( GPIO1, GPIO_Pin_8 )
 
 dword fpgaConfigVersionPrev = 0;
+dword fpgaStatus = FPGA_NONE;
+
 dword romConfigPrev = -1;
 
 void FPGA_TestClock()
 {
-    if( fpgaConfigVersionPrev == 0 ) return;
+    if( fpgaStatus != FPGA_SPECCY2010 ) return;
 
     CPU_Stop();
 
@@ -408,9 +410,15 @@ void FPGA_Config()
     fpgaConfigInfo.lfname = lfn;
     fpgaConfigInfo.lfsize = 0;
 
-    if( f_stat( "speccy2010.rbf", &fpgaConfigInfo ) != FR_OK )
+    char fileName[ PATH_SIZE ] = "speccy2010.rbf";
+    if( strcmp( specConfig.fpgaConfigName, "speccy" ) != 0 )
     {
-        __TRACE( "Cannot open speccy2010.rbf...\n" );
+        sniprintf( fileName, sizeof(fileName), "%s/%s.rbf", specConfig.fpgaConfigName, specConfig.fpgaConfigName );
+    }
+
+    if( f_stat( fileName, &fpgaConfigInfo ) != FR_OK )
+    {
+        __TRACE( "Cannot open %s...\n", fileName );
         return;
     }
 
@@ -424,20 +432,24 @@ void FPGA_Config()
 
     if( fpgaConfigVersionPrev >= fpgaConfigVersion )
     {
-        __TRACE( "The version of speccy2010.rbf is match...\n" );
+        __TRACE( "The version of %s is match...\n", fileName );
         return;
     }
 
     FIL fpgaConfig;
-    if( f_open( &fpgaConfig, "speccy2010.rbf", FA_READ ) != FR_OK )
+    if( f_open( &fpgaConfig, fileName, FA_READ ) != FR_OK )
     {
-        __TRACE( "Cannot open speccy2010.rbf...\n" );
+        __TRACE( "Cannot open %s...\n", fileName );
         return;
     }
-
+    else
+    {
+        __TRACE( "FPGA cofiguration file %s is opened...\n", fileName );
+    }
     //--------------------------------------------------------------------------
 
     __TRACE( "FPGA configuration started...\n" );
+    fpgaStatus = FPGA_NONE;
 
     GPIO_InitTypeDef  GPIO_InitStructure;
 
@@ -522,20 +534,32 @@ void FPGA_Config()
 	}
 
     GPIO_WriteBit( GPIO1, GPIO_Pin_13, Bit_RESET );     // FPGA RESET LOW
-    DelayMs( 10 );
+    DelayMs( 100 );
     GPIO_WriteBit( GPIO1, GPIO_Pin_13, Bit_SET );     // FPGA RESET HIGH
+    DelayMs( 10 );
 
-    if( SystemBus_TestConfiguration() == false )
+    SystemBus_TestConfiguration();
+
+    if( fpgaStatus == FPGA_SPECCY2010 )
     {
-        __TRACE( "Wrong FPGA configuration...\n" );
-        fpgaConfigVersionPrev = 0;
-    }
-    else
-    {
+        __TRACE( "Speccy2010 FPGA configuration found...\n" );
 
         FPGA_TestClock();
         Keyboard_Reset();
         Mouse_Reset();
+
+        Spectrum_UpdateConfig();
+        Spectrum_UpdateDisks();
+    }
+    else if( fpgaStatus == FPGA_ZET )
+    {
+        __TRACE( "ZET FPGA configuration found...\n" );
+
+        SystemBus_SetAddress( 0x000000 );
+    }
+    else
+    {
+        __TRACE( "Wrong FPGA configuration...\n" );
     }
 
     romConfigPrev = -1;
@@ -548,15 +572,18 @@ void FPGA_Config()
 const dword ARM_RD = 1 << 8;
 const dword ARM_WR = 1 << 9;
 const dword ARM_ALE = 1 << 10;
-const dword ARM_WAIT = 1 << 11;
+
+#define ZET_FIFO_READY()    ( ( GPIO0->PD & ( 1 << 2 ) ) != 0 )
+#define ZET_FIFO_FULL()     ( ( GPIO1->PD & ( 1 << 12 ) ) != 0 )
+#define ARM_WAIT()          ( ( GPIO2->PD & ( 1 << 11 ) ) == 0 )
 
 bool SystemBus_TestConfiguration()
 {
-    bool result = true;
-
-    SystemBus_SetAddress( 0xc00000 );
+    fpgaStatus = FPGA_NONE;
 
     portENTER_CRITICAL();
+
+    SystemBus_SetAddress( 0xc000f0 );
 
     GPIO2->PM = ~( ARM_RD | ARM_WR | ARM_ALE );
     GPIO2->PD = ( ARM_RD | ARM_WR | ARM_ALE );
@@ -569,14 +596,21 @@ bool SystemBus_TestConfiguration()
     GPIO2->PD = 0;
 
     DelayUs( 10 );
-    if( ( GPIO2->PD & ARM_WAIT ) == 0 ) result = false;
+
+    word result = 0;
+    if( !ARM_WAIT() ) result = GPIO0->PD >> 16;
 
     GPIO2->PD = ARM_RD;
     GPIO0->PC2 = 0xffff0000;
 
     portEXIT_CRITICAL();
 
-    return result;
+    //-------------------------------------------------------------------
+
+    if( result == 0xf001 ) fpgaStatus = FPGA_SPECCY2010;
+    else if( result == 0xf002 ) fpgaStatus = FPGA_ZET;
+
+    return fpgaStatus != FPGA_NONE;
 }
 
 void SystemBus_SetAddress( dword address )
@@ -600,6 +634,8 @@ void SystemBus_SetAddress( dword address )
 
 word SystemBus_Read()
 {
+    if( fpgaStatus == FPGA_NONE ) return 0;
+
     portENTER_CRITICAL();
 
     GPIO0->PM = ~0xffff0000;
@@ -611,7 +647,7 @@ word SystemBus_Read()
     GPIO2->PM = ~ARM_RD;
     GPIO2->PD = 0;
 
-    while( ( GPIO2->PD & ARM_WAIT ) == 0 );
+    while( ARM_WAIT() );
     word result = GPIO0->PD >> 16;
 
     GPIO2->PD = ARM_RD;
@@ -639,6 +675,8 @@ word SystemBus_Read( dword address )
 
 void SystemBus_Write( word data )
 {
+    if( fpgaStatus == FPGA_NONE ) return;
+
     portENTER_CRITICAL();
 
     GPIO0->PM = ~0xffff0000;
@@ -646,7 +684,7 @@ void SystemBus_Write( word data )
 
     GPIO0->PD = data << 16;
     GPIO2->PD = 0;
-    while( ( GPIO2->PD & ARM_WAIT ) == 0 );
+    while( ARM_WAIT() );
     GPIO2->PD = ARM_WR;
 
     portEXIT_CRITICAL();
@@ -757,7 +795,7 @@ void Spectrum_InitRom()
 
 void Spectrum_UpdateConfig()
 {
-    if( fpgaConfigVersionPrev == 0 ) return;
+    if( fpgaStatus != FPGA_SPECCY2010 ) return;
 
     SystemBus_Write( 0xc00040, specConfig.specRom );
     SystemBus_Write( 0xc00041, specConfig.specSync );
@@ -771,7 +809,7 @@ void Spectrum_UpdateConfig()
 
     floppy_set_fast_mode( specConfig.specBdiMode );
 
-    if( fpgaConfigVersionPrev != 0 && romConfigPrev != (dword) specConfig.specRom )
+    if( romConfigPrev != (dword) specConfig.specRom )
     {
         Spectrum_InitRom();
         romConfigPrev = specConfig.specRom;
@@ -805,10 +843,8 @@ void SD_Init()
             static FATFS fatfs;
             f_mount( 0, &fatfs );
 
-            FPGA_Config();
             RestreConfig();
-            Spectrum_UpdateConfig();
-            Spectrum_UpdateDisks();
+            FPGA_Config();
         }
     }
 }
@@ -888,14 +924,196 @@ void Keyboard_SendNext( byte code )
     //__TRACE( "Keyboard_SendNext : 0x%.2x\n", keybordSend[ keybordSendPos ] );
 }
 
-void Timer_Routine()
+void SpectrumTimer_Routine()
 {
-    if( fpgaConfigVersionPrev == 0 )
+    static dword joyCodePrev = 0;
+    dword joyCode = SystemBus_Read( 0xc00030 ) | ( SystemBus_Read( 0xc00031 ) << 16 );
+
+    if( joyCode != joyCodePrev )
     {
-        kbdInited = 0;
-        mouseInited = 0;
+        //if( joyCode != 0 )
+        //{
+            //char str[ 0x20 ];
+            //sniprintf( str, sizeof(str), "joyCode - 0x%.8x\n", joyCode );
+            //UART0_WriteText( str );
+        //}
+
+        dword bit = 1;
+        dword joyCodeDiff = joyCode ^ joyCodePrev;
+
+        for( byte i = 0; i < 32; i++, bit <<= 1 )
+        {
+            if( ( joyCodeDiff & bit ) != 0 )
+            {
+                if( ( joyCode & bit ) != 0 ) joystick.WriteByte( i );
+                else joystick.WriteByte( 0x80 | i );
+            }
+        }
+
+        joyCodePrev = joyCode;
     }
 
+    //--------------------------------------------------------------------------
+
+    word keyCode = SystemBus_Read( 0xc00032 );
+    while( ( keyCode & 0x8000 ) != 0 )
+    {
+        //__TRACE( "keyCode : 0x%.2x, 0x%.2x\n", keyCode & 0xff, ( keyCode >> 8 ) & 0x0f );
+
+        keyboard.WriteByte( (byte) keyCode );
+        keyCode = SystemBus_Read( 0xc00032 );
+    }
+
+    //--------------------------------------------------------------------------
+
+    word mouseCode = SystemBus_Read( 0xc00033 );
+    while( ( mouseCode & 0x8000 ) != 0 )
+    {
+        if( mouseCode & 0x4000 )
+        {
+            //__TRACE( "Mouse buffer overflow\n" );
+            Mouse_Reset();
+            break;
+        }
+
+        mouseCode &= 0xff;
+        //__TRACE( "mouse code - 0x%.2x\n", mouseCode );
+
+        static byte mouseBuff[4];
+        static byte mouseBuffPos = 0;
+
+        if( mouseInited == 0 && mouseCode == 0xfa ) mouseInited++;
+        else if( mouseInited == 1 && mouseCode == 0xaa ) mouseInited++;
+        else if( mouseInited == 2 && mouseCode == 0x00 )
+        {
+            mouseInited++;
+            SystemBus_Write( 0xc00033, 0xf4 );
+        }
+        else if( mouseInited == 3 && mouseCode == 0xfa )
+        {
+            mouseInited++;
+            mouseBuffPos = 0;
+
+            __TRACE( "PS/2 mouse init OK..\n" );
+
+            SystemBus_Write( 0xc0001e, 0x5555 );
+            SystemBus_Write( 0xc0001f, 0xff );
+        }
+        else if( mouseInited == MOUSE_OK )
+        {
+            static dword x = 0x55555555;
+            static dword y = 0x55555555;
+
+            mouseBuff[ mouseBuffPos++ ] = mouseCode;
+
+            if( mouseBuffPos >= 3 )
+            {
+                int dx, dy;
+
+                //char str[ 0x20 ];
+                //sniprintf( str, sizeof(str), "mouse 0x%.2x.0x%.2x.0x%.2x, ", mouseBuff[0], mouseBuff[1], mouseBuff[2] );
+                //UART0_WriteText( str );
+
+                if( ( mouseBuff[0] & ( 1 << 6 ) ) == 0 )
+                {
+                    if( ( mouseBuff[0] & ( 1 << 4 ) ) == 0 ) dx = mouseBuff[ 1 ];
+                    else dx = mouseBuff[ 1 ] - 256;
+                }
+                else
+                {
+                    if( ( mouseBuff[0] & ( 1 << 4 ) ) == 0 ) dx = 256;
+                    else dx = -256;
+                }
+
+                if( ( mouseBuff[0] & ( 1 << 7 ) ) == 0 )
+                {
+                    if( ( mouseBuff[0] & ( 1 << 5 ) ) == 0 ) dy = mouseBuff[ 2 ];
+                    else dy = mouseBuff[ 2 ] - 256;
+                }
+                else
+                {
+                    if( ( mouseBuff[0] & ( 1 << 5 ) ) == 0 ) dy = 256;
+                    else dy = -256;
+                }
+
+                x += dx;
+                y += dy;
+
+                byte buttons = 0xff;
+                if( !specConfig.specMouseSwap )
+                {
+                    if( ( mouseBuff[0] & ( 1 << 0 ) ) != 0 ) buttons ^= ( 1 << 1 );
+                    if( ( mouseBuff[0] & ( 1 << 1 ) ) != 0 ) buttons ^= ( 1 << 0 );
+                }
+                else
+                {
+                    if( ( mouseBuff[0] & ( 1 << 0 ) ) != 0 ) buttons ^= ( 1 << 0 );
+                    if( ( mouseBuff[0] & ( 1 << 1 ) ) != 0 ) buttons ^= ( 1 << 1 );
+                }
+
+                if( ( mouseBuff[0] & ( 1 << 2 ) ) != 0 ) buttons ^= ( 1 << 2 );
+
+                byte sx = x >> (byte)( ( 6 - specConfig.specMouseSensitivity ) );
+                byte sy = y >> (byte)( ( 6 - specConfig.specMouseSensitivity ) );
+
+                SystemBus_Write( 0xc0001e, sx | ( sy << 8 ) );
+                SystemBus_Write( 0xc0001f, buttons );
+
+                mouseBuffPos = 0;
+
+                //char str[ 0x20 ];
+                //sniprintf( str, sizeof(str), "x - 0x%.2x, y - 0x%.2x, b - 0x%.2x\n", sx, sy, buttons );
+                //UART0_WriteText( str );
+            }
+        }
+
+        mouseCode = SystemBus_Read( 0xc00033 );
+    }
+
+    static dword prevTimer = 0;
+
+    if( prevTimer != Timer_GetTickCounter() )        // 100Hz
+    {
+        int deltaTime = Timer_GetTickCounter() - prevTimer;
+
+        if( kbdInited != KBD_OK )
+        {
+            kbdResetTimer += deltaTime;
+            if( kbdResetTimer > 200 ) Keyboard_Reset();
+        }
+
+        if( mouseInited != MOUSE_OK )
+        {
+            mouseResetTimer += deltaTime;
+            if( mouseResetTimer > 200 ) Mouse_Reset();
+        }
+
+        static byte leds_prev = 0;
+        byte leds = floppy_leds();
+
+        if( leds != leds_prev && kbdInited == KBD_OK )
+        {
+            byte data[2] = { 0xed, leds };
+            Keyboard_Send( data, 2 );
+            leds_prev = leds;
+        }
+
+        static int rtcUpdateTime = 0;
+
+        if( rtcUpdateTime <= 0 )
+        {
+            RTC_Update();
+            rtcUpdateTime += 100;
+        }
+
+        rtcUpdateTime -= deltaTime;
+
+        prevTimer = Timer_GetTickCounter();
+    }
+}
+
+void Timer_Routine()
+{
     static byte prev_status = STA_NODISK;
 
     byte status = ( disk_status( 0 ) & STA_NODISK );
@@ -910,207 +1128,8 @@ void Timer_Routine()
         prev_status = status;
     }
 
-    //if( timer_flag_100Hz )        // 100Hz
-    {
-        if( fpgaConfigVersionPrev != 0 )
-        {
-            static dword joyCodePrev = 0;
-            dword joyCode = SystemBus_Read( 0xc00030 ) | ( SystemBus_Read( 0xc00031 ) << 16 );
-
-            if( joyCode != joyCodePrev )
-            {
-                //if( joyCode != 0 )
-                //{
-                    //char str[ 0x20 ];
-                    //sniprintf( str, sizeof(str), "joyCode - 0x%.8x\n", joyCode );
-                    //UART0_WriteText( str );
-                //}
-
-                dword bit = 1;
-                dword joyCodeDiff = joyCode ^ joyCodePrev;
-
-                for( byte i = 0; i < 32; i++, bit <<= 1 )
-                {
-                    if( ( joyCodeDiff & bit ) != 0 )
-                    {
-                        if( ( joyCode & bit ) != 0 ) joystick.WriteByte( i );
-                        else joystick.WriteByte( 0x80 | i );
-                    }
-                }
-
-                joyCodePrev = joyCode;
-            }
-
-            //--------------------------------------------------------------------------
-
-            word keyCode = SystemBus_Read( 0xc00032 );
-            while( ( keyCode & 0x8000 ) != 0 )
-            {
-                //__TRACE( "keyCode : 0x%.2x, 0x%.2x\n", keyCode & 0xff, ( keyCode >> 8 ) & 0x0f );
-
-                keyboard.WriteByte( (byte) keyCode );
-                keyCode = SystemBus_Read( 0xc00032 );
-            }
-
-            //--------------------------------------------------------------------------
-
-            word mouseCode = SystemBus_Read( 0xc00033 );
-            while( ( mouseCode & 0x8000 ) != 0 )
-            {
-                if( mouseCode & 0x4000 )
-                {
-                    //__TRACE( "Mouse buffer overflow\n" );
-                    Mouse_Reset();
-                    break;
-                }
-
-                mouseCode &= 0xff;
-                //__TRACE( "mouse code - 0x%.2x\n", mouseCode );
-
-                static byte mouseBuff[4];
-                static byte mouseBuffPos = 0;
-
-                if( mouseInited == 0 && mouseCode == 0xfa ) mouseInited++;
-                else if( mouseInited == 1 && mouseCode == 0xaa ) mouseInited++;
-                else if( mouseInited == 2 && mouseCode == 0x00 )
-                {
-                    mouseInited++;
-                    SystemBus_Write( 0xc00033, 0xf4 );
-                }
-                else if( mouseInited == 3 && mouseCode == 0xfa )
-                {
-                    mouseInited++;
-                    mouseBuffPos = 0;
-
-                    __TRACE( "PS/2 mouse init OK..\n" );
-
-                    SystemBus_Write( 0xc0001e, 0x5555 );
-                    SystemBus_Write( 0xc0001f, 0xff );
-                }
-                else if( mouseInited == MOUSE_OK )
-                {
-                    static dword x = 0x55555555;
-                    static dword y = 0x55555555;
-
-                    mouseBuff[ mouseBuffPos++ ] = mouseCode;
-
-                    if( mouseBuffPos >= 3 )
-                    {
-                        int dx, dy;
-
-                        //char str[ 0x20 ];
-                        //sniprintf( str, sizeof(str), "mouse 0x%.2x.0x%.2x.0x%.2x, ", mouseBuff[0], mouseBuff[1], mouseBuff[2] );
-                        //UART0_WriteText( str );
-
-                        if( ( mouseBuff[0] & ( 1 << 6 ) ) == 0 )
-                        {
-                            if( ( mouseBuff[0] & ( 1 << 4 ) ) == 0 ) dx = mouseBuff[ 1 ];
-                            else dx = mouseBuff[ 1 ] - 256;
-                        }
-                        else
-                        {
-                            if( ( mouseBuff[0] & ( 1 << 4 ) ) == 0 ) dx = 256;
-                            else dx = -256;
-                        }
-
-                        if( ( mouseBuff[0] & ( 1 << 7 ) ) == 0 )
-                        {
-                            if( ( mouseBuff[0] & ( 1 << 5 ) ) == 0 ) dy = mouseBuff[ 2 ];
-                            else dy = mouseBuff[ 2 ] - 256;
-                        }
-                        else
-                        {
-                            if( ( mouseBuff[0] & ( 1 << 5 ) ) == 0 ) dy = 256;
-                            else dy = -256;
-                        }
-
-                        x += dx;
-                        y += dy;
-
-                        byte buttons = 0xff;
-                        if( !specConfig.specMouseSwap )
-                        {
-                            if( ( mouseBuff[0] & ( 1 << 0 ) ) != 0 ) buttons ^= ( 1 << 1 );
-                            if( ( mouseBuff[0] & ( 1 << 1 ) ) != 0 ) buttons ^= ( 1 << 0 );
-                        }
-                        else
-                        {
-                            if( ( mouseBuff[0] & ( 1 << 0 ) ) != 0 ) buttons ^= ( 1 << 0 );
-                            if( ( mouseBuff[0] & ( 1 << 1 ) ) != 0 ) buttons ^= ( 1 << 1 );
-                        }
-
-                        if( ( mouseBuff[0] & ( 1 << 2 ) ) != 0 ) buttons ^= ( 1 << 2 );
-
-                        byte sx = x >> (byte)( ( 6 - specConfig.specMouseSensitivity ) );
-                        byte sy = y >> (byte)( ( 6 - specConfig.specMouseSensitivity ) );
-
-                        SystemBus_Write( 0xc0001e, sx | ( sy << 8 ) );
-                        SystemBus_Write( 0xc0001f, buttons );
-
-                        mouseBuffPos = 0;
-
-                        //char str[ 0x20 ];
-                        //sniprintf( str, sizeof(str), "x - 0x%.2x, y - 0x%.2x, b - 0x%.2x\n", sx, sy, buttons );
-                        //UART0_WriteText( str );
-                    }
-                }
-
-                mouseCode = SystemBus_Read( 0xc00033 );
-            }
-        }
-    }
-
     if( timer_flag_100Hz )        // 100Hz
     {
-        if( fpgaConfigVersionPrev != 0 )
-        {
-            if( kbdInited != KBD_OK )
-            {
-                kbdResetTimer++;
-                if( kbdResetTimer > 200 ) Keyboard_Reset();
-            }
-
-            if( mouseInited != MOUSE_OK )
-            {
-                mouseResetTimer++;
-                if( mouseResetTimer > 200 ) Mouse_Reset();
-            }
-
-            //-------------------------------------------------
-            // reset FPGA
-
-            /*
-            static bool resetFPGA = false;
-
-            if( GPIO_ReadBit( GPIO0, GPIO_Pin_0 ) == Bit_RESET )
-            {
-                resetFPGA = true;
-            }
-            else if( resetFPGA )
-            {
-                __TRACE( "Reset FPGA..\n" );
-
-                GPIO_WriteBit( GPIO1, GPIO_Pin_13, Bit_RESET );
-                DelayMs( 1 );
-                GPIO_WriteBit( GPIO1, GPIO_Pin_13, Bit_SET );
-
-                resetFPGA = false;
-            }*/
-
-            //-------------------------------------------------
-
-
-            static byte leds_prev = 0;
-            byte leds = floppy_leds();
-
-            if( leds != leds_prev && kbdInited == KBD_OK )
-            {
-                byte data[2] = { 0xed, leds };
-                Keyboard_Send( data, 2 );
-                leds_prev = leds;
-            }
-        }
-
         portENTER_CRITICAL();
         timer_flag_100Hz--;
         portEXIT_CRITICAL();
@@ -1119,28 +1138,21 @@ void Timer_Routine()
         WDT_Kick();
     }
 
-    if( timer_flag_1Hz )        // 1Hz
+    if( timer_flag_1Hz > 0 )        // 1Hz
     {
         //char str[ 0x20 ];
         //sniprintf( str, sizeof(str), "disk status - %x\n", disk_status(0) );
         //UART0_WriteText( str );
 
-        if( ( disk_status(0) & STA_NODISK ) == 0 && ( disk_status(0) & STA_NOINIT ) != 0 ) SD_Init();
-
-        if( fpgaConfigVersionPrev == 0 && ( disk_status(0) & STA_NOINIT ) == 0 )
-        {
-            FPGA_Config();
-            RestreConfig();
-            Spectrum_UpdateConfig();
-            Spectrum_UpdateDisks();
-        }
-
-        RTC_Update();
+        SD_Init();
+        if( fpgaConfigVersionPrev == 0 && ( disk_status(0) & STA_NOINIT ) == 0 ) FPGA_Config();
 
         portENTER_CRITICAL();
         timer_flag_1Hz--;
         portEXIT_CRITICAL();
     }
+
+    if( fpgaStatus == FPGA_SPECCY2010 ) SpectrumTimer_Routine();
 }
 
 void BDI_ResetWrite()
@@ -1168,7 +1180,7 @@ bool BDI_Read( byte *data )
 
 void BDI_Routine()
 {
-    if( fpgaConfigVersionPrev == 0 ) return;
+    if( fpgaStatus != FPGA_SPECCY2010 ) return;
     int ioCounter = 0x20;
 
     word trdosStatus = SystemBus_Read( 0xc00019 );
@@ -1560,6 +1572,10 @@ void Serial_Routine()
             else if( strcmp( cmd, "log wait" ) == 0 ) LOG_WAIT = true;
             //else if( strcmp( cmd, "test heap" ) == 0 ) TestHeap();
             else if( strcmp( cmd, "reset" ) == 0 ) while( true );
+            else if( strcmp( cmd, "pc" ) == 0 )
+            {
+                SystemBus_TestConfiguration();
+            }
             else
             {
                 __TRACE( "cmd: %s\n", cmd );
@@ -1580,6 +1596,90 @@ void Serial_Routine()
         {
             cmd[ cmdSize++ ] = temp;
         }
+    }
+}
+
+void ZetIo_Routine()
+{
+    word buff[ 4 ] = {0, 0, 0, 0};
+
+    static FIL dataFile;
+    static word readCounter = 0;
+    static word writeCounter = 0;
+    static byte currentFile = 0xff;
+
+    while( ZET_FIFO_READY() && writeCounter > 0 )
+    {
+        word data = SystemBus_Read();
+
+        UINT res;
+        f_write( &dataFile, &data, 2, &res );
+
+        writeCounter--;
+        if( writeCounter == 0 )
+        {
+            f_sync( &dataFile );
+            SystemBus_Write( 0xAAAA );
+            //__TRACE( "Writting end\n" );
+        }
+    }
+
+    while( ZET_FIFO_READY() && writeCounter == 0 )
+    {
+        word data = SystemBus_Read();
+
+        //__TRACE( "Data recived : 0x%.4x\n", data );
+        if( ( data & 0xff00 ) == 0x5600 ) __TRACE( "KBD : 0x%.4x\n", data );
+
+        buff[0] = buff[1];
+        buff[1] = buff[2];
+        buff[2] = buff[3];
+        buff[3] = data;
+
+        byte cmd = buff[0] >> 8;
+
+        if( ( cmd & 0xfe ) == 0xfe )
+        {
+            if( ( buff[0] & 0x00ff ) != currentFile )
+            {
+                currentFile = ( buff[0] & 0x00ff );
+                char fileName[ PATH_SIZE ] = "";
+
+                if( currentFile == 0x00 ) sniprintf( fileName, sizeof(fileName), "%s/%s", specConfig.fpgaConfigName, "bios.rom" );
+                else if( currentFile == 0x01 ) sniprintf( fileName, sizeof(fileName), "%s/%s", specConfig.fpgaConfigName, "a-zet.img" );
+                else if( currentFile == 0x02 ) sniprintf( fileName, sizeof(fileName), "%s/%s", specConfig.fpgaConfigName, "c.img" );
+
+                __TRACE( "Open file: %s\n", fileName );
+
+                if( f_open( &dataFile, fileName, FA_READ | FA_WRITE ) != FR_OK ) currentFile = 0xff;
+            }
+
+            if( currentFile != 0xff )
+            {
+                dword pos = ( ( (dword) buff[2] << 16 ) | buff[1] ) << 1;
+                f_lseek( &dataFile, pos );
+
+                if( cmd == 0xfe ) readCounter = buff[3];
+                else
+                {
+                    writeCounter = buff[3];
+                    //__TRACE( "Writting start\n" );
+                }
+
+                //if( currentFile == 1 ) __TRACE( "Reading sector : 0x%.4x\n", pos / 512 );
+            }
+        }
+    }
+
+    while( !ZET_FIFO_FULL() && readCounter > 0 )
+    {
+        word data;
+
+        UINT res;
+        f_read( &dataFile, &data, 2, &res );
+
+        SystemBus_Write( data );
+        readCounter--;
     }
 }
 
@@ -1647,8 +1747,16 @@ int main()
 	GPIO_InitStructure.GPIO_Pin = 0x07ff;
 	GPIO_Init( GPIO2, &GPIO_InitStructure );
 
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;  //reset
 	GPIO_InitStructure.GPIO_Pin = 1 << 13;
+	GPIO_Init( GPIO1, &GPIO_InitStructure );
+
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;  // zet_fifo_ready
+	GPIO_InitStructure.GPIO_Pin = 1 << 2;
+	GPIO_Init( GPIO0, &GPIO_InitStructure );
+
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;  // zet_fifo_full
+	GPIO_InitStructure.GPIO_Pin = 1 << 12;
 	GPIO_Init( GPIO1, &GPIO_InitStructure );
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -1670,9 +1778,17 @@ int main()
     {
         Timer_Routine();
         Serial_Routine();
-        Keyboard_Routine();
-        Tape_Routine();
-        BDI_Routine();
+
+        if( fpgaStatus == FPGA_SPECCY2010 )
+        {
+            Keyboard_Routine();
+            Tape_Routine();
+            BDI_Routine();
+        }
+        else if( fpgaStatus == FPGA_ZET )
+        {
+            ZetIo_Routine();
+        }
     }
 }
 
@@ -1871,4 +1987,3 @@ extern "C" void __cxa_guard_acquire()
 extern "C" void __cxa_guard_release()
 {
 }
-
