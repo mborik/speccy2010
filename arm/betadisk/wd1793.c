@@ -683,19 +683,23 @@ static void wd_proc(void)
 
 static inline void wd_update_stat(void)
 {
-	byte str = wd.str;
+	wd.str &= ~WD17XX_STAT_NOTRDY;
+	if( !fdc_query(FDC_READY) || !fdc_query(FDC_RESET) || wd_is_hld() ) wd.str |= WD17XX_STAT_NOTRDY;
 
-	if ((wd.cr_c & TYPEI_MASK) == TYPEI) {
-		str &= ~(WD17XX_STAT_INDEX|WD17XX_STAT_TRK0|WD17XX_STAT_HLD|WD17XX_STAT_WP);
-		if (!fdc_query(FDC_INDEX)) str |= WD17XX_STAT_INDEX;
-		if (!fdc_query(FDC_TRK0)) str |= WD17XX_STAT_TRK0;
-		if (wd_is_hld()) str |= WD17XX_STAT_HLD;
-		if (fdc_query(FDC_WP)) str |= WD17XX_STAT_WP;
-	} else {
-		str = WD_DRQ() ? (str | WD17XX_STAT_DRQ) : (str & ~WD17XX_STAT_DRQ);
+	if ( (wd.cr_c & TYPEI_MASK) == TYPEI )
+	{
+		wd.str &= ~(WD17XX_STAT_INDEX|WD17XX_STAT_TRK0|WD17XX_STAT_HLD|WD17XX_STAT_WP);
+
+		if (!fdc_query(FDC_INDEX)) wd.str |= WD17XX_STAT_INDEX;
+		if (!fdc_query(FDC_TRK0)) wd.str |= WD17XX_STAT_TRK0;
+		if (wd_is_hld()) wd.str |= WD17XX_STAT_HLD;
+		if (fdc_query(FDC_WP)) wd.str |= WD17XX_STAT_WP;
 	}
-	str = (fdc_query(FDC_READY) && fdc_query(FDC_RESET)) ? (str & ~WD17XX_STAT_NOTRDY) : (str | WD17XX_STAT_NOTRDY);
-	wd.str = str;
+	else
+	{
+	    wd.str &= ~WD17XX_STAT_DRQ;
+		if ( WD_DRQ() ) wd.str |= WD17XX_STAT_DRQ;
+	}
 }
 
 static inline void wd_clr_stat(void)

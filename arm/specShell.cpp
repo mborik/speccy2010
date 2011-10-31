@@ -345,15 +345,6 @@ void read_dir()
 
         if( lfn[0] == 0 ) strcpy( lfn, fi.fname );
 
-        if( path[0] == 0 )
-        {
-            char temp[ 11 ];
-            sniprintf( temp, sizeof(temp), "%s", lfn );
-            strlwr( temp );
-
-            if( strcmp( temp, "roms" ) == 0 || strcmp( temp, "speccy2010" ) == 0 ) continue;
-        }
-
         if( files_size >= FILES_SIZE )
         {
             too_many_files = true;
@@ -715,11 +706,18 @@ bool CPU_Stopped()
     return cpuStopNesting > 0;
 }
 
+void CPU_NMI()
+{
+    SystemBus_Write( 0xc00000, 0x0010 );
+    DelayMs(100);
+    SystemBus_Write( 0xc00000, 0x0000 );
+}
+
 void CPU_Reset( bool res )
 {
     if( res == false )
     {
-        if( specConfig.specUseBank0 && specConfig.specRom != SpecRom_Classic48 )
+        if( specConfig.specUseBank0 )
         {
             SystemBus_Write( 0xC00018, 0x01 ); //specTrdosFlag
         }
@@ -735,6 +733,7 @@ void CPU_Reset( bool res )
         else
         {
             SystemBus_Write( 0xC00017, 0x00 ); //specPort7ffd
+            SystemBus_Write( 0xC00023, 0x00 ); //specPort1ffd
         }
     }
 
@@ -1452,6 +1451,7 @@ void Shell_SaveSnapshot()
 
     byte specPortFe = SystemBus_Read( 0xc00016 );
     byte specPort7ffd = SystemBus_Read( 0xc00017 );
+    /*TODO scorpion*/
 
     byte page = ( specPort7ffd & ( 1 << 3 ) ) != 0 ? 7 : 5;
 
@@ -1698,7 +1698,20 @@ bool Shell_Browser()
                 char *ext = fr.name + strlen( fr.name );
                 while( ext > fr.name && *ext != '.' ) ext--;
 
-				if ( strcmp( ext, ".tap" ) == 0 || strcmp( ext, ".tzx" ) == 0 )
+				if ( strcmp( ext, ".rbf" ) == 0 )
+				{
+                    sniprintf( specConfig.fpgaConfigName, sizeof( specConfig.fpgaConfigName ), "%s", fullName );
+                    SaveConfig();
+
+                    SystemBus_Write( 0xc00021, 0 );            // Enable Video
+                    SystemBus_Write( 0xc00022, 0 );
+                    CPU_Start();
+
+                    FPGA_Config();
+
+                    return false;
+				}
+				else if ( strcmp( ext, ".tap" ) == 0 || strcmp( ext, ".tzx" ) == 0 )
 				{
 				    sniprintf( specConfig.snaName, sizeof( specConfig.snaName ), "/%s.00.sna", fullName );
 
@@ -1916,7 +1929,10 @@ CMenuItem mainMenu[] = {
     CMenuItem( 1, 6, "Timings: ", GetParam( iniParameters, "Timings" ) ),
     CMenuItem( 1, 7, "Turbo: ", GetParam( iniParameters, "Turbo" ) ),
     CMenuItem( 1, 8, "AY mode: ", GetParam( iniParameters, "AY mode" ) ),
-    CMenuItem( 1, 9, "BDI mode: ", GetParam( iniParameters, "BDI mode" ) ),
+    CMenuItem( 14, 8, "Covox:", GetParam( iniParameters, "Covox" ) ),
+    CMenuItem( 1,  9, "AY Chip:", GetParam( iniParameters, "AY Chip" ) ),
+    CMenuItem( 14, 9, "Turbo Sound: ", GetParam( iniParameters, "Turbo Sound" ) ),
+    CMenuItem( 1, 10, "BDI mode: ", GetParam( iniParameters, "BDI mode" ) ),
 
     CMenuItem( 1, 11, "Joystick emulation: ", GetParam( iniParameters, "Joystick emulation" ) ),
     CMenuItem( 1, 12, "Joystick 1: ", GetParam( iniParameters, "Joystick 1" ) ),

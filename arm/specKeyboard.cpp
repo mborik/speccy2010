@@ -182,6 +182,9 @@ void DecodeKey( word keyCode, word keyFlags )
                     Spectrum_UpdateConfig();
                     SaveConfig();
                     break;
+                case KEY_F12 :
+                    CPU_NMI();
+                    break;
             }
         }
         else if ( fKeyAlt & keyFlags )

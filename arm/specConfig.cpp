@@ -9,10 +9,13 @@ const CParameter *GetIniParameters()
     {
         CParameter( PTYPE_STRING, "FPGA config", (char*) sizeof(specConfig.fpgaConfigName), specConfig.fpgaConfigName ),
 
-        CParameter( PTYPE_LIST, "ROM/RAM", "ZX Spectrum 48|Pentagon 128|Pentagon 1024", &specConfig.specRom ),
+        CParameter( PTYPE_LIST, "ROM/RAM", "ZX Spectrum 48|Pentagon 128|Pentagon 1024|Scorpion 256", &specConfig.specRom ),
         CParameter( PTYPE_LIST, "Timings", "ZX Spectrum 48|ZX Spectrum 128|Pentagon|Scorpion", &specConfig.specSync ),
         CParameter( PTYPE_LIST, "Turbo", "None|x2|x4|x8(unstable)", &specConfig.specTurbo ),
         CParameter( PTYPE_LIST, "AY mode", "None|ABC|ACB|Mono", &specConfig.specAyMode ),
+        CParameter( PTYPE_LIST, "Turbo Sound", "Off|On", &specConfig.specTurboSound ),
+        CParameter( PTYPE_LIST, "Covox", "Off|SD Mode1|SD Mode2|GS-#B3|Pentagon-#FB|Scorpion-#DD|Profi/BB55", &specConfig.specCovox ),
+        CParameter( PTYPE_LIST, "AY Chip","YM|AY", &specConfig.specAyYm ),
         CParameter( PTYPE_LIST, "BDI mode", "Slow|Fast", &specConfig.specBdiMode ),
         CParameter( PTYPE_LIST, "Video mode", "Composite/S-Video|PAL RGB|VGA 50Hz|VGA 60Hz|VGA 75Hz", &specConfig.specVideoMode ),
         CParameter( PTYPE_LIST, "Video aspect ratio", "4:3|5:4|16:9", &specConfig.specVideoAspectRatio ),
@@ -42,7 +45,7 @@ const CParameter *GetIniParameters()
 
 void RestreConfig()
 {
-    strcpy( specConfig.fpgaConfigName, "speccy" );
+    strcpy( specConfig.fpgaConfigName, "/speccy2010.rbf" );
 
     specConfig.specVideoMode = 0;
     specConfig.specMouseSensitivity = 4;
@@ -50,6 +53,9 @@ void RestreConfig()
 
     specConfig.specBdiMode = 1;
     specConfig.specFont = 2;
+    specConfig.specTurboSound = 0;
+    specConfig.specCovox = 0;
+    specConfig.specAyYm = 0;
 
     strcpy( specConfig.snaName, "" );
 

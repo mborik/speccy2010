@@ -195,6 +195,12 @@ set_location_assignment PIN_82 -to JOY0[5]
 set_location_assignment PIN_14 -to MOUSE_DATA
 set_location_assignment PIN_15 -to MOUSE_CLK
 set_global_assignment -name MISC_FILE "D:/workGit/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
+set_location_assignment PIN_24 -to CLK_20_ALT
+set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL OFF
+set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
+set_global_assignment -name ADD_PASS_THROUGH_LOGIC_TO_INFERRED_RAMS ON
+set_global_assignment -name VHDL_FILE src/peripheral/sound/SoundMixer.vhd
+set_global_assignment -name VHDL_FILE src/peripheral/sound/SounDrive15.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80se.vhd
 set_global_assignment -name SDC_FILE speccy2010.sdc
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2fifo.vhd
@@ -212,8 +218,4 @@ set_global_assignment -name VHDL_FILE src/peripheral/video/sinus.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/video/vencode.vhd
 set_global_assignment -name VHDL_FILE src/speccy2010.vhd
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll.qip
-set_location_assignment PIN_24 -to CLK_20_ALT
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll2.qip
-set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL OFF
-set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
-set_global_assignment -name ADD_PASS_THROUGH_LOGIC_TO_INFERRED_RAMS ON

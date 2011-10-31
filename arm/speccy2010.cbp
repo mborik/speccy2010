@@ -35,7 +35,8 @@
 					<Add option="-Wl,-Map=_debug/speccy2010.map" />
 				</Linker>
 				<ExtraCommands>
-					<Add after="arm-none-eabi-objcopy.exe -O binary _debug/speccy2010.elf _debug/speccy2010.bin" />
+					<Add before='sh -c &quot;svn info | grep &apos;^Revision:&apos; | sed -e &apos;s/^Revision: /#define REV /&apos; &gt; revision.h&quot;' />
+					<Add after="arm-none-eabi-objcopy -O binary _debug/speccy2010.elf _debug/speccy2010.bin" />
 				</ExtraCommands>
 			</Target>
 		</Build>

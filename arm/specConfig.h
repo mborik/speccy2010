@@ -6,7 +6,7 @@
 
 #define ADVANCED_BETADISK 1
 
-enum SpecRom_Type { SpecRom_Classic48, SpecRom_Pentagon128, SpecRom_Pentagon1024 };
+enum SpecRom_Type { SpecRom_Classic48, SpecRom_Pentagon128, SpecRom_Pentagon1024 ,SpecRom_Scorpion};
 enum SpecTurbo_Type { SpecTurbo_None, SpecTurbo_x2, SpecTurbo_x4, SpecTurbo_None_x8 };
 enum SpecJoy_Type { SpecJoy_Kempston, SpecJoy_Sinclair1, SpecJoy_Sinclair2, SpecJoy_Cursor, SpecJoy_Qaopm };
 
@@ -18,7 +18,7 @@ struct CDiskImage
 
 struct CSpecConfig
 {
-    char fpgaConfigName[ 16 ];
+    char fpgaConfigName[ PATH_SIZE ];
 
 	int specRom;
 	int specUseBank0;
@@ -28,6 +28,9 @@ struct CSpecConfig
 	int specVideoAspectRatio;
 	int specDacMode;
 	int specAyMode;
+	int specTurboSound;
+	int specCovox;
+	int specAyYm;
 	int specBdiMode;
 	int specJoyModeEmulation;
 	int specJoyMode1;

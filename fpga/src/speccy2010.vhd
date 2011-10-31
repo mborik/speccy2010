@@ -60,6 +60,14 @@ architecture rtl of speccy2010_top is
 	constant memFreq : integer := 84;
 	constant sysFreq : integer := 42;
 	
+	constant AY_MODE_NONE 	: integer := 0;
+	constant AY_MODE_ABC 	: integer := 1;
+	constant AY_MODE_ACB 	: integer := 2;	 
+	constant AY_MODE_MONO 	: integer := 3;
+	
+	type  array_3x24   is array (0 to 2) of unsigned( 23 downto 0);
+	type  weight_array is array (0 to 3, 0 to 1) of array_3x24;
+	
 	signal memclk : std_logic;
 	signal sysclk : std_logic;
 	
@@ -156,6 +164,7 @@ architecture rtl of speccy2010_top is
 	signal specPortFe	: std_logic_vector(7 downto 0);
 	signal specPortFf	: std_logic_vector(7 downto 0);
 	signal specPort7ffd	: std_logic_vector(7 downto 0);
+	signal specPort1ffd	: std_logic_vector(7 downto 0); -- Scorpion
 	
 	signal specPortEff7	: std_logic_vector(7 downto 0);
 	--signal specPortDff7	: std_logic_vector(7 downto 0);	
@@ -174,6 +183,9 @@ architecture rtl of speccy2010_top is
     --signal subcarrierDelta : unsigned( 23 downto 0 ) := to_unsigned( 885662, 24 ); -- 885521
 	signal dacMode		: unsigned(7 downto 0) := x"00";
 	signal ayMode		: unsigned(7 downto 0) := x"00";
+	signal turboSound	: std_logic := '0';
+	signal covoxMode	: unsigned(2 downto 0) := "000";
+	signal ayymMode     : std_logic := '0';
 	signal videoAspectRatio	: unsigned(7 downto 0) := x"00";
 	signal testVideo	: unsigned(7 downto 0) := x"00";
 	
@@ -191,13 +203,16 @@ architecture rtl of speccy2010_top is
 	signal soundLeft	: std_logic_vector(15 downto 0) := x"0000";
 	signal soundRight	: std_logic_vector(15 downto 0) := x"0000";
 	
+	signal ayLeft		: std_logic_vector(15 downto 0) := x"0000";
+	signal ayRight		: std_logic_vector(15 downto 0) := x"0000";
+	
 	signal romPage		: std_logic_vector(2 downto 0);
 	signal ramPage		: std_logic_vector(7 downto 0);
 	signal vramPage		: std_logic_vector(7 downto 0);
-	
+
 	signal attr			: std_logic_vector(15 downto 0);
 	signal shift		: std_logic_vector(15 downto 0);
-	
+
 	signal Paper_r 		: std_logic;
 	signal Blank_r 		: std_logic;
 	signal Attr_r 		: std_logic_vector(7 downto 0);
@@ -210,9 +225,9 @@ architecture rtl of speccy2010_top is
 	
 	signal palSync		: std_logic;
 	
-	signal specR		: std_logic;
-	signal specG		: std_logic;
-	signal specB		: std_logic;
+	signal specR		: std_logic_vector(1 downto 0);
+	signal specG		: std_logic_vector(1 downto 0);
+	signal specB		: std_logic_vector(1 downto 0);
 	signal specY		: std_logic;
 	
 	signal rgbR	 		: std_logic_vector(7 downto 0);
@@ -235,11 +250,40 @@ architecture rtl of speccy2010_top is
 	signal ayDin        : std_logic_vector(7 downto 0);
 	signal ayDout       : std_logic_vector(7 downto 0);
 
-	signal ayOUT        : std_logic_vector(7 downto 0);
 	signal ayOUT_A      : std_logic_vector(7 downto 0);
 	signal ayOUT_B      : std_logic_vector(7 downto 0);
 	signal ayOUT_C      : std_logic_vector(7 downto 0);
 
+-- Poopi
+	signal ay2WR		   : std_logic;
+	signal ay2RD		   : std_logic;
+	signal ay2Dout       : std_logic_vector(7 downto 0);
+
+	signal ay2OUT_A      : std_logic_vector(7 downto 0);
+	signal ay2OUT_B      : std_logic_vector(7 downto 0);
+	signal ay2OUT_C      : std_logic_vector(7 downto 0);
+	
+	signal selectedAY2 : std_logic := '0';
+
+	signal covoxOUT_L1   : std_logic_vector(7 downto 0);
+	signal covoxOUT_L2   : std_logic_vector(7 downto 0);
+	signal covoxOUT_R1   : std_logic_vector(7 downto 0);
+	signal covoxOUT_R2   : std_logic_vector(7 downto 0);
+	signal covoxDin      : std_logic_vector(7 downto 0);	
+	signal covoxAddr     : std_logic_vector(15 downto 0);
+	signal covoxWR		 	: std_logic;
+	
+	signal weightAY_L	: array_3x24;
+	signal weightAY_R	: array_3x24;
+
+	signal covoxEnabled  : std_logic := '0';
+	signal ay1Enabled 	: std_logic := '0';
+	signal ay2Enabled 	: std_logic := '0';
+
+	
+	signal mixedOutputL  : std_logic_vector(15 downto 0);
+	signal mixedOutputR  : std_logic_vector(15 downto 0);	
+	
 	signal tdaData		: std_logic := '1';
 	signal tdaWs		: std_logic := '1';
 	signal tdaBck		: std_logic := '1';
@@ -251,7 +295,11 @@ architecture rtl of speccy2010_top is
 	signal cpuWait		: std_logic;
 	signal cpuReset		: std_logic := '0';
 	
+	signal scorpMagic   : std_logic := '0';
+	signal scorpRom		: std_logic := '0';
+	
 	signal cpuINT		: std_logic;
+	signal cpuNMI		: std_logic;
 	signal cpuM1		: std_logic;
 	signal cpuRFSH		: std_logic;
 	signal cpuMREQ		: std_logic;
@@ -303,6 +351,22 @@ architecture rtl of speccy2010_top is
 	signal trdosFifoWriteFull	: std_logic;
 	signal trdosFifoWriteCounter	: unsigned( 10 downto 0 ) := "00000000000";
 
+	-- A B C (L)  A B C (R)
+	constant weigthYmTable : weight_array := (
+		((x"000000",x"000000",x"000000"),(x"000000",x"000000",x"000000")),
+		((x"000092",x"000007",x"000066"),(x"000007",x"000092",x"000066")),
+		((x"000092",x"000066",x"000007"),(x"000007",x"000066",x"000092")),
+		((x"000055",x"000055",x"000055"),(x"000055",x"000055",x"000055"))
+	);
+	
+	constant weigthAyTable : weight_array := (
+		((x"000000",x"000000",x"000000"),(x"000000",x"000000",x"000000")),
+		((x"00007e",x"000029",x"000058"),(x"000029",x"00007e",x"000058")),
+		((x"00007e",x"000058",x"000029"),(x"000029",x"000058",x"00007e")),
+		((x"000055",x"000055",x"000055"),(x"000055",x"000055",x"000055"))
+	);
+	
+	alias vid_mode_arm : std_logic is armVideoPage(15);
 begin
 
 	U00 : entity work.pll
@@ -320,7 +384,7 @@ begin
 			CLKEN   => cpuCLK,
 			WAIT_n  => '1',
 			INT_n   => cpuINT,
-			NMI_n   => '1',
+			NMI_n   => cpuNMI,
 			BUSRQ_n => '1',
 			M1_n    => cpuM1,
 			MREQ_n  => cpuMREQ,
@@ -357,11 +421,33 @@ begin
 			busctrl_addr => ayADDR,
 			busctrl_we => ayWR,
 			busctrl_re => ayRD,
+			ctrl_aymode => ayymMode,
 			
-			O_AUDIO	=> ayOUT,
 			O_AUDIO_A	=> ayOUT_A,
 			O_AUDIO_B	=> ayOUT_B,
 			O_AUDIO_C	=> ayOUT_C
+		);				
+		
+	U02B : entity work.YM2149
+		port map(
+			
+			RESET_L => not ( cpuReset or reset ),
+			CLK     => sysclk,
+			ENA		=> ayCLK and not cpuHaltAck,
+			I_SEL_L => '1',
+			
+			I_DA    => ayDin,
+			O_DA    => ay2Dout,
+			
+			busctrl_addr => ayADDR,
+			busctrl_we 	 => ay2WR,
+			busctrl_re 	 => ay2RD,
+			ctrl_aymode  => ayymMode,
+			
+			--O_AUDIO		=> ay2OUT,
+			O_AUDIO_A	=> ay2OUT_A,
+			O_AUDIO_B	=> ay2OUT_B,
+			O_AUDIO_C	=> ay2OUT_C
 		);				
 		
 	U03 : entity work.vencode
@@ -524,6 +610,105 @@ begin
 			in_full_o => trdosFifoWriteFull
 		);
 
+	U10 : entity work.SounDrive
+		port map(
+			CLK     => sysclk,
+			
+			I_DA    => covoxDin,
+			
+			bus_addr  	 => covoxAddr,
+			busctrl_we 	 => covoxWR,
+			covox_mode 	 => covoxMode,
+			
+			O_AUDIO_L1	=> covoxOUT_L1,
+			O_AUDIO_L2	=> covoxOUT_L2,
+			O_AUDIO_R1	=> covoxOUT_R1,
+			O_AUDIO_R2	=> covoxOUT_R2
+		);
+		
+	
+	U11_L : entity work.SoundMixer
+		port map (
+			CLK     => sysclk, 
+			I_AUDIO1_AY_A => ayOUT_A,
+			I_AUDIO1_AY_B => ayOUT_B,
+			I_AUDIO1_AY_C => ayOUT_C,
+    
+			I_AUDIO2_AY_A => ay2OUT_A,--AY2
+			I_AUDIO2_AY_B => ay2OUT_B,
+			I_AUDIO2_AY_C => ay2OUT_C,
+
+			WEIGHT_AUDIO1_AY_A => weightAY_L(0),--AY1 - WEIGHT
+			WEIGHT_AUDIO1_AY_B => weightAY_L(1),-- sum should be <=1
+			WEIGHT_AUDIO1_AY_C => weightAY_L(2),
+    
+			WEIGHT_AUDIO2_AY_A => weightAY_L(0),--AY2 - WEIGHT
+			WEIGHT_AUDIO2_AY_B => weightAY_L(1),-- sum should be <=1
+			WEIGHT_AUDIO2_AY_C => weightAY_L(2),
+	 
+			I_AUDIO_AUX_1  => covoxOUT_L1,--COVOX C1
+			I_AUDIO_AUX_2  => covoxOUT_L2,--COVOX C2
+			I_AUDIO_AUX_3  => x"0000",
+
+			WEIGHT_AUDIO_AUX_1 => x"000100",--COVOX C1
+			WEIGHT_AUDIO_AUX_2 => x"000100",--COVOX C2
+			WEIGHT_AUDIO_AUX_3 => x"000001",--SID -- in data in 16bit format
+			
+			I_AUDIO_BEEPER	=> speaker,
+			I_AUDIO_TAPE	=> tapeIn,
+	 
+			WEIGHT_AUDIO_BEEPER => x"000055",
+			WEIGHT_AUDIO_TAPE   => x"000020",
+	 
+			I_AY1_ENABLED  => ay1Enabled,
+			I_AY2_ENABLED  => ay2Enabled,
+			I_AUX1_ENABLED => covoxEnabled,
+			I_AUX2_ENABLED => covoxEnabled,
+			I_AUX3_ENABLED => '0',
+			O_AUDIO        => mixedOutputL
+		);
+
+	U11_R : entity work.SoundMixer
+		port map (
+			CLK     => sysclk, 
+			I_AUDIO1_AY_A => ayOUT_A,
+			I_AUDIO1_AY_B => ayOUT_B,
+			I_AUDIO1_AY_C => ayOUT_C,
+    
+			I_AUDIO2_AY_A => ay2OUT_A,--AY2
+			I_AUDIO2_AY_B => ay2OUT_B,
+			I_AUDIO2_AY_C => ay2OUT_C,
+
+			WEIGHT_AUDIO1_AY_A => weightAY_R(0),--AY1 - WEIGHT
+			WEIGHT_AUDIO1_AY_B => weightAY_R(1),-- sum should be <=1
+			WEIGHT_AUDIO1_AY_C => weightAY_R(2),
+    
+			WEIGHT_AUDIO2_AY_A => weightAY_R(0),--AY2 - WEIGHT
+			WEIGHT_AUDIO2_AY_B => weightAY_R(1),-- sum should be <=1
+			WEIGHT_AUDIO2_AY_C => weightAY_R(2),
+	 
+			I_AUDIO_AUX_1  => covoxOUT_R1,--COVOX C1
+			I_AUDIO_AUX_2  => covoxOUT_R2,--COVOX C2
+			I_AUDIO_AUX_3  => x"0000",--SID
+
+			WEIGHT_AUDIO_AUX_1 => x"000100",--COVOX C1
+			WEIGHT_AUDIO_AUX_2 => x"000100",--COVOX C2
+			WEIGHT_AUDIO_AUX_3 => x"000001",--SID -- in data in 16bit format
+
+			I_AUDIO_BEEPER	=> speaker,
+			I_AUDIO_TAPE	=> tapeIn,
+	 
+			WEIGHT_AUDIO_BEEPER => x"000055",
+			WEIGHT_AUDIO_TAPE   => x"000020",
+	 
+			I_AY1_ENABLED  => ay1Enabled,
+			I_AY2_ENABLED  => ay2Enabled,
+			I_AUX1_ENABLED => covoxEnabled,
+			I_AUX2_ENABLED => covoxEnabled,
+			I_AUX3_ENABLED => '0',
+			O_AUDIO        => mixedOutputR
+		);		
+		
 	    process( sysclk )
 		
 		variable iCLK_20 : std_logic_vector( 1 downto 0 ) := "11";
@@ -533,7 +718,7 @@ begin
 	
 		if sysclk'event and sysclk = '1' then
 			
-		if counter20_en = '1' and iCLK_20 = "01" then
+			if counter20_en = '1' and iCLK_20 = "01" then
 				if counter20_en_prev = '0' then
 					counter20 <= x"00000000";
 				else
@@ -547,7 +732,7 @@ begin
 		end if;
 		
 	end process;
-				
+
     process( sysclk )
     
 		variable divCounter28 : unsigned(15 downto 0) := x"0000";
@@ -665,21 +850,26 @@ begin
 	reset <= not RESET_n;
 
 	specTrdosToggleFlag <= '1' when specTrdosFlag = '0' and cpuM1 = '0' and cpuMREQ = '0' and specPort7ffd(4) = '1' and cpuA( 15 downto 8 ) = "00111101" else
-						   '1' when specTrdosFlag = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuA( 15 downto 14 ) /= "00" else
+						   '1' when specTrdosFlag = '0' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' and scorpROM = '0' else
+						   '1' when specTrdosFlag = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '1' and scorpROM = '0' else
 						   '0';
 
---	romPage <= 	"010" when ( specTrdosFlag xor specTrdosToggleFlag ) = '1' else
---					"001" when specPort7ffd(4) = '1' else
---					"000";
-	romPage <= 	"0" & not ( specTrdosFlag xor specTrdosToggleFlag ) & specPort7ffd(4);
+	romPage <=	"0" & not ( specTrdosFlag xor specTrdosToggleFlag ) & specPort7ffd(4) when specMode /= 3 else
+				"010" when specPort1ffd(1) = '1' else
+				"011" when ( specTrdosFlag xor specTrdosToggleFlag ) = '1' else
+				"00" & specPort7ffd(4);
 
-	ramPage <= 	"00000101" when cpuA( 15 downto 14 ) = "01" else
+	ramPage <= 	"00000000" when cpuA( 15 downto 14 ) = "00" else
+				"00000101" when cpuA( 15 downto 14 ) = "01" else
 				"00000010" when cpuA( 15 downto 14 ) = "10" else
 				"00" & specPort7ffd( 7 downto 5 ) & specPort7ffd( 2 downto 0 ) when specMode = 2 else
-				"00000" & specPort7ffd( 2 downto 0 );
-					
+				"0000"  & specPort1ffd(4) & specPort7ffd( 2 downto 0 )         when specMode = 3 else
+				"00000" & specPort7ffd( 2 downto 0 );					
 				
 	ayDin <= cpuDout;
+	covoxDin  <= cpuDout;
+	
+	scorpRom <= '1' when cpuA( 15 downto 14 ) = "00" and ( specMode /= 3 or specPort1ffd(0) = '0' ) else '0';
 	
     process( memclk )
     
@@ -696,7 +886,7 @@ begin
 		
 		variable kbdTmp : std_logic_vector(4 downto 0);
 		variable cpuReq : std_logic;		
-		
+
 		type rtcRamType is array ( 0 to 63 ) of std_logic_vector( 7 downto 0 );
 		variable rtcRam : rtcRamType;
 		
@@ -715,6 +905,10 @@ begin
 				addressReg := x"c000f0";
 				cpuReset <= '0';
 				cpuHaltReq <= '0';
+				scorpMagic <= '0';
+				specPort1ffd <= x"00";
+				specPort7ffd <= x"00";
+				selectedAY2 <= '0';
 			end if;		
         
 			rtcRamDataRd := rtcRamDataRdPrev;
@@ -798,41 +992,39 @@ begin
 				cpuDin <= x"ff";
 				portFfReq := '0';
 				ayRD <= '0';				
+				ay2RD <= '0';
 			elsif portFfReq = '1' then
 				cpuDin <= specPortFf;
 			elsif ayRD = '1' then
 				cpuDin <= ayDout;
+			elsif ay2RD = '1' then
+				cpuDin <= ay2Dout;
 			end if;
 
 			if cpuWR /= '0' then
 				ayADDR <= '0';
 				ayWR <= '0';
+				ay2WR     <= '0';
+				covoxWR   <= '0';
+				covoxAddr <= x"0000";
 			end if;
 
 			--if cpuCLK_prev = '1' and cpuWR = '0' then
 			if iCpuWr = "10" then
 				
-				if cpuMREQ = '0' then
-					
-					if cpuA( 15 downto 14 ) /= "00" then
-						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );
-					
+				if cpuMREQ = '0' then			
+					if scorpRom = '0' then
+						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );		
 						memDataIn <= cpuDout & cpuDout;
 						memDataMask(0) <= not cpuA(0);
 						memDataMask(1) <= cpuA(0);
 						memWr <= '1';
-						
 						cpuReq := '1';
 						memReq <= '1';
-						
 						cpuMemoryWait <= '1';
-						
-					end if;
-					
-				elsif cpuIORQ = '0' and cpuM1 = '1' then
-				
-					if specTrdosFlag = '1' and cpuA( 4 downto 0 ) = "11111" then 									
-			
+					end if;					
+				elsif cpuIORQ = '0' and cpuM1 = '1' then	
+					if ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then 											
 						if cpuA( 7 downto 0 ) = x"7F" and trdosFifoWriteCounter > 0 then
 							trdosFifoWriteWrTmp <= cpuDout;
 							trdosFifoWriteWr <= '1';							
@@ -841,15 +1033,9 @@ begin
 							specTrdosWait <= '1';
 							specTrdosWr <= '1';
 						end if;
-						
 					else
-					
 						if cpuA( 7 downto 0 ) = x"FE" then
 							specPortFe <= cpuDout;
-						elsif cpuA( 15 ) = '0' and cpuA( 7 downto 0 ) = x"fd" then
-							if specMode = 2 or specPort7ffd(5) = '0' then
-								specPort7ffd <= cpuDout;
-							end if;
 						elsif cpuA = x"eff7" then	
 							specPortEff7 <= cpuDout;
 						elsif cpuA = x"dff7" and specPortEff7(7) = '1' then	
@@ -857,11 +1043,34 @@ begin
 							rtcRamAddressRd := unsigned(cpuDout);
 						--elsif cpuA = x"bff7" and specPortEff7(7) = '1' then	
 							--rtcRam( to_integer( unsigned( specPortDff7 ) ) ) := cpuDout;
-						elsif ayMode /= 0 and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" then
+						elsif ayMode /= AY_MODE_NONE and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" then
 							ayADDR <= '1';
-						elsif ayMode /= 0 and cpuA( 15 downto 14 ) = "10" and cpuA(1 downto 0) = "01" then
-							ayWR <= '1';
+
+							if cpuDout = x"FE" then 
+								selectedAY2 <= '1';
+							elsif cpuDout = x"FF" then
+								selectedAY2 <= '0';
+							end if;
+						elsif ayMode /= AY_MODE_NONE and cpuA( 15 downto 14 ) = "10" and cpuA(1 downto 0) = "01" then
+							if turboSound = '1' and selectedAY2 = '1' then
+								ay2WR <= '1';
+							else
+								ayWR <= '1';
+							end if;	
+						elsif specMode = 3 then -- Scorpion
+						    if cpuA( 15 downto 12 ) = "0001" and cpuA(1) = '0' then
+						    --if cpuA( 15 downto 0 ) = x"1ffd" then
+									specPort1ffd <= cpuDout;
+						    elsif cpuA( 15 downto 14 ) = "01" and cpuA(5) = '1' and cpuA( 1 downto 0 ) = "01" and specPort7ffd(5) = '0' then
+									specPort7ffd <= cpuDout;
+						    end if;
+						elsif cpuA( 15 ) = '0' and cpuA( 7 downto 0 ) = x"fd" and ( specMode = 2 or specPort7ffd(5) = '0' ) then
+								specPort7ffd <= cpuDout;
+						end if;
 														
+						if(cpuA(15) ='1' or cpuA(14) = '1') then
+							covoxWR   <= '1';
+							covoxAddr <= cpuA;
 						end if;
 						
 					end if;
@@ -875,7 +1084,7 @@ begin
 				
 				if cpuMREQ = '0' then
 					
-					if cpuA( 15 downto 14 ) = "00" then
+					if scorpRom = '1' then
 						memAddress <= "001" & "00000" & romPage & cpuA( 13 downto 1 );
 					else
 						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );
@@ -913,7 +1122,7 @@ begin
 						--cpuDin <= rtcRam( to_integer( unsigned( specPortDff7( 5 downto 0 ) ) ) );
 						cpuDin <= rtcRamDataRd;
 						
-					elsif specTrdosFlag = '1' and cpuA( 4 downto 0 ) = "11111" then
+					elsif ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
 						
 						if cpuA( 7 downto 0 ) = x"FF" then 
 						
@@ -935,8 +1144,12 @@ begin
 					
 						if cpuA( 7 downto 0 ) = x"1F" then
 							cpuDin <= joystick;
-						elsif ayMode /= 0 and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" then
-							ayRD <= '1';
+						elsif ayMode /= AY_MODE_NONE and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" then
+							if turboSound = '1' and selectedAY2 = '1' then
+								ay2RD <= '1';
+							else
+								ayRD <= '1';
+							end if;							
 						elsif cpuA( 7 downto 0 ) = x"FF" then
 							portFfReq := '1';
 						end if;
@@ -950,7 +1163,7 @@ begin
 				armReq := '0';
 				
 				if addressReg( 23 ) = '0' and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
-					memAddress <= std_logic_vector( activeBank & addressReg( 22 downto 1 ) );
+					memAddress <= std_logic_vector( activeBank) & std_logic_vector(addressReg( 22 downto 1 ) );
 					memDataIn <= ARM_AD( 7 downto 0 ) & ARM_AD( 7 downto 0 );
 					memDataMask( 0 ) <= not addressReg( 0 );
 					memDataMask( 1 ) <= addressReg( 0 );
@@ -960,7 +1173,7 @@ begin
 					memReq <= '1';
 					
 				elsif addressReg( 23 downto 22 ) = "10" and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
-					memAddress <= std_logic_vector( activeBank & addressReg( 21 downto 0 ) );
+					memAddress <= std_logic_vector( activeBank) & std_logic_vector(addressReg( 21 downto 0 ) );
 					memDataIn <= ARM_AD;
 					memDataMask <= "11";
 					memWr <= '1';
@@ -975,6 +1188,7 @@ begin
 							cpuRestorePC_n <= not ARM_AD( 1 );
 							cpuOneCycleWaitReq <= ARM_AD( 2 );
 							cpuReset <= ARM_AD( 3 );
+							scorpMagic <= ARM_AD( 4 );
 							
 						elsif addressReg( 7 downto 0 ) = x"01" then
 							cpuRestorePC <= ARM_AD;
@@ -1006,7 +1220,8 @@ begin
 							specPortFe <= ARM_AD(7 downto 0);
 						elsif addressReg( 7 downto 0 ) = x"17" then
 							specPort7ffd <= ARM_AD(7 downto 0);
-							
+						elsif addressReg( 7 downto 0 ) = x"23" then
+							specPort1ffd <= ARM_AD(7 downto 0);
 						elsif addressReg( 7 downto 0 ) = x"18" then
 							specTrdosFlag <= ARM_AD(0);							
 						elsif addressReg( 7 downto 0 ) = x"19" then
@@ -1065,6 +1280,10 @@ begin
 							dacMode <= unsigned( ARM_AD(7 downto 0) );
 						elsif addressReg( 7 downto 0 ) = x"47" then
 							ayMode <= unsigned( ARM_AD(7 downto 0) );
+						elsif addressReg( 7 downto 0 ) = x"45" then
+							turboSound <= ARM_AD(0);
+							covoxMode  <= unsigned( ARM_AD(3 downto 1) );
+							ayymMode     <= ARM_AD(4);
 						elsif addressReg( 7 downto 0 ) = x"48" then
 							videoAspectRatio <= unsigned( ARM_AD(7 downto 0) );
 						elsif addressReg( 7 downto 0 ) = x"49" then
@@ -1089,13 +1308,13 @@ begin
 				armReq := '0';
 
 				if addressReg( 23 ) = '0' and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
-					memAddress <= std_logic_vector( activeBank & addressReg( 22 downto 1 ) );
+					memAddress <= std_logic_vector( activeBank ) & std_logic_vector(addressReg( 22 downto 1 ) );
 					memWr <= '0';
 					
 					cpuReq := '0';
 					memReq <= '1';				
 				elsif addressReg( 23 downto 22 ) = "10" and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
-					memAddress <= std_logic_vector( activeBank & addressReg( 21 downto 0 ) );
+					memAddress <= std_logic_vector( activeBank ) & std_logic_vector (addressReg( 21 downto 0 ) );
 					memWr <= '0';
 					
 					cpuReq := '0';
@@ -1117,6 +1336,8 @@ begin
 							ARM_AD <= x"00" & specPortFe;
 						elsif addressReg( 7 downto 0 ) = x"17" then
 							ARM_AD <= x"00" & specPort7ffd;
+						elsif addressReg( 7 downto 0 ) = x"23" then
+							ARM_AD <= x"00" & specPort1ffd;
 						elsif addressReg( 7 downto 0 ) = x"18" then
 							ARM_AD <= x"00" & b"0000000" & specTrdosFlag;
 						elsif addressReg( 7 downto 0 ) = x"19" then
@@ -1348,8 +1569,6 @@ begin
 		
 	end process;
 		
-	---------------------------------------------------------------------------------------
-
     paper <= '0' when Hor_Cnt(5) = '0' and Ver_Cnt(5) = '0' and ( Ver_Cnt(4) = '0' or Ver_Cnt(3) = '0' ) else '1';      
 	hsync <= '0' when Hor_Cnt(5 downto 2) = "1010" else '1';
 	vsync1 <= '0' when Hor_Cnt(5 downto 1) = "00110" or Hor_Cnt(5 downto 1) = "10100" else '1';
@@ -1396,6 +1615,11 @@ begin
 	begin
 		if sysclk'event and sysclk = '1' then
 		
+			if reset = '1' then				
+				cpuINT <= '1';
+				cpuNMI <= '1';
+			end if;
+
 			refresh <= '0';
 				
 			if cpuReset = '1' or cpuHaltAck = '1' or specTrdosWait = '1' or ( cpuMREQ = '0' and cpuRFSH = '0' ) then
@@ -1419,6 +1643,14 @@ begin
 			end if;
 			
 			if cpuCLK = '1' then
+			
+				if cpuMREQ = '0' and cpuM1 = '0' then
+					if scorpROM = '0' then
+						cpuNMI <= not scorpMagic;
+					elsif scorpROM = '1' then
+						cpuNMI <= '1';
+					end if;
+				end if;
 				
 				if ( cpuIORQ = '0' and cpuA( 15 downto 14 ) /= "01" ) or cpuMREQ = '0' then
 					ulaWaitCancel <= '1';
@@ -1508,10 +1740,10 @@ begin
 	
 	------------------------------------------------------------------------------------------
 	
-	vramPage <= "000001" & specPort7ffd(3) & "1";
-		
+	vramPage  <= "000001" & specPort7ffd(3) & "1";
+	
 	process( memclk )
-		variable videoPage : std_logic_vector(10 downto 0);
+		variable videoPage  : std_logic_vector(10 downto 0);
 
 		variable portFfTemp : std_logic_vector(7 downto 0) := x"FF";
 		
@@ -1544,18 +1776,24 @@ begin
 				end if;
 				
 				if vidReq = '1' and memReq2 = '0' and ( ( videoMode = x"04" and vidReadPos(0) = '1' ) or cpuCLK_nowait_prev = '1' ) then
-					
+				
 					memWr2 <= '0';
 					memReq2 <= '1';
-					
+				
 					if vidReadPos = 0 or vidReadPos = 2 then
-						memAddress2 <= videoPage & std_logic_vector( "0" & Ver_Cnt(4 downto 3) & ChrR_Cnt & Ver_Cnt(2 downto 0) & Hor_Cnt(4 downto 1) );
+						memAddress2 <= 		std_logic_vector(videoPage) & "0" &
+											std_logic_vector(Ver_Cnt(4 downto 3)) & 
+											std_logic_vector(ChrR_Cnt) & 
+											std_logic_vector(Ver_Cnt(2 downto 0)) & 
+											std_logic_vector(Hor_Cnt(4 downto 1));
 					else
-						memAddress2 <= videoPage & std_logic_vector( "0110" & Ver_Cnt(4 downto 0) & Hor_Cnt(4 downto 1) );
+						memAddress2 <= 		std_logic_vector(videoPage) & "0110" & 
+											std_logic_vector(Ver_Cnt(4 downto 0)) & 
+											std_logic_vector(Hor_Cnt(4 downto 1));
 					end if;					
 
 				elsif memAck2 = '1' then
-				
+			
 					memReq2 <= '0';
 					vidReq := '0';
 
@@ -1563,28 +1801,28 @@ begin
 						Shift <= memDataOut2;
 						portFfTemp := memDataOut2( 7 downto 0 );						
 						vidReq := '1';
-						
+					
 					elsif vidReadPos = 1  then
 						Attr <= memDataOut2;
 						portFfTemp := memDataOut2( 7 downto 0 );
 						if cpuTurbo = 0 then
 							vidReq := '1';
 						end if;						
-						
+					
 					elsif vidReadPos = 2  then
 						Shift( 15 downto 8 ) <= memDataOut2( 15 downto 8 );
 						portFfTemp := memDataOut2( 15 downto 8 );
 						vidReq := '1';
-						
+					
 					else
 						Attr( 15 downto 8 ) <= memDataOut2( 15 downto 8 );
 						portFfTemp := memDataOut2( 15 downto 8 );
-						
-					end if;
 					
-					vidReadPos := vidReadPos + 1;
+					end if;
 				
-				end if;					
+					vidReadPos := vidReadPos + 1;
+			
+				end if;
 					
 			end if;
 		
@@ -1594,10 +1832,10 @@ begin
 				vidReqUla := '1';
 			end if;			
 			
-			if armVideoPage(15) = '1' then
-				videoPage := armVideoPage( 10 downto 0 );
+			if vid_mode_arm = '1' then
+				videoPage  := armVideoPage( 10 downto 0 );
 			else
-				videoPage := "000" & vramPage;
+				videoPage  := "000" & vramPage;
 			end if;
 			
 			specPortFf <= portFfTemp;
@@ -1620,7 +1858,7 @@ begin
 	
 		if sysclk'event and sysclk = '1' and clk7m = '1' then
 			if ChrC_Cnt = 7 then
-				
+			
 				if Hor_Cnt(0) = '0' then
 					Attr_r <= Attr( 7 downto 0 );
 					Shift_r <= Shift( 7 downto 0 );
@@ -1628,13 +1866,12 @@ begin
 					Attr_r <= Attr( 15 downto 8 );
 					Shift_r <= Shift( 15 downto 8 );
 				end if;
-				
+			
 				paper_r <= paper;
-				
+			
 			else
 				Shift_r <= Shift_r(6 downto 0) & "0";					
 			end if;
-			
 				
 			if ChrC_Cnt = 7 then
 				if videoMode >= 3 then
@@ -1673,39 +1910,41 @@ begin
 	speaker <= specPortFe( 4 );
 
 	process( sysclk, clk7m )
+	
+	variable pix2 : std_logic_vector (7 downto 0);
 	begin
 		if sysclk'event and sysclk = '1' and clk7m = '1' then
 			if paper_r = '0' then
 				if( Shift_r(7) xor ( Attr_r(7) and Invert(4) ) ) = '1' then
-					specB <= Attr_r(0);
-					specR <= Attr_r(1);
-					specG <= Attr_r(2);
+					specB <= Attr_r(0) & Attr_r(0);
+					specR <= Attr_r(1) & Attr_r(1);
+					specG <= Attr_r(2) & Attr_r(2);
 				else
-					specB <= Attr_r(3);
-					specR <= Attr_r(4);
-					specG <= Attr_r(5);
+					specB <= Attr_r(3) & Attr_r(3);
+					specR <= Attr_r(4) & Attr_r(4);
+					specG <= Attr_r(5) & Attr_r(5);
 				end if;
-				
+			
 				specY <= Attr_r(6);
 				
 			elsif blank_r = '1' then
 				
 				if armBorder(15) = '1' then
-					specB <= armBorder(0);
-					specR <= armBorder(1);
-					specG <= armBorder(2);
+					specB <= armBorder(0) & armBorder(0);
+					specR <= armBorder(1) & armBorder(1);
+					specG <= armBorder(2) & armBorder(2);
 				else
-					specB <= borderAttr(0);
-					specR <= borderAttr(1);
-					specG <= borderAttr(2);
+					specB <= borderAttr(0) & borderAttr(0);
+					specR <= borderAttr(1) & borderAttr(1);
+					specG <= borderAttr(2) & borderAttr(2);
 				end if;
 				
 				specY <= '0';
 				
 			else
-				specB <= '0';
-				specR <= '0';
-				specG <= '0';
+				specB <= "00";
+				specR <= "00";
+				specG <= "00";
 				specY <= '0';
 
 			end if;
@@ -1713,19 +1952,29 @@ begin
 	end process;
 
 	------------------------------------------------------------------------------------------------
+	process( sysclk )
+	begin
+		if sysclk'event and sysclk = '1' then
+			if ayymMode = '0' then
+				weightAY_L <= weigthYmTable(to_integer(ayMode),0);
+				weightAY_R <= weigthYmTable(to_integer(ayMode),1);
+			else
+				weightAY_L <= weigthAyTable(to_integer(ayMode),0);
+				weightAY_R <= weigthAyTable(to_integer(ayMode),1);
+			end if;
+		end if;
+	end process;
 
-	sound( 14 ) <= speaker;
-	sound( 12 ) <= tapeIn;
 	
-	soundLeft	<= sound when ayMode = 0 else
-					std_logic_vector( unsigned( sound ) + unsigned( "0" & ayOUT_A( 7 downto 0 ) & "0000000" ) + unsigned( "00" & ayOUT_B( 7 downto 0 ) & "000000" ) ) when ayMode = 1 else
-					std_logic_vector( unsigned( sound ) + unsigned( "0" & ayOUT_A( 7 downto 0 ) & "0000000" ) + unsigned( "00" & ayOUT_C( 7 downto 0 ) & "000000" ) ) when ayMode = 2 else
-					std_logic_vector( unsigned( sound ) + unsigned( "0" & ayOUT( 7 downto 0 ) & "000000" ) + unsigned( "00" & ayOUT( 7 downto 0 ) & "000000" ) );
-					
-	soundRight	<= sound when ayMode = 0 else
-					std_logic_vector( unsigned( sound ) + unsigned( "0" & ayOUT_C( 7 downto 0 ) & "0000000" ) + unsigned( "00" & ayOUT_B( 7 downto 0 ) & "000000" ) ) when ayMode = 1 else
-					std_logic_vector( unsigned( sound ) + unsigned( "0" & ayOUT_B( 7 downto 0 ) & "0000000" ) + unsigned( "00" & ayOUT_C( 7 downto 0 ) & "000000" ) ) when ayMode = 2 else
-					std_logic_vector( unsigned( sound ) + unsigned( "0" & ayOUT( 7 downto 0 ) & "000000" ) + unsigned( "00" & ayOUT( 7 downto 0 ) & "000000" ) );
+	covoxEnabled<= '0' when covoxMode = 0 else
+						'1';
+	ay1Enabled 	<= '0' when ayMode = AY_MODE_NONE else
+						'1';
+	ay2Enabled 	<= '1' when ayMode /= AY_MODE_NONE and turboSound = '1' else
+						'0';
+	
+	soundLeft <= mixedOutputL;
+	soundRight <= mixedOutputR;
 
 	SOUND_LEFT	<= soundLeft( 15 downto 8 ) when dacMode = 0 else
 		tdaData & tdaWs & tdaBck & "00000";
@@ -1770,7 +2019,7 @@ begin
 --									outLeft( 15 downto 0 ) );
 				
 
-				outData := unsigned( x"00" & outRight( 15 downto 0 ) & x"00" & outLeft( 15 downto 0 ) );
+				outData := unsigned( x"00" & std_logic_vector(outRight( 15 downto 0 )) & x"00" & std_logic_vector(outLeft( 15 downto 0 )) );
 
 			end if;
 			
@@ -1921,15 +2170,15 @@ begin
 				if testVideo = 0 then
 					if specY = '0' then
 				
-						rgbR <= specR & specR & "000000";
-						rgbG <= specG & specG & "000000";
-						rgbB <= specB & specB & "000000";
+						rgbR <= specR & "000000";
+						rgbG <= specG & "000000";
+						rgbB <= specB & "000000";
 					
 					else
 				
-						rgbR <= specR & specR & specR & specR & specR & specR & specR & specR;
-						rgbG <= specG & specG & specG & specG & specG & specG & specG & specG;
-						rgbB <= specB & specB & specB & specB & specB & specB & specB & specB;
+						rgbR <= specR & specR & specR & specR;
+						rgbG <= specG & specG & specG & specG;
+						rgbB <= specB & specB & specB & specB;
 						
 					end if;
 				

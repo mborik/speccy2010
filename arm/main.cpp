@@ -410,16 +410,15 @@ void FPGA_Config()
     fpgaConfigInfo.lfname = lfn;
     fpgaConfigInfo.lfsize = 0;
 
-    char fileName[ PATH_SIZE ] = "speccy2010.rbf";
-    if( strcmp( specConfig.fpgaConfigName, "speccy" ) != 0 )
+    if( f_stat( specConfig.fpgaConfigName, &fpgaConfigInfo ) != FR_OK )
     {
-        sniprintf( fileName, sizeof(fileName), "%s/%s.rbf", specConfig.fpgaConfigName, specConfig.fpgaConfigName );
-    }
+        strcpy( specConfig.fpgaConfigName, "speccy2010.rbf" );
 
-    if( f_stat( fileName, &fpgaConfigInfo ) != FR_OK )
-    {
-        __TRACE( "Cannot open %s...\n", fileName );
-        return;
+        if( f_stat( specConfig.fpgaConfigName, &fpgaConfigInfo ) != FR_OK )
+        {
+            __TRACE( "Cannot open %s...\n", specConfig.fpgaConfigName );
+            return;
+        }
     }
 
     dword fpgaConfigVersion = ( fpgaConfigInfo.fdate << 16 ) | fpgaConfigInfo.ftime;
@@ -430,21 +429,21 @@ void FPGA_Config()
     //sniprintf( str, sizeof(str), "new - %x\n", fpgaConfigVersion );
     //UART0_WriteText( str );
 
-    if( fpgaConfigVersionPrev >= fpgaConfigVersion )
+    if( fpgaConfigVersionPrev == fpgaConfigVersion )
     {
-        __TRACE( "The version of %s is match...\n", fileName );
+        __TRACE( "The version of %s is match...\n", specConfig.fpgaConfigName );
         return;
     }
 
     FIL fpgaConfig;
-    if( f_open( &fpgaConfig, fileName, FA_READ ) != FR_OK )
+    if( f_open( &fpgaConfig, specConfig.fpgaConfigName, FA_READ ) != FR_OK )
     {
-        __TRACE( "Cannot open %s...\n", fileName );
+        __TRACE( "Cannot open %s...\n", specConfig.fpgaConfigName );
         return;
     }
     else
     {
-        __TRACE( "FPGA cofiguration file %s is opened...\n", fileName );
+        __TRACE( "FPGA cofiguration file %s is opened...\n", specConfig.fpgaConfigName );
     }
     //--------------------------------------------------------------------------
 
@@ -771,11 +770,23 @@ void Spectrum_InitRom()
 {
     __TRACE( "ROM configuration started...\n" );
 
-    specConfig.specUseBank0 = Spectrum_LoadRomPage( 0, "roms/system.rom" );
-    Spectrum_LoadRomPage( 1, "roms/trdos.rom" );
+    specConfig.specUseBank0 = false;
 
-    if( specConfig.specRom == SpecRom_Classic48 ) Spectrum_LoadRomPage( 3, "roms/48.rom" );
-    else Spectrum_LoadRomPage( 2, "roms/pentagon.rom" );
+    if( specConfig.specRom == SpecRom_Classic48 )
+    {
+        Spectrum_LoadRomPage( 1, "roms/trdos.rom" );
+        Spectrum_LoadRomPage( 3, "roms/48.rom" );
+    }
+    else if( specConfig.specRom == SpecRom_Scorpion )
+    {
+        Spectrum_LoadRomPage( 0, "roms/scorpion.rom" );
+    }
+    else
+    {
+        specConfig.specUseBank0 = Spectrum_LoadRomPage( 0, "roms/system.rom" );
+        Spectrum_LoadRomPage( 1, "roms/trdos.rom" );
+        Spectrum_LoadRomPage( 2, "roms/pentagon.rom" );
+    }
 
     __TRACE( "ROM configuration finished...\n" );
 
@@ -806,6 +817,7 @@ void Spectrum_UpdateConfig()
 
     SystemBus_Write( 0xc00046, specConfig.specDacMode );
     SystemBus_Write( 0xc00047, specConfig.specAyMode );
+    SystemBus_Write( 0xc00045, specConfig.specTurboSound | ((specConfig.specCovox<<1)&0x0E) | (specConfig.specAyYm << 4));
 
     floppy_set_fast_mode( specConfig.specBdiMode );
 
@@ -1642,12 +1654,19 @@ void ZetIo_Routine()
         {
             if( ( buff[0] & 0x00ff ) != currentFile )
             {
+                char configPath[ PATH_SIZE ];
+                sniprintf( configPath, sizeof(configPath), "%s", specConfig.fpgaConfigName );
+
+                int i = strlen( configPath );
+                while( i > 0 && configPath[i] != '/' ) i--;
+                configPath[i] = 0;
+
                 currentFile = ( buff[0] & 0x00ff );
                 char fileName[ PATH_SIZE ] = "";
 
-                if( currentFile == 0x00 ) sniprintf( fileName, sizeof(fileName), "%s/%s", specConfig.fpgaConfigName, "bios.rom" );
-                else if( currentFile == 0x01 ) sniprintf( fileName, sizeof(fileName), "%s/%s", specConfig.fpgaConfigName, "a-zet.img" );
-                else if( currentFile == 0x02 ) sniprintf( fileName, sizeof(fileName), "%s/%s", specConfig.fpgaConfigName, "c.img" );
+                if( currentFile == 0x00 ) sniprintf( fileName, sizeof(fileName), "%s/%s", configPath, "bios.rom" );
+                else if( currentFile == 0x01 ) sniprintf( fileName, sizeof(fileName), "%s/%s", configPath, "a-zet.img" );
+                else if( currentFile == 0x02 ) sniprintf( fileName, sizeof(fileName), "%s/%s", configPath, "c.img" );
 
                 __TRACE( "Open file: %s\n", fileName );
 
