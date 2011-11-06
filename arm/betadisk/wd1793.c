@@ -684,7 +684,7 @@ static void wd_proc(void)
 static inline void wd_update_stat(void)
 {
 	wd.str &= ~WD17XX_STAT_NOTRDY;
-	if( !fdc_query(FDC_READY) || !fdc_query(FDC_RESET) || wd_is_hld() ) wd.str |= WD17XX_STAT_NOTRDY;
+	if( !fdc_query(FDC_READY) || !fdc_query(FDC_RESET) || !wd_is_hld() ) wd.str |= WD17XX_STAT_NOTRDY;
 
 	if ( (wd.cr_c & TYPEI_MASK) == TYPEI )
 	{
