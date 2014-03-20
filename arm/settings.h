@@ -2,7 +2,7 @@
 #define SETTINGS_H_INCLUDED
 
 #include "types.h"
-#include "string.h"
+#include "cstring.h"
 #include "fatfs/ff.h"
 
 const int PTYPE_LIST = 0;

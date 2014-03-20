@@ -25,9 +25,9 @@ extern "C"
     #include "crc16.h"
     #include "ps2scancodes.h"
 
-    #include<stdio.h>
-    #include<string.h>
-    #include<time.h>
+    #include <stdio.h>
+    #include <string.h>
+    #include <time.h>
 
     //-------------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ extern "C"
 #define PATH_SIZE 0x80
 
 #ifdef __cplusplus
-    #include "string.h"
+    #include "cstring.h"
 
     const dword FPGA_NONE = 0x00000000;
     const dword FPGA_SPECCY2010 = 0x00000001;

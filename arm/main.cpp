@@ -1395,6 +1395,9 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
                 else if( keyCode == KEY_RCTRL ) tempFlag = fKeyCtrlRight;
                 else if( keyCode == KEY_LALT ) tempFlag = fKeyAltLeft;
                 else if( keyCode == KEY_RALT ) tempFlag = fKeyAltRight;
+                else if( keyCode == KEY_LWIN ) tempFlag = fKeyAltLeft;
+                else if( keyCode == KEY_RWIN ) tempFlag = fKeyAltRight;
+                else if( keyCode == KEY_MENU ) tempFlag = fKeyAltLeft;
 
                 if( tempFlag != 0 )
                 {
@@ -1404,9 +1407,8 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
 
                 if( !keyRelease )
                 {
-                    if( keyCode == KEY_CAPSLOCK ) keyFlags = keyFlags ^ fKeyCaps;
-                    else if( keyCode == KEY_LSHIFT && ( keyFlags & fKeyCtrlLeft ) != 0 ) keyFlags = keyFlags ^ fKeyRus;
-                    else if( keyCode == KEY_LCTRL && ( keyFlags & fKeyShiftLeft ) != 0 ) keyFlags = keyFlags ^ fKeyRus;
+                    if( keyCode == KEY_BACKQUOTE ) keyFlags = keyFlags ^ fKeyCaps;
+                    else if( keyCode == KEY_SCROLLOCK ) keyFlags = keyFlags ^ fKeyRus;
                 }
 
                 _keyCode = keyCode;

@@ -132,15 +132,15 @@ void DecodeKey( word keyCode, word keyFlags )
 
     bool flagKeyRelease = ( keyFlags & fKeyRelease ) != 0;
 
-    bool reset1 = ( keyFlags & ( fKeyCtrlLeft | fKeyCtrlRight ) ) == ( fKeyCtrlLeft | fKeyCtrlRight );
+    bool reset1 = ( keyFlags & fKeyAlt ) == fKeyAlt;
 
     static bool reset2 = false;
     if( keyCode == KEY_POWER && !flagKeyRelease ) reset2 = true;
     if( keyCode == KEY_POWER && flagKeyRelease ) reset2 = false;
 
     static bool reset3 = false;
-    if( keyCode == KEY_PRNTSCR && !flagKeyRelease ) reset3 = true;
-    if( keyCode == KEY_PRNTSCR && flagKeyRelease ) reset3 = false;
+    if( keyCode == KEY_PAUSE && !flagKeyRelease ) reset3 = true;
+    if( keyCode == KEY_PAUSE && flagKeyRelease ) reset3 = false;
 
     if( ( reset1 || reset2 || reset3 ) != resetState )
     {
@@ -153,7 +153,7 @@ void DecodeKey( word keyCode, word keyFlags )
 
     if( !flagKeyRelease )
     {
-        if( ( keyFlags & fKeyCtrl ) != 0 )
+        if( ( keyFlags & fKeyAlt ) )
         {
             switch( keyCode )
             {
@@ -187,40 +187,40 @@ void DecodeKey( word keyCode, word keyFlags )
                     break;
             }
         }
-        else if ( fKeyAlt & keyFlags )
+        else if ( keyFlags & ( fKeyAlt | fKeyCtrl ) )
         {
             int kc;
 
             switch ( keyCode )
             {
-                case KEY_0:
+                case KEY_F1:
                     kc = 0;
                     break;
-                case KEY_1:
+                case KEY_F2:
                     kc = 1;
                     break;
-                case KEY_2:
+                case KEY_F3:
                     kc = 2;
                     break;
-                case KEY_3:
+                case KEY_F4:
                     kc = 3;
                     break;
-                case KEY_4:
+                case KEY_F5:
                     kc = 4;
                     break;
-                case KEY_5:
+                case KEY_F6:
                     kc = 5;
                     break;
-                case KEY_6:
+                case KEY_F7:
                     kc = 6;
                     break;
-                case KEY_7:
+                case KEY_F8:
                     kc = 7;
                     break;
-                case KEY_8:
+                case KEY_F9:
                     kc = 8;
                     break;
-                case KEY_9:
+                case KEY_F10:
                     kc = 9;
                     break;
                 default:
@@ -239,16 +239,12 @@ void DecodeKey( word keyCode, word keyFlags )
         {
             switch( keyCode )
             {
-                case KEY_ESC :
-                    Debugger_Enter();
-                    break;
-
                 case KEY_PAUSE :
                     Shell_Pause();
                     break;
 
                 case KEY_F1 :
-                    specConfig.specTurbo = 0;
+                    specConfig.specTurbo ^= 3;
                     Spectrum_UpdateConfig();
                     //SaveConfig();
                     break;
@@ -263,7 +259,7 @@ void DecodeKey( word keyCode, word keyFlags )
                     //SaveConfig();
                     break;
                 case KEY_F4 :
-                    specConfig.specTurbo = 3;
+                    specConfig.specTurbo ^= 3;
                     Spectrum_UpdateConfig();
                     //SaveConfig();
                     break;
@@ -300,12 +296,13 @@ void DecodeKey( word keyCode, word keyFlags )
                     break;
 
                 case KEY_F11 :
-                    if( ( keyFlags & fKeyShift ) != 0 ) Shell_SaveSnapshot();
+                    if( ( keyFlags & fKeyAlt ) != 0 ) Shell_SaveSnapshot();
                     else SaveSnapshot( UpdateSnaName() );
                     break;
 
                 case KEY_F12 :
-                    Shell_Browser();
+                    if( ( keyFlags & fKeyAlt ) != 0 ) Debugger_Enter();
+                    else Shell_Browser();
                     break;
 
                 case KEY_EQUALS :
@@ -317,10 +314,6 @@ void DecodeKey( word keyCode, word keyFlags )
                 case KEY_KP_MINUS :
                     if( !Tape_Started() ) Tape_Start();
                     else Tape_Stop();
-                    break;
-
-                case KEY_INSERT :
-                    specConfig.specMouseSwap = !specConfig.specMouseSwap;
                     break;
             }
         }
