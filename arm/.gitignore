@@ -1,0 +1,13 @@
+# Build directory
+/build
+
+# Compiled Object files
+*.o
+/.objs
+
+# Eclipse project files
+/.cproject
+/.project
+
+# gitignore itself
+/.gitignore
