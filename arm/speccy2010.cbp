@@ -99,6 +99,8 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="crc16.h" />
+		<Unit filename="cstring.cpp" />
+		<Unit filename="cstring.h" />
 		<Unit filename="fatfs\diskio.c">
 			<Option compilerVar="CC" />
 		</Unit>
@@ -284,8 +286,6 @@
 		<Unit filename="specSnapshot.h" />
 		<Unit filename="specTape.cpp" />
 		<Unit filename="specTape.h" />
-		<Unit filename="string.cpp" />
-		<Unit filename="string.h" />
 		<Unit filename="system.h" />
 		<Unit filename="system\STR75xFx2_DEF.ld" />
 		<Unit filename="system\STR75xFx2_FLASH.ld" />
