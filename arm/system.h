@@ -108,7 +108,7 @@ extern "C"
     const word fKeyAlt = fKeyAltLeft | fKeyAltRight;
 
     const word fKeyCaps = ( 1 << 10 );
-    const word fKeyRus = ( 1 << 11 );
+    const word fKeyPCEmu = ( 1 << 11 );
 
     bool ReadKey( word &key, word &flags );
     word ReadKeySimple( bool norepeat = false );

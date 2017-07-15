@@ -7,7 +7,16 @@ struct CMatrixRecord
     byte specKeyCode1;
 };
 
+struct CSymbolShortcutKeyRecord
+{
+    word keyCode;
+    word ctrlMask;
+    BOOL extend;
+    byte specKeyCode;
+};
+
 extern CMatrixRecord const keyMatrixMain[];
+extern CSymbolShortcutKeyRecord const keyMatrixSymbolShortcuts[];
 
 extern CMatrixRecord const keyMatrixKempston[];
 extern CMatrixRecord const keyMatrixSinclair1[];
@@ -26,5 +35,3 @@ enum { SPEC_KEY_NONE = 0xff,
         SPEC_KEY_SPACE, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_M, SPEC_KEY_N, SPEC_KEY_B,
         SPEC_KEY_RIGHT, SPEC_KEY_LEFT, SPEC_KEY_DOWN, SPEC_KEY_UP, SPEC_KEY_FIRE,
         SPEC_KEYS_NUMBER };
-
-

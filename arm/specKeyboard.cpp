@@ -100,11 +100,68 @@ void DecodeKeyMatrix( word keyCode, bool flagKeyRelease, const CMatrixRecord *ma
     }
 }
 
+bool DecodeSymbolShortcut( word keyCode, word keyFlags, const CSymbolShortcutKeyRecord *map )
+{
+    if ( ( keyFlags & fKeyPCEmu ) != 0 )
+        return false;
+
+    bool flagKeyRelease = ( keyFlags & fKeyRelease );
+    word code, shifts = (keyFlags & (fKeyShift | fKeyCtrl));
+
+    for ( ; ( code = map->keyCode ) != KEY_NONE; map++ )
+    {
+        if ( code == keyCode )
+        {
+            __TRACE( "# keyCode - 0x%04x, 0x%04x[m:0x%04x], ext: %d\n", keyCode, keyFlags, map->ctrlMask, map->extend);
+
+            if ( ( map->ctrlMask && (shifts & map->ctrlMask)) ||
+                 ( map->ctrlMask == 0 && shifts == 0 ) )
+            {
+                if ( map->extend )
+                {
+                    if ( !flagKeyRelease )
+                    {
+                        SetSpecKey( SPEC_KEY_CAPS_SHIFT, true );
+                        DelayMs( 2 );
+                        SetSpecKey( SPEC_KEY_SYMBOL_SHIFT, true );
+                    }
+                    else
+                    {
+                        SetSpecKey( SPEC_KEY_SYMBOL_SHIFT, false );
+                        DelayMs( 2 );
+                        SetSpecKey( SPEC_KEY_CAPS_SHIFT, false );
+                    }
+
+                    DelayMs( 10 );
+                }
+
+                if ( !flagKeyRelease )
+                {
+                    SetSpecKey( SPEC_KEY_SYMBOL_SHIFT, true );
+                    DelayMs( 3 );
+                    SetSpecKey( map->specKeyCode, true );
+                }
+                else
+                {
+                    SetSpecKey( map->specKeyCode, false );
+                    DelayMs( 3 );
+                    SetSpecKey( SPEC_KEY_SYMBOL_SHIFT, false );
+                }
+
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void DecodeKeySpec( word keyCode, word keyFlags )
 {
     bool flagKeyRelease = ( keyFlags & fKeyRelease ) != 0;
 
-    DecodeKeyMatrix( keyCode, flagKeyRelease, keyMatrixMain );
+    if ( !DecodeSymbolShortcut( keyCode, keyFlags, keyMatrixSymbolShortcuts ) )
+        DecodeKeyMatrix( keyCode, flagKeyRelease, keyMatrixMain );
 
     int joyMode = specConfig.specJoyModeEmulation;
 
@@ -259,15 +316,29 @@ void DecodeKey( word keyCode, word keyFlags )
                     //SaveConfig();
                     break;
                 case KEY_F4 :
-                    specConfig.specTurbo ^= 3;
-                    Spectrum_UpdateConfig();
-                    //SaveConfig();
+                    if( ( keyFlags & fKeyAlt ) != 0 )
+                        SystemBus_Write( 0xc00000, 0x00004 );
+                    else {
+                        specConfig.specTurbo ^= 3;
+                        Spectrum_UpdateConfig();
+                        //SaveConfig();
+                    }
                     break;
 
                 case KEY_F5 :
-                    SystemBus_Write( 0xc00000, 0x00004 );
+                    CPU_NMI();
                     break;
+
                 case KEY_F6 :
+                    Shell_DisksMenu();
+                    break;
+
+                case KEY_F7 :
+                    if( ( keyFlags & fKeyAlt ) != 0 ) Shell_SaveSnapshot();
+                    else SaveSnapshot( UpdateSnaName() );
+                   break;
+
+                case KEY_F8 :
                     {
                         CPU_Stop();
 
@@ -292,28 +363,19 @@ void DecodeKey( word keyCode, word keyFlags )
                     break;
 
                 case KEY_F10 :
-                    Shell_DisksMenu();
+                case KEY_KP_PLUS :
+                    if( !Tape_Started() ) Tape_Restart();
                     break;
 
                 case KEY_F11 :
-                    if( ( keyFlags & fKeyAlt ) != 0 ) Shell_SaveSnapshot();
-                    else SaveSnapshot( UpdateSnaName() );
+                case KEY_KP_MINUS :
+                    if( !Tape_Started() ) Tape_Start();
+                    else Tape_Stop();
                     break;
 
                 case KEY_F12 :
                     if( ( keyFlags & fKeyAlt ) != 0 ) Debugger_Enter();
                     else Shell_Browser();
-                    break;
-
-                case KEY_EQUALS :
-                case KEY_KP_PLUS :
-                    if( !Tape_Started() ) Tape_Restart();
-                    break;
-
-                case KEY_MINUS :
-                case KEY_KP_MINUS :
-                    if( !Tape_Started() ) Tape_Start();
-                    else Tape_Stop();
                     break;
             }
         }
@@ -324,9 +386,7 @@ char CodeToChar( word keyCode )
 {
     word keyFlags = ReadKeyFlags();
 
-    bool rus = ( keyFlags & fKeyRus ) != 0;
     bool shift = ( keyFlags & fKeyShift ) != 0;
-
     bool caps = ( keyFlags & fKeyCaps ) != 0;
     if( shift ) caps = !caps;
 
@@ -367,12 +427,12 @@ char CodeToChar( word keyCode )
         case KEY_SPACE : return ' ';
 
         case KEY_1 : return !shift ? '1' : '!';
-        case KEY_2 : return !shift ? '2' : !rus ? '@' : '\"';
-        case KEY_3 : return !shift ? '3' : !rus ? '#' : '¹';
-        case KEY_4 : return !shift ? '4' : !rus ? '$' : ';';
+        case KEY_2 : return !shift ? '2' : '@';
+        case KEY_3 : return !shift ? '3' : '#';
+        case KEY_4 : return !shift ? '4' : '$';
         case KEY_5 : return !shift ? '5' : '%';
-        case KEY_6 : return !shift ? '6' : !rus ? '^' : ':';
-        case KEY_7 : return !shift ? '7' : !rus ? '&' : '?';
+        case KEY_6 : return !shift ? '6' : '^';
+        case KEY_7 : return !shift ? '7' : '&';
         case KEY_8 : return !shift ? '8' : '*';
         case KEY_9 : return !shift ? '9' : '(';
         case KEY_0 : return !shift ? '0' : ')';
@@ -380,50 +440,44 @@ char CodeToChar( word keyCode )
         case KEY_MINUS : return !shift ? '-' : '_';
         case KEY_EQUALS : return !shift ? '=' : '+';
 
-        case KEY_SLASH : return !rus ? !shift ? '/' : '?' : !shift ? '.' : ',';
-        case KEY_BACKSLASH : return !rus ? !shift ? '\\' : '|' : !shift ? '\\' : '/';
+        case KEY_SLASH : return !shift ? '/' : '?';
+        case KEY_BACKSLASH : return !shift ? '\\' : '|';
 
-        case KEY_A : return !rus ? !caps ? 'a' : 'A' : !caps ? 'ô' : 'Ô';
-        case KEY_B : return !rus ? !caps ? 'b' : 'B' : !caps ? 'è' : 'È';
-        case KEY_C : return !rus ? !caps ? 'c' : 'C' : !caps ? 'ñ' : 'Ñ';
-        case KEY_D : return !rus ? !caps ? 'd' : 'D' : !caps ? 'â' : 'Â';
-        case KEY_E : return !rus ? !caps ? 'e' : 'E' : !caps ? 'ó' : 'Ó';
-        case KEY_F : return !rus ? !caps ? 'f' : 'F' : !caps ? 'à' : 'À';
-        case KEY_G : return !rus ? !caps ? 'g' : 'G' : !caps ? 'ï' : 'Ï';
-        case KEY_H : return !rus ? !caps ? 'h' : 'H' : !caps ? 'ð' : 'Ð';
-        case KEY_I : return !rus ? !caps ? 'i' : 'I' : !caps ? 'ø' : 'Ø';
-        case KEY_J : return !rus ? !caps ? 'j' : 'J' : !caps ? 'î' : 'Î';
-        case KEY_K : return !rus ? !caps ? 'k' : 'K' : !caps ? 'ë' : 'Ë';
-        case KEY_L : return !rus ? !caps ? 'l' : 'L' : !caps ? 'ä' : 'Ä';
-        case KEY_M : return !rus ? !caps ? 'm' : 'M' : !caps ? 'ü' : 'Ü';
-        case KEY_N : return !rus ? !caps ? 'n' : 'N' : !caps ? 'ò' : 'Ò';
-        case KEY_O : return !rus ? !caps ? 'o' : 'O' : !caps ? 'ù' : 'Ù';
-        case KEY_P : return !rus ? !caps ? 'p' : 'P' : !caps ? 'ç' : 'Ç';
-        case KEY_Q : return !rus ? !caps ? 'q' : 'Q' : !caps ? 'é' : 'É';
-        case KEY_R : return !rus ? !caps ? 'r' : 'R' : !caps ? 'ê' : 'Ê';
-        case KEY_S : return !rus ? !caps ? 's' : 'S' : !caps ? 'û' : 'Û';
-        case KEY_T : return !rus ? !caps ? 't' : 'T' : !caps ? 'å' : 'Å';
-        case KEY_U : return !rus ? !caps ? 'u' : 'U' : !caps ? 'ã' : 'Ã';
-        case KEY_V : return !rus ? !caps ? 'v' : 'V' : !caps ? 'ì' : 'Ì';
-        case KEY_W : return !rus ? !caps ? 'w' : 'W' : !caps ? 'ö' : 'Ö';
-        case KEY_X : return !rus ? !caps ? 'x' : 'X' : !caps ? '÷' : '×';
-        case KEY_Y : return !rus ? !caps ? 'y' : 'Y' : !caps ? 'í' : 'Í';
-        case KEY_Z : return !rus ? !caps ? 'z' : 'Z' : !caps ? 'ÿ' : 'ß';
+        case KEY_A : return !caps ? 'a' : 'A';
+        case KEY_B : return !caps ? 'b' : 'B';
+        case KEY_C : return !caps ? 'c' : 'C';
+        case KEY_D : return !caps ? 'd' : 'D';
+        case KEY_E : return !caps ? 'e' : 'E';
+        case KEY_F : return !caps ? 'f' : 'F';
+        case KEY_G : return !caps ? 'g' : 'G';
+        case KEY_H : return !caps ? 'h' : 'H';
+        case KEY_I : return !caps ? 'i' : 'I';
+        case KEY_J : return !caps ? 'j' : 'J';
+        case KEY_K : return !caps ? 'k' : 'K';
+        case KEY_L : return !caps ? 'l' : 'L';
+        case KEY_M : return !caps ? 'm' : 'M';
+        case KEY_N : return !caps ? 'n' : 'N';
+        case KEY_O : return !caps ? 'o' : 'O';
+        case KEY_P : return !caps ? 'p' : 'P';
+        case KEY_Q : return !caps ? 'q' : 'Q';
+        case KEY_R : return !caps ? 'r' : 'R';
+        case KEY_S : return !caps ? 's' : 'S';
+        case KEY_T : return !caps ? 't' : 'T';
+        case KEY_U : return !caps ? 'u' : 'U';
+        case KEY_V : return !caps ? 'v' : 'V';
+        case KEY_W : return !caps ? 'w' : 'W';
+        case KEY_X : return !caps ? 'x' : 'X';
+        case KEY_Y : return !caps ? 'y' : 'Y';
+        case KEY_Z : return !caps ? 'z' : 'Z';
 
-        case KEY_BACKQUOTE :    return !rus ? !shift ? '`' : '~' : !caps ? '¸' : '¨';
-        case KEY_LEFTBRACKET :  return !rus ? !shift ? '[' : '{' : !caps ? 'õ' : 'Õ';
-        case KEY_RIGHTBRACKET : return !rus ? !shift ? ']' : '}' : !caps ? 'ú' : 'Ú';
-        case KEY_COMMA :        return !rus ? !shift ? ',' : '<' : !caps ? 'á' : 'Á';
-        case KEY_PERIOD :       return !rus ? !shift ? '.' : '>' : !caps ? 'þ' : 'Þ';
-        case KEY_SEMICOLON :    return !rus ? !shift ? ';' : ':' : !caps ? 'æ' : 'Æ';
-        case KEY_QUOTE :        return !rus ? !shift ? '\'' : '\"' : !caps ? 'ý' : 'Ý';
+        case KEY_BACKQUOTE :    return !shift ? '`' : '~';
+        case KEY_LEFTBRACKET :  return !shift ? '[' : '{';
+        case KEY_RIGHTBRACKET : return !shift ? ']' : '}';
+        case KEY_COMMA :        return !shift ? ',' : '<';
+        case KEY_PERIOD :       return !shift ? '.' : '>';
+        case KEY_SEMICOLON :    return !shift ? ';' : ':';
+        case KEY_QUOTE :        return !shift ? '\'' : '\"';
     }
 
     return 0;
 }
-
-
-
-
-
-

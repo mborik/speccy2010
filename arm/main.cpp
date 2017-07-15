@@ -1407,8 +1407,13 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
 
                 if( !keyRelease )
                 {
-                    if( keyCode == KEY_BACKQUOTE ) keyFlags = keyFlags ^ fKeyCaps;
-                    else if( keyCode == KEY_SCROLLOCK ) keyFlags = keyFlags ^ fKeyRus;
+                    if ( keyCode == KEY_SCROLLOCK ) keyFlags = keyFlags ^ fKeyPCEmu;
+
+                    if ( ( keyFlags & fKeyPCEmu ) != 0 )
+                    {
+                        if( keyCode == KEY_HOME ) keyFlags = keyFlags ^ fKeyCaps;
+                    }
+                    else if( keyCode == KEY_BACKQUOTE ) keyFlags = keyFlags ^ fKeyCaps;
                 }
 
                 _keyCode = keyCode;
@@ -1447,8 +1452,8 @@ bool ReadKey( word &_keyCode, word &_keyFlags )
             case 2: keyCode = KEY_LEFT; break;
             case 3: keyCode = KEY_RIGHT; break;
 
-            case 4: keyCode = KEY_LCTRL; break;
-            case 5: keyCode = KEY_LCTRL; break;
+            case 4: keyCode = KEY_RCTRL; break;
+            case 5: keyCode = KEY_RCTRL; break;
         }
 
         if( keyCode != KEY_NONE )

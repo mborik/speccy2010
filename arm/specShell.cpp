@@ -18,7 +18,7 @@
 #include "specCharsA.h"
 #include "specCharsB.h"
 
-#include "string.h"
+#include "cstring.h"
 
 const dword SDRAM_PAGES = 0x200;
 const dword SDRAM_PAGE_SIZE = 0x4000;
@@ -40,14 +40,26 @@ void ClrScr( byte attr )
 
 void WriteChar( byte x, byte y, char c )
 {
-    const byte *charTable = specChars;
-    if( specConfig.specFont == 1 ) charTable = specCharsA;
-    else if( specConfig.specFont == 2 ) charTable = specCharsB;
-
     if( x < 32 && y < 24 )
     {
-        //if( (byte) c < 0x20 && (byte) c >= 0x80 ) c = 0;
-        //else c -= 0x20;
+        const byte *charTable = specChars;
+
+        if ( (byte) c < 0x20 )
+            charTable = specChars_under20;
+        else {
+            c -= 0x20;
+
+            if ( (byte) c >= 0x8E && (byte) c <= 0xBF ) {
+                charTable = specChars_overAEDF;
+                c -= 0x8E;
+            }
+            else if ( (byte) c >= 0x80 )
+                c = 0;
+            else if( specConfig.specFont == 1 )
+                charTable = specCharsA;
+            else if( specConfig.specFont == 2 )
+                charTable = specCharsB;
+        }
 
         word address = x + ( y & 0x07 ) * 32 + ( y & 0x18 ) * 32 * 8;
         const byte *tablePos = &charTable[ (byte) c * 8 ];
@@ -650,7 +662,7 @@ void InitScreen()
     SystemBus_Write( 0xc00022, 0x8000 | ( ( attr >> 3 ) & 0x03 ) );     // Enable shell border
 
     char str[33];
-    sniprintf( str, sizeof(str), " -= Speccy2010, v%d.%.2d, r%.4d =-\n", VER_MAJOR, VER_MINIR, REV );
+    sniprintf( str, sizeof(str), " -= Speccy2010, v%d.%.2d, r%.4d =- ", VER_MAJOR, VER_MINIR, REV );
 
     WriteStr( 0, 0, str );
     WriteAttr( 0, 0, 0x44, strlen( str ) );

@@ -45,29 +45,62 @@ CMatrixRecord const keyMatrixMain[] =
     { KEY_N, SPEC_KEY_N, SPEC_KEY_NONE },
     { KEY_B, SPEC_KEY_B, SPEC_KEY_NONE },
 
+    { KEY_CAPSLOCK, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_SYMBOL_SHIFT },
+    { KEY_TAB, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_1 },
+    { KEY_ESC, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_SPACE },
+
     { KEY_BACKSPACE, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_0 },
-    { KEY_HOME, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_7 },
-    { KEY_END, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_6 },
+    { KEY_HOME, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_2 },
+    { KEY_END, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_SPACE },
     { KEY_PAGEUP, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_3 },
     { KEY_PAGEDOWN, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_4 },
     { KEY_INSERT, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_9 },
     { KEY_DELETE, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_0 },
 
     { KEY_MINUS, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_J },
-    { KEY_EQUALS, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_K },
+    { KEY_EQUALS, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_L },
     { KEY_LEFTBRACKET, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_V },
-    { KEY_RIGHTBRACKET, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_B },
+    { KEY_RIGHTBRACKET, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_K },
     { KEY_SEMICOLON, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_O },
     { KEY_QUOTE, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_P },
     { KEY_COMMA, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_N },
     { KEY_PERIOD, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_M },
     { KEY_SLASH, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_Z },
-
+    { KEY_BACKSLASH, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_B },
     { KEY_BACKQUOTE, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_2 },
-    { KEY_CAPSLOCK, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_SYMBOL_SHIFT },
-    { KEY_TAB, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_1 },
-    { KEY_BACKSLASH, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_2 },
-    { KEY_ESC, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_SPACE },
+
+    { KEY_NONE }
+};
+
+CSymbolShortcutKeyRecord const keyMatrixSymbolShortcuts[] =
+{
+    { KEY_6, fKeyCtrl, FALSE, SPEC_KEY_H },            // ^
+    { KEY_7, fKeyCtrl, FALSE, SPEC_KEY_6 },            // &
+    { KEY_8, fKeyCtrl, FALSE, SPEC_KEY_B },            // *
+    { KEY_9, fKeyCtrl, FALSE, SPEC_KEY_8 },            // (
+    { KEY_0, fKeyCtrl, FALSE, SPEC_KEY_9 },            // )
+    { KEY_MINUS, 0, FALSE, SPEC_KEY_J },               // -
+    { KEY_MINUS, fKeyShift, FALSE, SPEC_KEY_0 },       // _
+    { KEY_EQUALS, 0, FALSE, SPEC_KEY_L },              // =
+    { KEY_EQUALS, fKeyShift, FALSE, SPEC_KEY_K },      // +
+    { KEY_LEFTBRACKET, 0, TRUE, SPEC_KEY_Y },          // [
+    { KEY_LEFTBRACKET, fKeyShift, TRUE, SPEC_KEY_F },  // {
+    { KEY_RIGHTBRACKET, 0, TRUE, SPEC_KEY_U },         // ]
+    { KEY_RIGHTBRACKET, fKeyShift, TRUE, SPEC_KEY_G }, // }
+    { KEY_SEMICOLON, 0, FALSE, SPEC_KEY_O },           // ;
+    { KEY_SEMICOLON, fKeyShift, FALSE, SPEC_KEY_Z },   // :
+    { KEY_QUOTE, 0, FALSE, SPEC_KEY_7 },               // '
+    { KEY_QUOTE, fKeyShift, FALSE, SPEC_KEY_P },       // "
+    { KEY_COMMA, 0, FALSE, SPEC_KEY_N },               // ,
+    { KEY_COMMA, fKeyShift, TRUE, SPEC_KEY_F },        // {
+    { KEY_PERIOD, 0, FALSE, SPEC_KEY_M },              // .
+    { KEY_PERIOD, fKeyShift, TRUE, SPEC_KEY_G },       // }
+    { KEY_SLASH, 0, FALSE, SPEC_KEY_V },               // /
+    { KEY_SLASH, fKeyShift, FALSE, SPEC_KEY_C },       // ?
+    { KEY_BACKQUOTE, 0, FALSE, SPEC_KEY_7 },           // '
+    { KEY_BACKQUOTE, fKeyShift, TRUE, SPEC_KEY_A },    // ~
+    { KEY_BACKSLASH, 0, TRUE, SPEC_KEY_D },            // \.
+    { KEY_BACKSLASH, fKeyShift, TRUE, SPEC_KEY_S },    // |
 
     { KEY_NONE }
 };
@@ -78,7 +111,7 @@ CMatrixRecord const keyMatrixCursor[] =
     { KEY_DOWN, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_6 },
     { KEY_LEFT, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_5 },
     { KEY_RIGHT, SPEC_KEY_CAPS_SHIFT, SPEC_KEY_8 },
-    { KEY_LCTRL, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_NONE },
+    { KEY_RCTRL, SPEC_KEY_SYMBOL_SHIFT, SPEC_KEY_NONE },
     { KEY_NONE }
 };
 
@@ -88,7 +121,7 @@ CMatrixRecord const keyMatrixKempston[] =
     { KEY_DOWN, SPEC_KEY_DOWN, SPEC_KEY_NONE },
     { KEY_LEFT, SPEC_KEY_LEFT, SPEC_KEY_NONE },
     { KEY_RIGHT, SPEC_KEY_RIGHT, SPEC_KEY_NONE },
-    { KEY_LCTRL, SPEC_KEY_FIRE, SPEC_KEY_NONE },
+    { KEY_RCTRL, SPEC_KEY_FIRE, SPEC_KEY_NONE },
     { KEY_NONE }
 };
 
@@ -98,7 +131,7 @@ CMatrixRecord const keyMatrixSinclair1[] =
     { KEY_DOWN, SPEC_KEY_3, SPEC_KEY_NONE },
     { KEY_LEFT, SPEC_KEY_1, SPEC_KEY_NONE },
     { KEY_RIGHT, SPEC_KEY_2, SPEC_KEY_NONE },
-    { KEY_LCTRL, SPEC_KEY_5, SPEC_KEY_NONE },
+    { KEY_RCTRL, SPEC_KEY_5, SPEC_KEY_NONE },
     { KEY_NONE }
 };
 
@@ -108,7 +141,7 @@ CMatrixRecord const keyMatrixSinclair2[] =
     { KEY_DOWN, SPEC_KEY_8, SPEC_KEY_NONE },
     { KEY_LEFT, SPEC_KEY_6, SPEC_KEY_NONE },
     { KEY_RIGHT, SPEC_KEY_7, SPEC_KEY_NONE },
-    { KEY_LCTRL, SPEC_KEY_0, SPEC_KEY_NONE },
+    { KEY_RCTRL, SPEC_KEY_0, SPEC_KEY_NONE },
     { KEY_NONE }
 };
 
@@ -118,6 +151,6 @@ CMatrixRecord const keyMatrixQaopm[] =
     { KEY_DOWN, SPEC_KEY_A, SPEC_KEY_NONE },
     { KEY_LEFT, SPEC_KEY_O, SPEC_KEY_NONE },
     { KEY_RIGHT, SPEC_KEY_P, SPEC_KEY_NONE },
-    { KEY_LCTRL, SPEC_KEY_M, SPEC_KEY_NONE },
+    { KEY_RCTRL, SPEC_KEY_M, SPEC_KEY_NONE },
     { KEY_NONE }
 };
