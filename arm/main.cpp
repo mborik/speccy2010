@@ -412,42 +412,39 @@ void FPGA_Config()
 
     if( f_stat( specConfig.fpgaConfigName, &fpgaConfigInfo ) != FR_OK )
     {
+        __TRACE( "FPGA_Config: '%s' not found, fallback to default...\n", specConfig.fpgaConfigName );
         strcpy( specConfig.fpgaConfigName, "speccy2010.rbf" );
 
         if( f_stat( specConfig.fpgaConfigName, &fpgaConfigInfo ) != FR_OK )
         {
-            __TRACE( "Cannot open %s...\n", specConfig.fpgaConfigName );
+            __TRACE( "FPGA_Config: Cannot open '%s'!\n", specConfig.fpgaConfigName );
             return;
         }
     }
 
     dword fpgaConfigVersion = ( fpgaConfigInfo.fdate << 16 ) | fpgaConfigInfo.ftime;
 
-    //char str[ 0x20 ];
-    //sniprintf( str, sizeof(str), "current - %x\n", fpgaConfigVersionPrev );
-    //UART0_WriteText( str );
-    //sniprintf( str, sizeof(str), "new - %x\n", fpgaConfigVersion );
-    //UART0_WriteText( str );
+    __TRACE( "FPGA_Config: chkver [ current: %08x > new: %08x ]\n", fpgaConfigVersionPrev, fpgaConfigVersion );
 
     if( fpgaConfigVersionPrev == fpgaConfigVersion )
     {
-        __TRACE( "The version of %s is match...\n", specConfig.fpgaConfigName );
+        __TRACE( "FPGA_Config: The version of '%s' is match...\n", specConfig.fpgaConfigName );
         return;
     }
 
     FIL fpgaConfig;
     if( f_open( &fpgaConfig, specConfig.fpgaConfigName, FA_READ ) != FR_OK )
     {
-        __TRACE( "Cannot open %s...\n", specConfig.fpgaConfigName );
+        __TRACE( "FPGA_Config: Cannot open '%s'!\n", specConfig.fpgaConfigName );
         return;
     }
     else
     {
-        __TRACE( "FPGA cofiguration file %s is opened...\n", specConfig.fpgaConfigName );
+        __TRACE( "FPGA_Config: '%s' is opened...\n", specConfig.fpgaConfigName );
     }
     //--------------------------------------------------------------------------
 
-    __TRACE( "FPGA configuration started...\n" );
+    __TRACE( "FPGA_Config: Flashing started...\n" );
     fpgaStatus = FPGA_NONE;
 
     GPIO_InitTypeDef  GPIO_InitStructure;
@@ -483,7 +480,7 @@ void FPGA_Config()
 
     if( nSTATUS() == Bit_RESET )
     {
-        __TRACE( "FPGA configuration status OK...\n" );
+        __TRACE( "FPGA_Config: Status OK...\n" );
 
         for( dword pos = 0; pos < fpgaConfig.fsize; pos++ )
         {
@@ -512,7 +509,7 @@ void FPGA_Config()
     }
 
     f_close( &fpgaConfig );
-    __TRACE( "FPGA configuration conf done...\n" );
+    __TRACE( "FPGA_Config: Flashing done...\n" );
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_9;
@@ -523,12 +520,12 @@ void FPGA_Config()
 
 	if( CONFIG_DONE() )
 	{
-	    __TRACE( "FPGA configuration finished...\n" );
+	    __TRACE( "FPGA_Config: Finished...\n" );
 	    fpgaConfigVersionPrev = fpgaConfigVersion;
 	}
 	else
 	{
-	    __TRACE( "FPGA configuration failed...\n" );
+	    __TRACE( "FPGA_Config: Failed!\n" );
 	    fpgaConfigVersionPrev = 0;
 	}
 
@@ -537,6 +534,7 @@ void FPGA_Config()
     GPIO_WriteBit( GPIO1, GPIO_Pin_13, Bit_SET );     // FPGA RESET HIGH
     DelayMs( 10 );
 
+    romConfigPrev = -1;
     SystemBus_TestConfiguration();
 
     if( fpgaStatus == FPGA_SPECCY2010 )
@@ -561,7 +559,6 @@ void FPGA_Config()
         __TRACE( "Wrong FPGA configuration...\n" );
     }
 
-    romConfigPrev = -1;
     WDT_Kick();
 
     timer_flag_1Hz = 0;
@@ -839,23 +836,30 @@ void Spectrum_UpdateDisks()
 
 void SD_Init()
 {
-    if( ( disk_status(0) & STA_NODISK ) == 0 && ( disk_status(0) & STA_NOINIT ) != 0 )
-    {
-        disk_initialize( 0 );
+    DSTATUS state = disk_status(0);
 
-        if( ( disk_status(0) & STA_NOINIT ) != 0 )
+    if( ( state & ( STA_NODISK | STA_NOINIT ) ) == STA_NOINIT )
+    {
+        __TRACE( "SD card initialization...\n" );
+        state = disk_initialize( 0 );
+
+        if( ( state & STA_NOINIT ) != 0 )
         {
-            __TRACE( "SD card init error :(\n" );
+            __TRACE( "SD card init error (%x)\n", state );
         }
         else
         {
             __TRACE( "SD card init OK..\n" );
-            //MassStorage_UpdateCharacteristics();
 
-            static FATFS fatfs;
-            f_mount( 0, &fatfs );
+            FATFS *fatfs = new FATFS;
+            FRESULT result = f_mount( 0, fatfs );
 
-            RestreConfig();
+            if ( result != FR_OK ) {
+                __TRACE( "FAT mounting error (%d)\n", result );
+                return;
+            }
+
+            RestoreConfig();
             FPGA_Config();
         }
     }
@@ -1792,7 +1796,7 @@ int main()
 	InitStack();
 
     __TRACE( "\n" );
-    __TRACE( "Speccy2010, ver %d.%d, rev %d !\n", VER_MAJOR, VER_MINIR, REV );
+    __TRACE( "Speccy2010, v" VERSION "\n" );
 
     if( !pllStatusOK ) __TRACE( "PLL initialization error !\n" );
     DelayMs( 100 );

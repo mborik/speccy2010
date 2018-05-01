@@ -1,0 +1,58 @@
+Main control keys:
+------------------
+Arrows, LCtrl - kempston joystick
+PgUp, PgDn, Home, End - cursor joystick
+F1 - turbo off/8x toggle
+F2 - turbo 2x
+F3 - turbo 4x
+F4 - turbo 8x (unstable)
+Alt+F4 - delay 1 frame
+F5 - NMI
+Alt+F5 - reset
+F6 - disk menu
+F7 - save SNA
+Alt+F7 - save SNA as...
+F8 - clear attributes
+F9 - settings
+F10/NumPlus - play tape
+F11/NumMinus - stop/resume tape
+F12 - file manager
+Alt+F12 - debugger
+Ctrl+Alt+F1..F10 - save SNA to slot
+Alt+1 - PAL Composite/S-Video
+Alt+2 - PAL RGB
+Alt+3 - VGA 50Hz
+Alt+4 - VGA 60Hz
+Alt+5 - VGA 75Hz
+Pause - hold
+ScrollLock - toggle PC keyboard emulation
+
+File manager keys:
+------------------
+Arrows - move cursor
+Enter - run disk image / enter directory
+Backspace - leave directory
+Space - select files
+'+' - select all files
+'-' - unselect all selected files
+'\' - invert selection
+1..4 - mount selected image to drive A..D
+F1 - show this help
+F2 - select destination directory
+F3 - view file
+F4 - create empty TRD disk image
+F5 - copy file(s) to destination directory
+Shift+F5 - copy file
+F6 - move file(s) to destination directory
+Shift+F6 - rename file
+F7 - create directory
+F8 - delete file(s)
+F9 - format selected TRD disk image
+CapsLock - upper case
+
+Hex editor keys:
+----------------
+Arrows - move cursor
+0..9, A..F - enter values
+M - set address
+Z - execute current Z80 instruction

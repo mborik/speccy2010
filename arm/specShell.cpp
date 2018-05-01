@@ -662,7 +662,7 @@ void InitScreen()
     SystemBus_Write( 0xc00022, 0x8000 | ( ( attr >> 3 ) & 0x03 ) );     // Enable shell border
 
     char str[33];
-    sniprintf( str, sizeof(str), " -= Speccy2010, v%d.%.2d, r%.4d =- ", VER_MAJOR, VER_MINIR, REV );
+    sniprintf( str, sizeof(str), "    -= Speccy2010, v" VERSION " =-    " );
 
     WriteStr( 0, 0, str );
     WriteAttr( 0, 0, 0x44, strlen( str ) );
@@ -2365,10 +2365,11 @@ void Debugger_Enter()
                 WriteAttr( 0, 0, 0x17, 4);
                 WriteAttr( 3 - editAddrPos, 0, 0x57, 1);
             }
-            else
+            else {
                 Debugger_Screen1( addr, CurX, CurY);
                 WriteAttr( 5 + CurXold * 3, CurYold, 0x07, 2 );
                 WriteAttr( 5 + CurX * 3, CurY, 0x17, 2 );
+            }
         }
     }
 

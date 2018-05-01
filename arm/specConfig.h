@@ -45,12 +45,9 @@ struct CSpecConfig
 };
 
 extern CSpecConfig specConfig;
-//extern CParameter iniParameters[];
+extern const CParameter iniParameters[];
 
-const CParameter *GetIniParameters();
-#define iniParameters GetIniParameters()
-
-void RestreConfig();
+void RestoreConfig();
 void SaveConfig();
 
 #endif

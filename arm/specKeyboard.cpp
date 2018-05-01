@@ -112,7 +112,7 @@ bool DecodeSymbolShortcut( word keyCode, word keyFlags, const CSymbolShortcutKey
     {
         if ( code == keyCode )
         {
-            __TRACE( "# keyCode - 0x%04x, 0x%04x[m:0x%04x], ext: %d\n", keyCode, keyFlags, map->ctrlMask, map->extend);
+            //__TRACE( "# keyCode - 0x%04x, 0x%04x[m:0x%04x], ext: %d\n", keyCode, keyFlags, map->ctrlMask, map->extend);
 
             if ( ( map->ctrlMask && (shifts & map->ctrlMask)) ||
                  ( map->ctrlMask == 0 && shifts == 0 ) )
@@ -185,113 +185,51 @@ void DecodeKeySpec( word keyCode, word keyFlags )
 
 void DecodeKey( word keyCode, word keyFlags )
 {
-    static bool resetState = false;
-
     bool flagKeyRelease = ( keyFlags & fKeyRelease ) != 0;
-
-    bool reset1 = ( keyFlags & fKeyAlt ) == fKeyAlt;
-
-    static bool reset2 = false;
-    if( keyCode == KEY_POWER && !flagKeyRelease ) reset2 = true;
-    if( keyCode == KEY_POWER && flagKeyRelease ) reset2 = false;
-
-    static bool reset3 = false;
-    if( keyCode == KEY_PAUSE && !flagKeyRelease ) reset3 = true;
-    if( keyCode == KEY_PAUSE && flagKeyRelease ) reset3 = false;
-
-    if( ( reset1 || reset2 || reset3 ) != resetState )
-    {
-        resetState = reset1 || reset2 || reset3;
-        CPU_Reset( resetState );
-        DelayMs( 100 );
-    }
-
-    //------------------------------------------------------
-
     if( !flagKeyRelease )
     {
-        if( ( keyFlags & fKeyAlt ) )
+        if ( ( keyFlags & fKeyAlt ) != 0 )
         {
             switch( keyCode )
             {
                 case KEY_1 :
-                    specConfig.specVideoMode = 0;
-                    Spectrum_UpdateConfig();
-                    SaveConfig();
-                    break;
                 case KEY_2 :
-                    specConfig.specVideoMode = 1;
-                    Spectrum_UpdateConfig();
-                    SaveConfig();
-                    break;
                 case KEY_3 :
-                    specConfig.specVideoMode = 2;
-                    Spectrum_UpdateConfig();
-                    SaveConfig();
-                    break;
                 case KEY_4 :
-                    specConfig.specVideoMode = 3;
-                    Spectrum_UpdateConfig();
-                    SaveConfig();
-                    break;
                 case KEY_5 :
-                    specConfig.specVideoMode = 4;
+                    specConfig.specVideoMode = keyCode - KEY_1;
                     Spectrum_UpdateConfig();
                     SaveConfig();
                     break;
+
+                case KEY_F4 :
+                    SystemBus_Write( 0xc00000, 0x00004 );
+                    break;
+
+                case KEY_F5 :
+                    CPU_Reset( true );
+                    DelayMs( 10 );
+                    CPU_Reset( false );
+                    DelayMs( 100 );
+                    break;
+
+                case KEY_F7 :
+                    Shell_SaveSnapshot();
+                    break;
+
                 case KEY_F12 :
-                    CPU_NMI();
+                    Debugger_Enter();
                     break;
             }
         }
-        else if ( keyFlags & ( fKeyAlt | fKeyCtrl ) )
+        else if ( ( keyFlags & ( fKeyAlt | fKeyCtrl ) ) != 0 )
         {
-            int kc;
-
-            switch ( keyCode )
-            {
-                case KEY_F1:
-                    kc = 0;
-                    break;
-                case KEY_F2:
-                    kc = 1;
-                    break;
-                case KEY_F3:
-                    kc = 2;
-                    break;
-                case KEY_F4:
-                    kc = 3;
-                    break;
-                case KEY_F5:
-                    kc = 4;
-                    break;
-                case KEY_F6:
-                    kc = 5;
-                    break;
-                case KEY_F7:
-                    kc = 6;
-                    break;
-                case KEY_F8:
-                    kc = 7;
-                    break;
-                case KEY_F9:
-                    kc = 8;
-                    break;
-                case KEY_F10:
-                    kc = 9;
-                    break;
-                default:
-                    kc = -1;
-                    break;
-            }
-            if ( kc >= 0 )
-            {
+            if ( keyCode >= KEY_F1 && keyCode <= KEY_F10 ) {
                 char snaName[ 0x10 ];
-                sniprintf( snaName, sizeof(snaName), "!slot_%.1d.sna", kc );
+                sniprintf( snaName, sizeof(snaName), "!slot_%.1d.sna", keyCode - KEY_F1 );
                 SaveSnapshot( snaName );
             }
         }
-
         else
         {
             switch( keyCode )
@@ -316,13 +254,9 @@ void DecodeKey( word keyCode, word keyFlags )
                     //SaveConfig();
                     break;
                 case KEY_F4 :
-                    if( ( keyFlags & fKeyAlt ) != 0 )
-                        SystemBus_Write( 0xc00000, 0x00004 );
-                    else {
-                        specConfig.specTurbo ^= 3;
-                        Spectrum_UpdateConfig();
-                        //SaveConfig();
-                    }
+                    specConfig.specTurbo ^= 3;
+                    Spectrum_UpdateConfig();
+                    //SaveConfig();
                     break;
 
                 case KEY_F5 :
@@ -334,9 +268,8 @@ void DecodeKey( word keyCode, word keyFlags )
                     break;
 
                 case KEY_F7 :
-                    if( ( keyFlags & fKeyAlt ) != 0 ) Shell_SaveSnapshot();
-                    else SaveSnapshot( UpdateSnaName() );
-                   break;
+                    SaveSnapshot( UpdateSnaName() );
+                    break;
 
                 case KEY_F8 :
                     {
@@ -374,8 +307,14 @@ void DecodeKey( word keyCode, word keyFlags )
                     break;
 
                 case KEY_F12 :
-                    if( ( keyFlags & fKeyAlt ) != 0 ) Debugger_Enter();
-                    else Shell_Browser();
+                    Shell_Browser();
+                    break;
+
+                case KEY_POWER :
+                    CPU_Reset( true );
+                    DelayMs( 10 );
+                    CPU_Reset( false );
+                    DelayMs( 100 );
                     break;
             }
         }
