@@ -10,15 +10,13 @@ enum SpecRom_Type { SpecRom_Classic48, SpecRom_Pentagon128, SpecRom_Pentagon1024
 enum SpecTurbo_Type { SpecTurbo_None, SpecTurbo_x2, SpecTurbo_x4, SpecTurbo_None_x8 };
 enum SpecJoy_Type { SpecJoy_Kempston, SpecJoy_Sinclair1, SpecJoy_Sinclair2, SpecJoy_Cursor, SpecJoy_Qaopm };
 
-struct CDiskImage
-{
-	char name[ PATH_SIZE ];
+struct CDiskImage {
+	char name[PATH_SIZE];
 	int readOnly;
 };
 
-struct CSpecConfig
-{
-    char fpgaConfigName[ PATH_SIZE ];
+struct CSpecConfig {
+	char fpgaConfigName[PATH_SIZE];
 
 	int specRom;
 	int specUseBank0;
@@ -37,11 +35,11 @@ struct CSpecConfig
 	int specJoyMode2;
 	int specMouseSensitivity;
 	int specMouseSwap;
-    int specFont;
+	int specFont;
 
 	CDiskImage specImages[4];
 
-	char snaName[ PATH_SIZE ];
+	char snaName[PATH_SIZE];
 };
 
 extern CSpecConfig specConfig;
@@ -51,5 +49,3 @@ void RestoreConfig();
 void SaveConfig();
 
 #endif
-
-

@@ -27,23 +27,25 @@ CFLAGS   = -mno-thumb-interwork -mcpu=arm7tdmi
 CFLAGS  += -Os -Wall
 CFLAGS  += -ffunction-sections -fdata-sections -fno-strict-aliasing -fno-exceptions
 CPPFLAGS = -I$(SRCDIR) -I$(SRCDIR)/libstr/inc -I/usr/arm-none-eabi/include/
-LDFLAGS  = -L$(SRCDIR)/system
-LDFLAGS += -T$(SRCDIR)/system/STR75xFx2_FLASH.ld
+LDFLAGS  = -L$(SRCDIR)/core
+LDFLAGS += -T$(SRCDIR)/core/STR75xFx2_FLASH.ld
 LDFLAGS += -Wl,--gc-sections -fno-exceptions
 LDFLAGS += -Wl,-Map=$(MAP_TARGET)
 
 DIR_TARGETS = \
+	$(OBJDIR)/core \
 	$(OBJDIR)/fatfs/option \
 	$(OBJDIR)/fatfs \
 	$(OBJDIR)/betadisk \
 	$(OBJDIR)/libnosys \
 	$(OBJDIR)/libstr/src \
+	$(OBJDIR)/utils \
 	$(OBJDIR)/system \
 	$(OBJDIR) \
 	$(BUILDDIR)
 
 CC_SRCS = \
-	$(SRCDIR)/75x_it.c \
+	$(SRCDIR)/utils/crc16.c \
 	$(SRCDIR)/betadisk/bdi.c \
 	$(SRCDIR)/betadisk/fdc.c \
 	$(SRCDIR)/betadisk/floppy.c \
@@ -53,7 +55,6 @@ CC_SRCS = \
 	$(SRCDIR)/betadisk/img_trd.c \
 	$(SRCDIR)/betadisk/trace.c \
 	$(SRCDIR)/betadisk/wd1793.c \
-	$(SRCDIR)/crc16.c \
 	$(SRCDIR)/fatfs/diskio.c \
 	$(SRCDIR)/fatfs/ff.c \
 	$(SRCDIR)/fatfs/option/ccsbcs.c \
@@ -88,6 +89,7 @@ CC_SRCS = \
 	$(SRCDIR)/libstr/src/75x_extit.c \
 	$(SRCDIR)/libstr/src/75x_gpio.c \
 	$(SRCDIR)/libstr/src/75x_i2c.c \
+	$(SRCDIR)/libstr/src/75x_it.c \
 	$(SRCDIR)/libstr/src/75x_lib.c \
 	$(SRCDIR)/libstr/src/75x_mrcc.c \
 	$(SRCDIR)/libstr/src/75x_pwm.c \
@@ -100,8 +102,14 @@ CC_SRCS = \
 	$(SRCDIR)/libstr/src/75x_wdg.c
 
 CXX_SRCS = \
-	$(SRCDIR)/cstring.cpp \
-	$(SRCDIR)/fifo.cpp \
+	$(SRCDIR)/utils/cstring.cpp \
+	$(SRCDIR)/utils/fifo.cpp \
+	$(SRCDIR)/utils/file.cpp \
+	$(SRCDIR)/system/bus.cpp \
+	$(SRCDIR)/system/core.cpp \
+	$(SRCDIR)/system/cpu.cpp \
+	$(SRCDIR)/system/fpga.cpp \
+	$(SRCDIR)/system/uarts.cpp \
 	$(SRCDIR)/main.cpp \
 	$(SRCDIR)/ramFile.cpp \
 	$(SRCDIR)/settings.cpp \
@@ -112,11 +120,10 @@ CXX_SRCS = \
 	$(SRCDIR)/specRtc.cpp \
 	$(SRCDIR)/specShell.cpp \
 	$(SRCDIR)/specSnapshot.cpp \
-	$(SRCDIR)/specTape.cpp \
-	$(SRCDIR)/uarts.cpp
+	$(SRCDIR)/specTape.cpp
 
 ASM_SRCS = \
-	$(SRCDIR)/system/str750_crt0.s
+	$(SRCDIR)/core/str750_crt0.s
 
 
 CC_OBJS  = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.$(OBJEXT),$(CC_SRCS))

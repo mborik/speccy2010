@@ -2,7 +2,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "types.h"
 #include "../system.h"
 
 #define USE_RAM_FILE 0

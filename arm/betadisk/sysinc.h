@@ -14,7 +14,7 @@
 #define FDI_TRACE_FLAG          0
 #define TRD_TRACE_FLAG          0
 
-#include "types.h"
+#include "../types.h"
 
 char *wd_stat_decode( word data, word data2 );
 char *wd_command_decode( word data );

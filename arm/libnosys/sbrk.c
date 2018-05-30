@@ -49,7 +49,6 @@ void *_sbrk( int incr )
 		prev_heap_end = current_heap_end;
 		current_heap_end = new_heap_end;
 
-		//AddMallocRecord( 0, (dword) prev_heap_end, incr );
 		return (void *) prev_heap_end;
 	}
 

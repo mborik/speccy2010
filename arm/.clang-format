@@ -1,0 +1,14 @@
+﻿---
+BasedOnStyle: WebKit
+AlwaysBreakAfterDefinitionReturnType: None
+BreakBeforeBraces: Stroustrup
+IndentCaseLabels: 'true'
+KeepEmptyLinesAtTheStartOfBlocks: 'false'
+SpacesInParentheses: 'false'
+SpacesInSquareBrackets: 'false'
+Language: Cpp
+PointerAlignment: Right
+TabWidth: '4'
+UseTab: Always
+
+...

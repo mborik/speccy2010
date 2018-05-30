@@ -3,14 +3,9 @@
 
 #include "system.h"
 
-void SaveSnapshot( const char *name );
-bool LoadSnapshot( const char *fileName );
+void SaveSnapshot(const char *name);
+bool LoadSnapshot(const char *fileName);
 
 const char *UpdateSnaName();
 
 #endif
-
-
-
-
-

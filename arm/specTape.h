@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-void Tape_SelectFile( const char *name );
+void Tape_SelectFile(const char *name);
 
 void Tape_Start();
 void Tape_Stop();
@@ -14,5 +14,3 @@ void Tape_Routine();
 bool Tape_FillBuffer();
 
 #endif
-
-
