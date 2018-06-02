@@ -34,13 +34,14 @@ LDFLAGS += -Wl,-Map=$(MAP_TARGET)
 
 DIR_TARGETS = \
 	$(OBJDIR)/core \
+	$(OBJDIR)/betadisk \
 	$(OBJDIR)/fatfs/option \
 	$(OBJDIR)/fatfs \
-	$(OBJDIR)/betadisk \
 	$(OBJDIR)/libnosys \
 	$(OBJDIR)/libstr/src \
-	$(OBJDIR)/utils \
+	$(OBJDIR)/shell \
 	$(OBJDIR)/system \
+	$(OBJDIR)/utils \
 	$(OBJDIR) \
 	$(BUILDDIR)
 
@@ -103,13 +104,24 @@ CC_SRCS = \
 
 CXX_SRCS = \
 	$(SRCDIR)/utils/cstring.cpp \
+	$(SRCDIR)/utils/dirent.cpp \
 	$(SRCDIR)/utils/fifo.cpp \
 	$(SRCDIR)/utils/file.cpp \
 	$(SRCDIR)/system/bus.cpp \
 	$(SRCDIR)/system/core.cpp \
 	$(SRCDIR)/system/cpu.cpp \
 	$(SRCDIR)/system/fpga.cpp \
+	$(SRCDIR)/system/sdram.cpp \
 	$(SRCDIR)/system/uarts.cpp \
+	$(SRCDIR)/shell/commander.cpp \
+	$(SRCDIR)/shell/debugger.cpp \
+	$(SRCDIR)/shell/dialog.cpp \
+	$(SRCDIR)/shell/menu.cpp \
+	$(SRCDIR)/shell/menuItem.cpp \
+	$(SRCDIR)/shell/screen.cpp \
+	$(SRCDIR)/shell/snapshot.cpp \
+	$(SRCDIR)/shell/textReader.cpp \
+	$(SRCDIR)/shell/viewer.cpp \
 	$(SRCDIR)/main.cpp \
 	$(SRCDIR)/ramFile.cpp \
 	$(SRCDIR)/settings.cpp \
@@ -118,7 +130,6 @@ CXX_SRCS = \
 	$(SRCDIR)/specKeyboard.cpp \
 	$(SRCDIR)/specKeyMap.cpp \
 	$(SRCDIR)/specRtc.cpp \
-	$(SRCDIR)/specShell.cpp \
 	$(SRCDIR)/specSnapshot.cpp \
 	$(SRCDIR)/specTape.cpp
 

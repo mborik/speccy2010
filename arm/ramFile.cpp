@@ -1,5 +1,4 @@
 #include "ramFile.h"
-#include "specShell.h"
 #include "system.h"
 
 #define RF_MAX_SIZE      0x00100000

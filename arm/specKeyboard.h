@@ -61,6 +61,8 @@ extern CFifo keyboard;
 extern CFifo joystick;
 
 //---------------------------------------------------------------------------------------
+word ReadKeyFlags();
+
 void ResetKeyboard();
 void UpdateKeyPort();
 
@@ -73,7 +75,8 @@ void Keyboard_Reset();
 void Keyboard_Send(const byte *data, int size);
 bool ReadKey(word &key, word &flags);
 word ReadKeySimple(bool norepeat = false);
-word ReadKeyFlags();
+char GetKey(bool wait = true);
+void Pause();
 
 void Keyboard_Routine();
 

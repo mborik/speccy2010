@@ -6,7 +6,6 @@
 #include "system.h"
 #include "utils/fifo.h"
 
-#include "specShell.h"
 #include "specTape.h"
 
 bool tapeStarted = false;

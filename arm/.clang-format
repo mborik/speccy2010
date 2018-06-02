@@ -6,6 +6,7 @@ IndentCaseLabels: 'true'
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
 SpacesInParentheses: 'false'
 SpacesInSquareBrackets: 'false'
+SpaceAfterCStyleCast: true
 Language: Cpp
 PointerAlignment: Right
 TabWidth: '4'

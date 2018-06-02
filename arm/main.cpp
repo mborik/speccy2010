@@ -9,7 +9,6 @@
 #include "specConfig.h"
 #include "specKeyboard.h"
 #include "specRtc.h"
-#include "specShell.h"
 #include "specTape.h"
 
 #include "ramFile.h"
@@ -385,7 +384,7 @@ void SpectrumTimer_Routine()
 		}
 
 		static byte leds_prev = 0;
-		byte leds = (floppy_leds() << 2) | ((ReadKeyFlags() & fKeyPCEmu) ? 1 : 0) | 2;
+		byte leds = (floppy_leds() << 2) | ((ReadKeyFlags() & fKeyPCEmu) ? 0 : 1) | 2;
 
 		if (leds != leds_prev && kbdInited == KBD_OK) {
 			byte data[2] = { 0xed, leds };

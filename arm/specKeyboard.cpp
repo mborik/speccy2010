@@ -5,12 +5,16 @@
 
 #include "system.h"
 
-#include "specConfig.h"
-#include "specKeyMap.h"
 #include "specKeyboard.h"
-#include "specShell.h"
+#include "specKeyMap.h"
+#include "specConfig.h"
 #include "specSnapshot.h"
 #include "specTape.h"
+
+#include "shell/commander.h"
+#include "shell/debugger.h"
+#include "shell/menu.h"
+#include "shell/snapshot.h"
 
 int kbdInited = 0;
 int kbdResetTimer = 0;
@@ -25,11 +29,14 @@ byte keybordSend[4];
 int keybordSendPos = 0;
 int keybordSendSize = 0;
 
-word keyFlags = 0;
-
 CFifo keyboard(0x10);
 CFifo joystick(0x10);
 
+//---------------------------------------------------------------------------------------
+word keyFlags = 0;
+word ReadKeyFlags() {
+	return keyFlags;
+}
 //---------------------------------------------------------------------------------------
 void UpdateKeyPort()
 {
@@ -92,14 +99,14 @@ void DecodeKeyMatrix(word keyCode, bool flagKeyRelease, const CMatrixRecord *mat
 				SetSpecKey(matrix->specKeyCode0, true);
 
 				if (matrix->specKeyCode1 != SPEC_KEY_NONE) {
-					DelayMs(2);
+					DelayMs(3);
 					SetSpecKey(matrix->specKeyCode1, true);
 				}
 			}
 			else {
 				if (matrix->specKeyCode1 != SPEC_KEY_NONE) {
 					SetSpecKey(matrix->specKeyCode1, false);
-					DelayMs(2);
+					DelayMs(3);
 				}
 
 				SetSpecKey(matrix->specKeyCode0, false);
@@ -112,7 +119,7 @@ void DecodeKeyMatrix(word keyCode, bool flagKeyRelease, const CMatrixRecord *mat
 
 bool DecodeSymbolShortcut(word keyCode, word keyFlags, const CSymbolShortcutKeyRecord *map)
 {
-	if ((keyFlags & fKeyPCEmu) != 0)
+	if (!(keyFlags & fKeyPCEmu))
 		return false;
 
 	bool flagKeyRelease = (keyFlags & fKeyRelease);
@@ -126,12 +133,12 @@ bool DecodeSymbolShortcut(word keyCode, word keyFlags, const CSymbolShortcutKeyR
 				if (map->extend) {
 					if (!flagKeyRelease) {
 						SetSpecKey(SPEC_KEY_CAPS_SHIFT, true);
-						DelayMs(2);
+						DelayMs(3);
 						SetSpecKey(SPEC_KEY_SYMBOL_SHIFT, true);
 					}
 					else {
 						SetSpecKey(SPEC_KEY_SYMBOL_SHIFT, false);
-						DelayMs(2);
+						DelayMs(3);
 						SetSpecKey(SPEC_KEY_CAPS_SHIFT, false);
 					}
 
@@ -240,7 +247,7 @@ void DecodeKey(word keyCode, word keyFlags)
 				break;
 
 				case KEY_F12:
-					Debugger_Enter();
+					Shell_Debugger();
 					break;
 			}
 		}
@@ -254,7 +261,7 @@ void DecodeKey(word keyCode, word keyFlags)
 		else {
 			switch (keyCode) {
 				case KEY_PAUSE:
-					Shell_Pause();
+					Pause();
 					break;
 
 				case KEY_F1:
@@ -308,7 +315,7 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_F12:
-					Shell_Browser();
+					Shell_Commander();
 					break;
 
 				case KEY_POWER:
@@ -568,7 +575,7 @@ bool ReadKey(word &_keyCode, word &_keyFlags)
 					if (keyCode == KEY_SCROLLOCK)
 						keyFlags = keyFlags ^ fKeyPCEmu;
 
-					if ((keyFlags & fKeyPCEmu) != 0) {
+					if (!(keyFlags & fKeyPCEmu)) {
 						if (keyCode == KEY_HOME)
 							keyFlags = keyFlags ^ fKeyCaps;
 					}
@@ -618,7 +625,6 @@ bool ReadKey(word &_keyCode, word &_keyFlags)
 			case 3:
 				keyCode = KEY_RIGHT;
 				break;
-
 			case 4:
 				keyCode = KEY_RCTRL;
 				break;
@@ -672,9 +678,40 @@ word ReadKeySimple(bool norepeat)
 
 	return KEY_NONE;
 }
+//---------------------------------------------------------------------------------------
+void Beep()
+{
+	byte specPortFe = SystemBus_Read(0xc00016);
 
-word ReadKeyFlags() {
-	return keyFlags;
+	for (int i = 0; i < 20; i++) {
+		//for (int j = 0; j < 2; j++);
+
+		specPortFe ^= 0x10;
+		SystemBus_Write(0xc00016, specPortFe);
+	}
+}
+
+char GetKey(bool wait)
+{
+	do {
+		word keyCode = ReadKeySimple();
+
+		if (keyCode != KEY_NONE) {
+			char c = CodeToChar(keyCode);
+			if (c != 0)
+				Beep();
+			return c;
+		}
+	} while (wait);
+
+	return 0;
+}
+
+void Pause()
+{
+	CPU_Stop();
+	GetKey(true);
+	CPU_Start();
 }
 //---------------------------------------------------------------------------------------
 void Keyboard_Routine()

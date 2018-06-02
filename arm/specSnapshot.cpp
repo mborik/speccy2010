@@ -5,10 +5,10 @@
 
 #include "system.h"
 #include "utils/fifo.h"
+#include "utils/dirent.h"
 
 #include "specConfig.h"
 #include "specLoader.h"
-#include "specShell.h"
 
 void LoadPage(FIL *file, byte page)
 {
@@ -197,7 +197,7 @@ const char *UpdateSnaName()
 		if (specConfig.snaName[0] == '/')
 			sniprintf(result, sizeof(result), "%s", specConfig.snaName + 1);
 		else
-			sniprintf(result, sizeof(result), "%s%s", Shell_GetPath(), specConfig.snaName);
+			sniprintf(result, sizeof(result), "%s%s", get_current_dir(), specConfig.snaName);
 
 		while (result[0] != 0 && FileExists(result)) {
 			IncrementName(result);
@@ -216,13 +216,13 @@ void SaveSnapshot(const char *name)
 		if (name[0] == '/')
 			sniprintf(fileName, sizeof(fileName), "%s", name + 1);
 		else
-			sniprintf(fileName, sizeof(fileName), "%s%s", Shell_GetPath(), name);
+			sniprintf(fileName, sizeof(fileName), "%s%s", get_current_dir(), name);
 	}
 	else {
 		//tm time;
 		//RTC_GetTime( &time );
-		//sniprintf( fileName, sizeof( fileName ), "%s%.2d%.2d%.2d_%.2d%.2d%.2d.sna", Shell_GetPath(), time.tm_year - 100, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec );
-		sniprintf(fileName, sizeof(fileName), "%sshot0000.sna", Shell_GetPath());
+		//sniprintf( fileName, sizeof( fileName ), "%s%.2d%.2d%.2d_%.2d%.2d%.2d.sna", get_current_dir(), time.tm_year - 100, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec );
+		sniprintf(fileName, sizeof(fileName), "%sshot0000.sna", get_current_dir());
 		while (fileName[0] != 0 && FileExists(fileName))
 			IncrementName(fileName);
 	}
