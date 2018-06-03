@@ -18,7 +18,7 @@ void Shell_Viewer(const char *fullName)
 		Shell_MessageBox("Error", "Lines number > LINES_MAX !");
 	}
 
-	for (int j = 2; j < FILES_PER_ROW; j++)
+	for (int j = 0; j < FILES_PER_ROW; j++)
 		WriteAttr(0, 2 + j, 0007, 32);
 
 	int pos = 0;

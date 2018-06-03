@@ -7,11 +7,12 @@
 class CMenuItem {
 	int x, y, state;
 	const char *name;
-	unsigned char colors[4];
+	byte colors[4];
 
 	CString data;
-
 	const CParameter *param;
+
+	void Init(int _x, int _y, const char *_name, const CParameter *_param);
 
 public:
 	CMenuItem(int _x, int _y, const char *_name, const CParameter *_param);
@@ -24,8 +25,6 @@ public:
 
 	inline const char *GetName() { return name; }
 	inline const CParameter *GetParam() { return param; }
-
-	void OnKey(byte key);
 };
 
 #endif

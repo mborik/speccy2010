@@ -19,7 +19,6 @@ extern "C" {
 	#include "fatfs/diskio.h"
 	#include "fatfs/ff.h"
 
-	#include "ps2scancodes.h"
 	#include "utils/crc16.h"
 
 	#include <stdio.h>

@@ -4,15 +4,6 @@
 //---------------------------------------------------------------------------------------
 CMenuItem::CMenuItem(int _x, int _y, const char *_name, const char *_data)
 {
-	x = _x;
-	y = _y;
-	name = _name;
-
-	colors[0] = 0107; /* inactive */
-	colors[1] = 0071; /* hover */
-	colors[2] = 0120; /* active */
-	colors[3] = 0007; /* label */
-
 	data = _data;
 	int maxLen = 32 - (x + strlen(name));
 	if (data.Length() > maxLen) {
@@ -20,11 +11,15 @@ CMenuItem::CMenuItem(int _x, int _y, const char *_name, const char *_data)
 		data.Insert(0, "~");
 	}
 
-	state = 0;
-	param = 0;
+	Init(_x, _y, _name, NULL);
 }
 //---------------------------------------------------------------------------------------
 CMenuItem::CMenuItem(int _x, int _y, const char *_name, const CParameter *_param)
+{
+	Init(_x, _y, _name, _param);
+}
+//---------------------------------------------------------------------------------------
+void CMenuItem::Init(int _x, int _y, const char *_name, const CParameter *_param)
 {
 	x = _x;
 	y = _y;
@@ -32,6 +27,11 @@ CMenuItem::CMenuItem(int _x, int _y, const char *_name, const CParameter *_param
 	param = _param;
 	name = _name;
 	state = 0;
+
+	colors[0] = 0107; /* inactive */
+	colors[1] = 0071; /* hover */
+	colors[2] = 0120; /* active */
+	colors[3] = 0007; /* label */
 }
 //---------------------------------------------------------------------------------------
 void CMenuItem::Redraw()
@@ -48,7 +48,7 @@ void CMenuItem::Redraw()
 //---------------------------------------------------------------------------------------
 void CMenuItem::UpdateData()
 {
-	if (param != 0) {
+	if (param != NULL) {
 		int delNumber = data.Length();
 
 		param->GetValueText(data);

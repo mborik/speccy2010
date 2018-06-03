@@ -76,7 +76,7 @@ void Keyboard_Send(const byte *data, int size);
 bool ReadKey(word &key, word &flags);
 word ReadKeySimple(bool norepeat = false);
 char GetKey(bool wait = true);
-void Pause();
+void WaitKey();
 
 void Keyboard_Routine();
 

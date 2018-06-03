@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "system.h"
+#include "ps2scancodes.h"
 
 #include "specKeyboard.h"
 #include "specKeyMap.h"
@@ -261,7 +262,7 @@ void DecodeKey(word keyCode, word keyFlags)
 		else {
 			switch (keyCode) {
 				case KEY_PAUSE:
-					Pause();
+					WaitKey();
 					break;
 
 				case KEY_F1:
@@ -707,7 +708,7 @@ char GetKey(bool wait)
 	return 0;
 }
 
-void Pause()
+void WaitKey()
 {
 	CPU_Stop();
 	GetKey(true);

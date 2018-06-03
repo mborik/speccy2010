@@ -1,4 +1,5 @@
 #include "system.h"
+#include "ps2scancodes.h"
 #include "specKeyMap.h"
 #include "specKeyboard.h"
 

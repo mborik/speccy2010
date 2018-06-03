@@ -71,8 +71,7 @@ void InitScreen()
 	char str[33];
 	sniprintf(str, sizeof(str), "    -= Speccy2010, v" VERSION " =-    ");
 
-	WriteStr(0, 0, str);
-	WriteAttr(0, 0, 0104, strlen(str));
+	WriteStrAttr(0, 0, str, 0104, 32);
 
 	WriteAttr(0, 1, 0006, 32);
 	WriteLine(1, 3);

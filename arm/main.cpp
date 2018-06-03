@@ -11,8 +11,6 @@
 #include "specRtc.h"
 #include "specTape.h"
 
-#include "ramFile.h"
-
 bool LOG_BDI_PORTS = false;
 bool LOG_WAIT = false;
 
@@ -28,7 +26,12 @@ DWORD get_fattime()
 	tm currentTime;
 	RTC_GetTime(&currentTime);
 
-	return ((currentTime.tm_year - 80) << 25) | ((currentTime.tm_mon + 1) << 21) | (currentTime.tm_mday << 16) | (currentTime.tm_hour << 11) | (currentTime.tm_min << 5) | (currentTime.tm_sec >> 1);
+	return ((currentTime.tm_year - 80) << 25) |
+		((currentTime.tm_mon + 1) << 21) |
+		(currentTime.tm_mday << 16) |
+		(currentTime.tm_hour << 11) |
+		(currentTime.tm_min << 5) |
+		(currentTime.tm_sec >> 1);
 }
 
 dword Timer_GetTickCounter() // 100 Hz
@@ -384,7 +387,7 @@ void SpectrumTimer_Routine()
 		}
 
 		static byte leds_prev = 0;
-		byte leds = (floppy_leds() << 2) | ((ReadKeyFlags() & fKeyPCEmu) ? 0 : 1) | 2;
+		byte leds = (floppy_leds() << 2) | ((ReadKeyFlags() & fKeyPCEmu) ? 1 : 0) | 2;
 
 		if (leds != leds_prev && kbdInited == KBD_OK) {
 			byte data[2] = { 0xed, leds };

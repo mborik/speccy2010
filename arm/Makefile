@@ -113,15 +113,6 @@ CXX_SRCS = \
 	$(SRCDIR)/system/fpga.cpp \
 	$(SRCDIR)/system/sdram.cpp \
 	$(SRCDIR)/system/uarts.cpp \
-	$(SRCDIR)/shell/commander.cpp \
-	$(SRCDIR)/shell/debugger.cpp \
-	$(SRCDIR)/shell/dialog.cpp \
-	$(SRCDIR)/shell/menu.cpp \
-	$(SRCDIR)/shell/menuItem.cpp \
-	$(SRCDIR)/shell/screen.cpp \
-	$(SRCDIR)/shell/snapshot.cpp \
-	$(SRCDIR)/shell/textReader.cpp \
-	$(SRCDIR)/shell/viewer.cpp \
 	$(SRCDIR)/main.cpp \
 	$(SRCDIR)/ramFile.cpp \
 	$(SRCDIR)/settings.cpp \
@@ -131,7 +122,16 @@ CXX_SRCS = \
 	$(SRCDIR)/specKeyMap.cpp \
 	$(SRCDIR)/specRtc.cpp \
 	$(SRCDIR)/specSnapshot.cpp \
-	$(SRCDIR)/specTape.cpp
+	$(SRCDIR)/specTape.cpp \
+	$(SRCDIR)/shell/screen.cpp \
+	$(SRCDIR)/shell/dialog.cpp \
+	$(SRCDIR)/shell/menuItem.cpp \
+	$(SRCDIR)/shell/menu.cpp \
+	$(SRCDIR)/shell/snapshot.cpp \
+	$(SRCDIR)/shell/textReader.cpp \
+	$(SRCDIR)/shell/viewer.cpp \
+	$(SRCDIR)/shell/commander.cpp \
+	$(SRCDIR)/shell/debugger.cpp
 
 ASM_SRCS = \
 	$(SRCDIR)/core/str750_crt0.s

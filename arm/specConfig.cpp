@@ -22,7 +22,7 @@ const CParameter iniParameters[] = {
 	CParameter(PTYPE_LIST, "Joystick 2", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode2),
 	CParameter(PTYPE_INT, "Mouse Sensitivity", "1|6|1", &specConfig.specMouseSensitivity),
 	CParameter(PTYPE_LIST, "Swap mouse buttons", "Off|On", &specConfig.specMouseSwap),
-	CParameter(PTYPE_LIST, "Font", "Bold|Classic|Alt", &specConfig.specFont),
+	CParameter(PTYPE_LIST, "Font", "Classic|Alt|Bold", &specConfig.specFont),
 
 	CParameter(PTYPE_STRING, "Disk A", (char *) sizeof(specConfig.specImages[0].name), specConfig.specImages[0].name),
 	CParameter(PTYPE_LIST, "Disk A read only", "No|Yes", &specConfig.specImages[0].readOnly),
@@ -45,7 +45,7 @@ void RestoreConfig()
 	specConfig.specMouseSwap = 0;
 
 	specConfig.specBdiMode = 1;
-	specConfig.specFont = 2;
+	specConfig.specFont = 1;
 	specConfig.specTurboSound = 0;
 	specConfig.specCovox = 0;
 	specConfig.specAyYm = 0;
