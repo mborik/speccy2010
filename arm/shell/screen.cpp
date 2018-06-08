@@ -23,6 +23,48 @@ void ClrScr(byte attr)
 		SystemBus_Write(VIDEO_PAGE_PTR + i, attr);
 }
 //---------------------------------------------------------------------------------------
+void DrawLine(byte y, byte cy)
+{
+	y = y * 8 + cy;
+
+	if (y < 24 * 8) {
+		word address = ((y & 0xc0) | ((y & 0x38) >> 3) | ((y & 0x07) << 3)) << 5;
+		for (byte yy = 0; yy < 32; yy++)
+			WriteDisplay(address++, 0xff);
+	}
+}
+//---------------------------------------------------------------------------------------
+void DrawFrame(byte x, byte y, byte w, byte h, byte attr, const char corners[7])
+{
+	char current;
+
+	for (int yy = 0; yy < h; yy++) {
+		WriteAttr(x, y + yy, attr, w);
+		WriteStr(x + 1, y + yy, "", w - 2);
+
+		for (int xx = 0; xx < w; xx++) {
+			if (yy == 0 && xx == 0)
+				current = corners[0];
+			else if (yy == 0 && xx == w - 1)
+				current = corners[2];
+			else if (yy == h - 1 && xx == 0)
+				current = corners[4];
+			else if (yy == h - 1 && xx == w - 1)
+				current = corners[6];
+			else if (yy == 0)
+				current = corners[1];
+			else if (yy == h - 1)
+				current = corners[5];
+			else if (xx == 0 || xx == w - 1)
+				current = corners[3];
+			else
+				continue;
+
+			WriteChar(x + xx, y + yy, current);
+		}
+	}
+}
+//---------------------------------------------------------------------------------------
 void WriteChar(byte x, byte y, char c)
 {
 	if (x < 32 && y < 24) {
@@ -55,17 +97,6 @@ void WriteChar(byte x, byte y, char c)
 			WriteDisplay(address, *tablePos++);
 			address += 32 * 8;
 		}
-	}
-}
-//---------------------------------------------------------------------------------------
-void WriteLine(byte y, byte cy)
-{
-	y = y * 8 + cy;
-
-	if (y < 24 * 8) {
-		word address = ((y & 0xc0) | ((y & 0x38) >> 3) | ((y & 0x07) << 3)) << 5;
-		for (byte i = 0; i < 32; i++)
-			WriteDisplay(address++, 0xff);
 	}
 }
 //---------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 #include "dirent.h"
-#include "../system/sdram.h"
+#include "../shell/screen.h"
 
 dword table_buffer = 0;
 int files_size = 0;
@@ -17,6 +17,53 @@ const char *get_current_dir()
 	return path;
 }
 //---------------------------------------------------------------------------------------
+void display_path(const char *str, int col, int row, byte max_sz)
+{
+	char path_buff[33] = "/";
+	char *path_short = (char *) str;
+
+	if (strlen(str) > max_sz) {
+		while (strlen(path_short) + 2 > max_sz) {
+			path_short++;
+			while (*path_short != '/')
+				path_short++;
+		}
+
+		strcpy(path_buff, "...");
+	}
+
+	strcat(path_buff, path_short);
+	WriteStr(col, row, path_buff, max_sz);
+}
+//---------------------------------------------------------------------------------------
+void make_short_name(char *sname, word size, const char *name)
+{
+	word nSize = strlen(name);
+
+	if (nSize + 1 <= size)
+		strcpy(sname, name);
+	else {
+		word sizeA = (size - 2) / 2;
+		word sizeB = (size - 1) - (sizeA + 1);
+
+		memcpy(sname, name, sizeA);
+		sname[sizeA] = '~';
+		memcpy(sname + sizeA + 1, name + nSize - sizeB, sizeB + 1);
+	}
+}
+//------------------------------------------------------------------
+void make_short_name(CString &str, word size, const char *name)
+{
+	word nSize = strlen(name);
+
+	str = name;
+
+	if (nSize + 1 > size) {
+		str.Delete((size - 2) / 2, 2 + nSize - size);
+		str.Insert((size - 2) / 2, "~");
+	}
+}
+//------------------------------------------------------------------
 byte comp_name(int a, int b)
 {
 	FRECORD ra, rb;
@@ -150,10 +197,8 @@ void read_dir()
 		files_size++;
 		WDT_Kick();
 
-/* TODO progress indicator
-		if ((files_size & 0x3f) == 0)
-			CycleMark(0, FILES_PER_ROW + 4);
-*/
+		if (!(files_size % FILES_PER_ROW))
+			CycleMark();
 	}
 
 	if (files_size > 0 && files_size < 0x100)

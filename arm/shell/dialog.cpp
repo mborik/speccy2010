@@ -8,35 +8,10 @@ void Shell_Window(int x, int y, int w, int h, const char *title, byte attr)
 	int titleSize = strlen(title);
 	int titlePos = (w - titleSize) / 2;
 
-	for (int i = 0; i < h; i++)
-		for (int j = 0; j < w; j++) {
-			char current = ' ';
-
-			if (i == 0 && j == 0)
-				current = 0xC9;
-			else if (i == 0 && j == w - 1)
-				current = 0xBB;
-			else if (i == h - 1 && j == 0)
-				current = 0xC8;
-			else if (i == h - 1 && j == w - 1)
-				current = 0xBC;
-			else if (i == 0 || i == h - 1)
-				current = 0xCD;
-			else if (j == 0 || j == w - 1)
-				current = 0xBA;
-
-			if (i == 0) {
-				if (j >= titlePos && j < (titlePos + titleSize)) {
-					current = title[j - titlePos];
-				}
-				else if (j == (titlePos - 1) || j == (titlePos + titleSize)) {
-					current = ' ';
-				}
-			}
-
-			WriteAttr(x + j, y + i, attr);
-			WriteChar(x + j, y + i, current);
-		}
+	DrawFrame(x, y, w, h, attr, "\xC9\xCD\xBB\xBA\xC8\xCD\xBC");
+	WriteChar(titlePos - 1, y, ' ');
+	WriteStr(titlePos, y, title, attr);
+	WriteChar(titlePos + titleSize, y, ' ');
 }
 //---------------------------------------------------------------------------------------
 bool Shell_MessageBox(const char *title, const char *str, const char *str2, const char *str3, int type, byte attr, byte attrSel)
@@ -67,7 +42,7 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 	int x = (32 - w) / 2;
 	int y = (22 - h) / 2;
 
-	Shell_Window(x, y, w, h, title, attr);
+	Shell_Window(x - 1, y - 1, w + 2, h + 2, title, attr);
 	x++;
 	y++;
 
@@ -118,7 +93,7 @@ bool Shell_InputBox(const char *title, const char *str, CString &buff)
 	int x = (32 - w) / 2;
 	int y = (22 - h) / 2;
 
-	Shell_Window(x, y, w, h, title, 0050);
+	Shell_Window(x - 1, y - 1, w + 2, h + 2, title, 0050);
 
 	x++;
 	y++;

@@ -74,12 +74,12 @@ void InitScreen()
 	WriteStrAttr(0, 0, str, 0104, 32);
 
 	WriteAttr(0, 1, 0006, 32);
-	WriteLine(1, 3);
-	WriteLine(1, 5);
+	DrawLine(1, 3);
+	DrawLine(1, 5);
 
 	WriteAttr(0, 20, 0006, 32);
-	WriteLine(20, 3);
-	WriteLine(20, 5);
+	DrawLine(20, 3);
+	DrawLine(20, 5);
 }
 //---------------------------------------------------------------------------------------
 void Shell_Menu(CMenuItem *menu, int menuSize)

@@ -36,56 +36,9 @@ const char *fatErrorMsg[] = {
 //---------------------------------------------------------------------------------------
 char destinationPath[PATH_SIZE] = "/";
 //---------------------------------------------------------------------------------------
-void make_short_name(char *sname, word size, const char *name)
-{
-	word nSize = strlen(name);
-
-	if (nSize + 1 <= size)
-		strcpy(sname, name);
-	else {
-		word sizeA = (size - 2) / 2;
-		word sizeB = (size - 1) - (sizeA + 1);
-
-		memcpy(sname, name, sizeA);
-		sname[sizeA] = '~';
-		memcpy(sname + sizeA + 1, name + nSize - sizeB, sizeB + 1);
-	}
-}
-
-void make_short_name(CString &str, word size, const char *name)
-{
-	word nSize = strlen(name);
-
-	str = name;
-
-	if (nSize + 1 > size) {
-		str.Delete((size - 2) / 2, 2 + nSize - size);
-		str.Insert((size - 2) / 2, "~");
-	}
-}
-//------------------------------------------------------------------
-void display_path(const char *str, int col, int row, byte max_sz)
-{
-	char path_buff[33] = "/";
-	char *path_short = (char *) str;
-
-	if (strlen(str) > max_sz) {
-		while (strlen(path_short) + 2 > max_sz) {
-			path_short++;
-			while (*path_short != '/')
-				path_short++;
-		}
-
-		strcpy(path_buff, "...");
-	}
-
-	strcat(path_buff, path_short);
-	WriteStr(col, row, path_buff, max_sz);
-}
-//---------------------------------------------------------------------------------------
 byte get_sel_attr(FRECORD &fr)
 {
-	byte result = 007;
+	byte result = 0117;
 
 	if ((fr.attr & AM_DIR) == 0) {
 		strlwr(fr.name);
@@ -95,26 +48,26 @@ byte get_sel_attr(FRECORD &fr)
 			ext--;
 
 		if (strcmp(ext, ".trd") == 0 || strcmp(ext, ".fdi") == 0 || strcmp(ext, ".scl") == 0)
-			result = 006;
+			result = 0115;
 		else if (strcmp(ext, ".tap") == 0 || strcmp(ext, ".tzx") == 0)
-			result = 004;
+			result = 0114;
 		else if (strcmp(ext, ".sna") == 0)
-			result = 0103;
-		else if (strcmp(ext, ".scr") == 0)
-			result = 0102;
+			result = 0113;
+		else if (strcmp(ext, ".scr") == 0 || strcmp(ext, ".rom") == 0)
+			result = 0112;
 		else
-			result = 005;
+			result = 0110;
 	}
 
 	if (fr.sel)
-		result = (result & 077) | 010;
+		result = 0116;
 
 	return result;
 }
 //---------------------------------------------------------------------------------------
 void show_table()
 {
-	display_path(get_current_dir(), 0, FILES_PER_ROW + 3, 32);
+	display_path(get_current_dir(), 0, 22, 32);
 
 	FRECORD fr;
 
@@ -126,55 +79,59 @@ void show_table()
 
 			Read(&fr, table_buffer, pos);
 
-			char sname[16];
-			make_short_name(sname, sizeof(sname), fr.name);
-
-			//if( ( fr.attr & AM_DIR ) == 0 ) strlwr( sname );
-			//else strupr( sname );
+			char sname[15];
+			make_short_name(sname, 15, fr.name);
 
 			if (pos < files_size) {
-				WriteAttr(col, row, get_sel_attr(fr), 16);
+				if (fr.sel) {
+					WriteChar(col, row, 0xDD);
+					WriteAttr(col, row, 0116);
+				}
+				else {
+					WriteChar(col, row, 0xB3);
+					WriteAttr(col, row, 0117);
+				}
 
-				if (fr.sel)
-					WriteChar(col, row, 0x95);
-				else
-					WriteChar(col, row, ' ');
-
-				WriteStr(col + 1, row, sname, 15);
+				WriteStrAttr(col + 1, row, sname, get_sel_attr(fr), 14);
 			}
 			else {
-				WriteAttr(col, row, 0, 16);
-				WriteStr(col, row, "", 16);
+				WriteAttr(col, row, 0117, 15);
+				WriteStr(col, row, "\xB3", 15);
 			}
 		}
 	}
 
-	if (too_many_files) {
-		WriteStr(3, 5, "too many files (>9999) !", 0);
-		WriteAttr(3, 5, 0102, 24);
-	}
-	else if (files_size == 0) {
-		WriteStr(10, 5, "no files !", 0);
-		WriteAttr(10, 5, 0102, 10);
-	}
+	if (too_many_files)
+		WriteStrAttr(17, 17, "TOO MANY FILES", 0126, 14);
+	else if (files_size == 0)
+		WriteStrAttr(1, 2, ".. no files ..", 0112, 14);
 }
 //---------------------------------------------------------------------------------------
 void hide_sel()
 {
-	FRECORD fr;
-	Read(&fr, table_buffer, files_sel);
-
 	if (files_size != 0) {
-		WriteAttr(files_sel_pos_x * 16, 2 + files_sel_pos_y, get_sel_attr(fr), 16);
+		FRECORD fr;
+		Read(&fr, table_buffer, files_sel);
 
-		if (fr.sel)
-			WriteChar(files_sel_pos_x * 16, 2 + files_sel_pos_y, 0x95);
-		else
-			WriteChar(files_sel_pos_x * 16, 2 + files_sel_pos_y, ' ');
+		int col = files_sel_pos_x * 16;
+		int row = files_sel_pos_y + 2;
+
+		if (fr.sel) {
+			WriteChar(col, row, 0xDD);
+			WriteAttr(col, row, 0116);
+		}
+		else {
+			WriteChar(col, row, 0xB3);
+			WriteAttr(col, row, 0117);
+		}
+
+		WriteAttr(col + 1, row, get_sel_attr(fr), 14);
+		WriteChar(col + 15, row, 0xB3);
+		WriteAttr(col + 15, row, 0117);
 	}
 
-	WriteStr(0, FILES_PER_ROW + 4, "", 32);
-	WriteStr(0, FILES_PER_ROW + 5, "", 32);
+	WriteStr(1, 19, "", 30);
+	WriteStr(1, 19, "", 30);
 }
 //---------------------------------------------------------------------------------------
 void show_sel(bool redraw = false)
@@ -186,69 +143,78 @@ void show_sel(bool redraw = false)
 		FRECORD fr;
 		Read(&fr, table_buffer, files_sel);
 
-		WriteAttr(files_sel_pos_x * 16, 2 + files_sel_pos_y, 071, 16);
+		int col = files_sel_pos_x * 16;
+		int row = files_sel_pos_y + 2;
+		byte borders = 0117, fill = 0171;
 
-		if (fr.sel)
-			WriteChar(files_sel_pos_x * 16, 2 + files_sel_pos_y, 0x95);
+		if (fr.sel) {
+			WriteChar(col, row, 0xDB);
+			borders = 0116;
+			fill = 0161;
+		}
 		else
-			WriteChar(files_sel_pos_x * 16, 2 + files_sel_pos_y, ' ');
+			WriteChar(col, row, 0xDE);
 
-		char sname[PATH_SIZE];
-		make_short_name(sname, 33, fr.name);
-		WriteStr(0, FILES_PER_ROW + 4, sname, 32);
+		WriteAttr(col, row, borders);
+		WriteAttr(col + 1, row, fill, 14);
+		WriteChar(col + 15, row, 0xDD);
+		WriteAttr(col + 15, row, borders);
+
+		char sname[31];
+		make_short_name(sname, sizeof(sname), fr.name);
+		WriteStrAttr(1, 19, sname, get_sel_attr(fr), 30);
 
 		if (files_sel_number > 0) {
-			sniprintf(sname, sizeof(sname), "selected %u item%s", files_sel_number, files_sel_number > 1 ? "s" : "");
-			WriteStr(0, FILES_PER_ROW + 5, sname, 32);
+			sniprintf(sname, sizeof(sname), "(%u)", files_sel_number);
+			size_t len = strlen(sname);
+			WriteStrAttr(30 - len, 18, sname, 0116, len);
 		}
 		else {
-			if (fr.date == 0) {
-				WriteStr(0, FILES_PER_ROW + 5, "", 15);
-			}
-			else {
-				sniprintf(sname, sizeof(sname), "%.2u.%.2u.%.2u  %.2u:%.2u", fr.date & 0x1f,
-					(fr.date >> 5) & 0x0f,
-					(80 + (fr.date >> 9)) % 100,
-					(fr.time >> 11) & 0x1f,
-					(fr.time >> 5) & 0x3f);
-				WriteStr(0, FILES_PER_ROW + 5, sname, 15);
-			}
-
-			if ((fr.attr & AM_DIR) != 0)
-				sniprintf(sname, sizeof(sname), "      Folder");
-			else if (fr.size < 9999)
-				sniprintf(sname, sizeof(sname), "%10u B", fr.size);
-			else if (fr.size < 0x100000)
-				sniprintf(sname, sizeof(sname), "%6u.%.2u kB", fr.size >> 10, ((fr.size & 0x3ff) * 100) >> 10);
-			else
-				sniprintf(sname, sizeof(sname), "%6u.%.2u MB", fr.size >> 20, ((fr.size & 0xfffff) * 100) >> 20);
-
-			WriteStr(20, FILES_PER_ROW + 5, sname, 12);
+			WriteStrAttr(24, 18, "\xC4\xC4\xC4\xC4\xC4\xC4", 0117, 6);
 		}
+
+		if (fr.date == 0) {
+			WriteStr(1, 20, "---------- -----", 16);
+		}
+		else {
+			sniprintf(sname, sizeof(sname), "%04hu-%02hu-%02hu %02hu:%02hu",
+				(1980 + (fr.date >> 9)),
+				(fr.date >> 5) & 0x0f,
+				fr.date & 0x1f,
+				(fr.time >> 11) & 0x1f,
+				(fr.time >> 5) & 0x3f);
+			WriteStr(1, 20, sname, 16);
+		}
+
+		if ((fr.attr & AM_DIR) != 0)
+			sniprintf(sname, sizeof(sname), "       <DIR>");
+		else if (fr.size < 9999)
+			sniprintf(sname, sizeof(sname), "%10u B", fr.size);
+		else if (fr.size < 0x100000)
+			sniprintf(sname, sizeof(sname), "%6u.%.2u kB", fr.size >> 10, ((fr.size & 0x3ff) * 100) >> 10);
+		else
+			sniprintf(sname, sizeof(sname), "%6u.%.2u MB", fr.size >> 20, ((fr.size & 0xfffff) * 100) >> 20);
+
+		WriteStr(19, 20, sname, 12);
 	}
 }
 //---------------------------------------------------------------------------------------
 void init_screen()
 {
-	byte attr = 0x07;
-	ClrScr(attr);
+	ClrScr(0006);
+	DrawFrame(0, 18, 32,  4, 0117, "\xC3\xC4\xB4\xB3\xC0\xC4\xD9");
+	DrawFrame(0,  1, 16, 18, 0117, "\xD1\xCD\xD1\xB3\xC3\xC4\xC1");
+	DrawFrame(16, 1, 16, 18, 0117, "\xD1\xCD\xD1\xB3\xC1\xC4\xB4");
+
+	WriteStrAttr(0, 0, " Speccy2010 v" VERSION " File Manager ", 0114, 32);
+	WriteStrAttr(0, 23, "1hlp2cd3vw4trd5cp6mv7mkd8del9fmt", 0050, 32);
+
+	const byte fnKeys[9] = { 0, 4, 7, 10, 14, 17, 20, 24, 28 };
+	for (int i = 0; i < 9; i++)
+		WriteAttr(fnKeys[i], 23, 0107);
 
 	SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
-	SystemBus_Write(0xc00022, 0x8000 | ((attr >> 3) & 0x03)); // Enable shell border
-
-	char str[33];
-	sniprintf(str, sizeof(str), "    -= Speccy2010, v" VERSION " =-    ");
-
-	WriteStr(0, 0, str);
-	WriteAttr(0, 0, 0x44, strlen(str));
-
-	WriteAttr(0, 1, 0x06, 32);
-	WriteLine(1, 3);
-	WriteLine(1, 5);
-
-	WriteAttr(0, FILES_PER_ROW + 2, 0x06, 32);
-	WriteLine(FILES_PER_ROW + 2, 3);
-	WriteLine(FILES_PER_ROW + 2, 5);
+	SystemBus_Write(0xc00022, 0x8000); // Enable shell border
 }
 //---------------------------------------------------------------------------------------
 //- COMMANDER ACTION HANDLERS -----------------------------------------------------------
@@ -309,7 +275,7 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move = false)
 
 			size -= currentSize;
 			if ((src.fptr & 0x300) == 0)
-				CycleMark(0, FILES_PER_ROW + 4);
+				CycleMark();
 
 			if (GetKey(false) == K_ESC) {
 				res = FR_DISK_ERR;
@@ -672,22 +638,10 @@ void Shell_Commander()
 				}
 
 				if ((i & 0x3f) == 0)
-					CycleMark(0, FILES_PER_ROW + 4);
+					CycleMark();
 			}
 
 			show_sel(true);
-		}
-		else if (key == K_ESC)
-			break;
-		else if (key == '[' || key == ']') {
-			static byte testVideo = 0;
-
-			if (key == '[')
-				testVideo++;
-			else
-				testVideo--;
-
-			SystemBus_Write(0xc00049, testVideo & 0x07);
 		}
 		else if (key >= '1' && key <= '4') {
 			if ((fr.attr & AM_DIR) == 0) {
@@ -719,9 +673,10 @@ void Shell_Commander()
 			show_sel();
 		}
 		else if (key == K_F1) {
-			WriteStr(0, FILES_PER_ROW + 4, "speccy2010.hlp", 32);
 			Shell_Viewer("speccy2010.hlp");
 
+			init_screen();
+			show_table();
 			show_sel(true);
 		}
 		else if (key == K_F2) {
@@ -733,6 +688,8 @@ void Shell_Commander()
 				sniprintf(fullName, sizeof(fullName), "%s%s", get_current_dir(), fr.name);
 				Shell_Viewer(fullName);
 
+				init_screen();
+				show_table();
 				show_sel(true);
 			}
 		}
@@ -778,6 +735,14 @@ void Shell_Commander()
 				read_dir();
 
 			show_sel(true);
+		}
+		else if (key == K_ESC || key == K_F10 || key == K_F12) {
+			break;
+		}
+		else if (key == K_F11) {
+			static byte testVideo = 0;
+			testVideo = (++testVideo & 0x07);
+			SystemBus_Write(0xc00049, testVideo);
 		}
 		else if (key == K_RETURN) {
 			if ((fr.attr & AM_DIR) != 0) {
