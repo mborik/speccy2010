@@ -326,13 +326,13 @@ bool CSettingsFile::WriteLine(const char *groupName, const char *name, const cha
 	return result;
 }
 
-const CParameter *GetParam(const CParameter *params, const char *name)
+const CParameter *GetParam(const CParameter *params, const char *name, int group)
 {
 	while (params->GetType() != PTYPE_END) {
-		if (strcmp(params->GetName(), name) == 0)
+		if (strcmp(params->GetName(), name) == 0 && params->GetGroup() == group)
 			return params;
 		params++;
 	}
 
-	return 0;
+	return NULL;
 }

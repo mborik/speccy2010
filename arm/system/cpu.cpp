@@ -13,7 +13,7 @@ void CPU_Start()
 			ResetKeyboard();
 			SystemBus_Write(0xc00000, 0x0000);
 			SystemBus_Write(0xc00008, 0x0001);
-			BDI_StartTimer();
+			DiskIF_StartTimer();
 		}
 
 		cpuStopNesting--;
@@ -24,10 +24,10 @@ void CPU_Stop()
 {
 	if (cpuStopNesting == 0) {
 		SystemBus_Write(0xc00000, 0x0001);
-		BDI_StopTimer();
+		DiskIF_StopTimer();
 
 		while (true) {
-			BDI_Routine();
+			DiskIF_Routine();
 			if ((SystemBus_Read(0xc00000) & 0x0001) != 0)
 				break;
 		}
@@ -55,7 +55,7 @@ void CPU_Reset(bool res)
 	if (res == false) {
 		SystemBus_Write(0xC00018, specConfig.specUseBank0 ? 1 : 0); //specTrdosFlag
 
-		if (specConfig.specRom == SpecRom_Classic48) {
+		if (specConfig.specMachine == SpecRom_Classic48) {
 			SystemBus_Write(0xC00017, 0x30); //specPort7ffd
 		}
 		else {

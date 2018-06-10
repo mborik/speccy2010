@@ -4,57 +4,110 @@
 CSpecConfig specConfig;
 //---------------------------------------------------------------------------------------
 const CParameter iniParameters[] = {
-	CParameter(PTYPE_STRING, "FPGA config", (char *) sizeof(specConfig.fpgaConfigName), specConfig.fpgaConfigName),
+	CParameter(PTYPE_STRING, PGRP_GENERAL, "FPGA config", (char *) sizeof(specConfig.fpgaConfigName), specConfig.fpgaConfigName),
 
-	CParameter(PTYPE_LIST, "ROM/RAM", "ZX Spectrum 48|Pentagon 128|Pentagon 1024|Scorpion 256", &specConfig.specRom),
-	CParameter(PTYPE_LIST, "Timings", "ZX Spectrum 48|ZX Spectrum 128|Pentagon|Scorpion", &specConfig.specSync),
-	CParameter(PTYPE_LIST, "Turbo", "None|x2|x4|x8(unstable)", &specConfig.specTurbo),
-	CParameter(PTYPE_LIST, "AY mode", "None|ABC|ACB|Mono", &specConfig.specAyMode),
-	CParameter(PTYPE_LIST, "Turbo Sound", "Off|On", &specConfig.specTurboSound),
-	CParameter(PTYPE_LIST, "Covox", "Off|SD Mode1|SD Mode2|GS-#B3|Pentagon-#FB|Scorpion-#DD|Profi/BB55", &specConfig.specCovox),
-	CParameter(PTYPE_LIST, "AY Chip", "YM|AY", &specConfig.specAyYm),
-	CParameter(PTYPE_LIST, "BDI mode", "Slow|Fast", &specConfig.specBdiMode),
-	CParameter(PTYPE_LIST, "Video mode", "Composite/S-Video|PAL RGB|VGA 50Hz|VGA 60Hz|VGA 75Hz", &specConfig.specVideoMode),
-	CParameter(PTYPE_LIST, "Video aspect ratio", "4:3|5:4|16:9", &specConfig.specVideoAspectRatio),
-	CParameter(PTYPE_LIST, "Audio DAC mode", "R-2R|TDA1543|TDA1543A", &specConfig.specDacMode),
-	CParameter(PTYPE_LIST, "Joystick emulation", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyModeEmulation),
-	CParameter(PTYPE_LIST, "Joystick 1", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode1),
-	CParameter(PTYPE_LIST, "Joystick 2", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode2),
-	CParameter(PTYPE_INT, "Mouse Sensitivity", "1|6|1", &specConfig.specMouseSensitivity),
-	CParameter(PTYPE_LIST, "Swap mouse buttons", "Off|On", &specConfig.specMouseSwap),
-	CParameter(PTYPE_LIST, "Font", "Classic|Alt|Bold", &specConfig.specFont),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Machine", "ZX Spectrum 48|ZX Spectrum 128|Pentagon 128|Pentagon 1024|Scorpion 256", &specConfig.specMachine),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Timings", "ZX Spectrum 48|ZX Spectrum 128|Pentagon|Scorpion", &specConfig.specSync),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Disk Interface", "Betadisk|DivMMC", &specConfig.specDiskIf),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Turbo", "None|x2|x4|x8", &specConfig.specTurbo),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "AY mode", "None|ABC|ACB|Mono", &specConfig.specAyMode),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Turbo Sound", "Off|On", &specConfig.specTurboSound),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Covox", "Off|SD Mode1|SD Mode2|GS-#B3|Pentagon-#FB|Scorpion-#DD|Profi/BB55", &specConfig.specCovox),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "AY Chip", "YM|AY", &specConfig.specAyYm),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Video mode", "Composite/S-Video|PAL RGB|VGA 50Hz|VGA 60Hz|VGA 75Hz", &specConfig.specVideoMode),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Video aspect ratio", "4:3|5:4|16:9", &specConfig.specVideoAspectRatio),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Audio DAC mode", "R-2R|TDA1543|TDA1543A", &specConfig.specDacMode),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Joystick emulation", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyModeEmulation),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Joystick 1", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode1),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Joystick 2", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode2),
+	CParameter(PTYPE_INT,  PGRP_GENERAL, "Mouse Sensitivity", "1|6|1", &specConfig.specMouseSensitivity),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Swap mouse buttons", "Off|On", &specConfig.specMouseSwap),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Font", "Classic|Alt|Bold", &specConfig.specFont),
 
-	CParameter(PTYPE_STRING, "Disk A", (char *) sizeof(specConfig.specImages[0].name), specConfig.specImages[0].name),
-	CParameter(PTYPE_LIST, "Disk A read only", "No|Yes", &specConfig.specImages[0].readOnly),
-	CParameter(PTYPE_STRING, "Disk B", (char *) sizeof(specConfig.specImages[1].name), specConfig.specImages[1].name),
-	CParameter(PTYPE_LIST, "Disk B read only", "No|Yes", &specConfig.specImages[1].readOnly),
-	CParameter(PTYPE_STRING, "Disk C", (char *) sizeof(specConfig.specImages[2].name), specConfig.specImages[2].name),
-	CParameter(PTYPE_LIST, "Disk C read only", "No|Yes", &specConfig.specImages[2].readOnly),
-	CParameter(PTYPE_STRING, "Disk D", (char *) sizeof(specConfig.specImages[3].name), specConfig.specImages[3].name),
-	CParameter(PTYPE_LIST, "Disk D read only", "No|Yes", &specConfig.specImages[3].readOnly),
+	CParameter(PTYPE_LIST,   PGRP_TRDOS, "BDI mode", "Slow|Fast", &specConfig.specBdiMode),
+	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk A", (char *) sizeof(specConfig.specImages[0].name), specConfig.specImages[0].name),
+	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk A WP", "No|Yes", &specConfig.specImages[0].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk B", (char *) sizeof(specConfig.specImages[1].name), specConfig.specImages[1].name),
+	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk B WP", "No|Yes", &specConfig.specImages[1].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk C", (char *) sizeof(specConfig.specImages[2].name), specConfig.specImages[2].name),
+	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk C WP", "No|Yes", &specConfig.specImages[2].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk D", (char *) sizeof(specConfig.specImages[3].name), specConfig.specImages[3].name),
+	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk D WP", "No|Yes", &specConfig.specImages[3].writeProtect),
+
+	CParameter(PTYPE_STRING, PGRP_ROMS, "48", (char *) sizeof(specConfig.specRomFile_Classic48), specConfig.specRomFile_Classic48),
+	CParameter(PTYPE_STRING, PGRP_ROMS, "128", (char *) sizeof(specConfig.specRomFile_Classic128), specConfig.specRomFile_Classic128),
+	CParameter(PTYPE_STRING, PGRP_ROMS, "Pentagon", (char *) sizeof(specConfig.specRomFile_Pentagon), specConfig.specRomFile_Pentagon),
+	CParameter(PTYPE_STRING, PGRP_ROMS, "Scorpion", (char *) sizeof(specConfig.specRomFile_Scorpion), specConfig.specRomFile_Scorpion),
+	CParameter(PTYPE_STRING, PGRP_ROMS, "TR-DOS", (char *) sizeof(specConfig.specRomFile_TRD_ROM), specConfig.specRomFile_TRD_ROM),
+	CParameter(PTYPE_STRING, PGRP_ROMS, "EVO Reset Service", (char *) sizeof(specConfig.specRomFile_TRD_Service), specConfig.specRomFile_TRD_Service),
+	CParameter(PTYPE_STRING, PGRP_ROMS, "DivMMC Firmware", (char *) sizeof(specConfig.specRomFile_DivMMC_FW), specConfig.specRomFile_DivMMC_FW),
 
 	CParameter(PTYPE_END)
 };
 //---------------------------------------------------------------------------------------
+int GroupFromName(CString name)
+{
+	int group = -1;
+	if (name == "General")
+		group = PGRP_GENERAL;
+	else if (name == "TR-DOS")
+		group = PGRP_TRDOS;
+	else if (name == "ROM")
+		group = PGRP_ROMS;
+
+	return group;
+}
+//---------------------------------------------------------------------------------------
+CString GetGroupName(int group)
+{
+	switch (group) {
+		default:
+		case PGRP_GENERAL:
+			return "General";
+		case PGRP_TRDOS:
+			return "TR-DOS";
+		case PGRP_ROMS:
+			return "ROM";
+	}
+}
+//---------------------------------------------------------------------------------------
 void RestoreConfig()
 {
-	strcpy(specConfig.fpgaConfigName, "/speccy2010.rbf");
+	strcpy(specConfig.fpgaConfigName, "speccy2010.rbf");
 
+	specConfig.specMachine = SpecRom_Pentagon128;
+	specConfig.specSync = SpecRom_Classic128;
+	specConfig.specDiskIf = SpecDiskIf_Betadisk;
+	specConfig.specUseBank0 = 0;
+	specConfig.specTurbo = SpecTurbo_None;
 	specConfig.specVideoMode = 0;
-	specConfig.specMouseSensitivity = 4;
-	specConfig.specMouseSwap = 0;
-
-	specConfig.specBdiMode = 1;
-	specConfig.specFont = 1;
-	specConfig.specTurboSound = 0;
+	specConfig.specVideoAspectRatio = 0;
+	specConfig.specDacMode = 1;
+	specConfig.specAyMode = 1;
+	specConfig.specTurboSound = 1;
 	specConfig.specCovox = 0;
 	specConfig.specAyYm = 0;
+	specConfig.specBdiMode = 1;
+	specConfig.specJoyModeEmulation = SpecJoy_Cursor;
+	specConfig.specJoyMode1 = SpecJoy_Kempston;
+	specConfig.specJoyMode2 = SpecJoy_Kempston;
+	specConfig.specMouseSensitivity = 4;
+	specConfig.specMouseSwap = 0;
+	specConfig.specFont = 1;
+
+	strcpy(specConfig.specRomFile_Classic48, "roms/48.rom");
+	strcpy(specConfig.specRomFile_Classic128, "roms/128.rom");
+	strcpy(specConfig.specRomFile_Pentagon, "roms/pentagon.rom");
+	strcpy(specConfig.specRomFile_Scorpion, "roms/scorpion.rom");
+	strcpy(specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
+	strcpy(specConfig.specRomFile_TRD_Service, "roms/system.rom");
+	strcpy(specConfig.specRomFile_DivMMC_FW, "");
 
 	strcpy(specConfig.snaName, "");
 
 	for (int i = 0; i < 4; i++) {
 		strcpy(specConfig.specImages[i].name, "");
-		specConfig.specImages[i].readOnly = false;
+		specConfig.specImages[i].writeProtect = false;
 	}
 
 	CSettingsFile file("speccy2010.ini");
@@ -62,13 +115,16 @@ void RestoreConfig()
 	CString groupName;
 	CString name;
 	CString value;
+	int group;
 
 	while (file.ReadLine(groupName, name, value)) {
 		//__TRACE("file.ReadLine: %s > %s > %s\n", (const char *)groupName, (const char *)name, (const char *)value);
-		if (groupName == "General") {
-			const CParameter *param = GetParam(iniParameters, name);
 
-			if (param != 0) {
+		group = GroupFromName(groupName);
+		if (group >= PGRP_GENERAL) {
+			const CParameter *param = GetParam(iniParameters, name, group);
+
+			if (param) {
 				param->SetValueText(value);
 			}
 		}
@@ -84,7 +140,8 @@ void SaveConfig()
 	for (const CParameter *param = iniParameters; param->GetType() != PTYPE_END; param++) {
 		CString value;
 		param->GetValueText(value);
-		file.WriteLine("General", param->GetName(), value);
+		CString group = GetGroupName(param->GetGroup());
+		file.WriteLine(group, param->GetName(), value);
 	}
 
 	file.Close();

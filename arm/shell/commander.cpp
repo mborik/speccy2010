@@ -658,7 +658,7 @@ void Shell_Commander()
 					int i = key - '1';
 
 					if (fdc_open_image(i, fullName)) {
-						floppy_disk_wp(i, &specConfig.specImages[i].readOnly);
+						floppy_disk_wp(i, &specConfig.specImages[i].writeProtect);
 
 						strcpy(specConfig.specImages[key - '1'].name, fullName);
 						SaveConfig();
@@ -741,8 +741,8 @@ void Shell_Commander()
 		}
 		else if (key == K_F11) {
 			static byte testVideo = 0;
-			testVideo = (++testVideo & 0x07);
-			SystemBus_Write(0xc00049, testVideo);
+			SystemBus_Write(0xc00049, ++testVideo);
+			testVideo &= 7;
 		}
 		else if (key == K_RETURN) {
 			if ((fr.attr & AM_DIR) != 0) {
@@ -790,7 +790,7 @@ void Shell_Commander()
 					if (fdc_open_image(0, fullName)) {
 						sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s.00.sna", fullName);
 
-						floppy_disk_wp(0, &specConfig.specImages[0].readOnly);
+						floppy_disk_wp(0, &specConfig.specImages[0].writeProtect);
 
 						strcpy(specConfig.specImages[0].name, fullName);
 						SaveConfig();
@@ -802,7 +802,7 @@ void Shell_Commander()
 
 						CPU_ModifyPC(0, 0);
 
-						if (specConfig.specRom == SpecRom_Classic48)
+						if (specConfig.specMachine == SpecRom_Classic48)
 							SystemBus_Write(0xc00017, (1 << 4) | (1 << 5));
 						else
 							SystemBus_Write(0xc00017, (1 << 4));

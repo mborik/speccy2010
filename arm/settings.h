@@ -5,28 +5,27 @@
 #include "types.h"
 #include "utils/cstring.h"
 
-const int PTYPE_LIST = 0;
-const int PTYPE_STRING = 1;
-const int PTYPE_INT = 2;
-const int PTYPE_FLOAT = 3;
-const int PTYPE_END = 0xff;
+enum CParameterType { PTYPE_LIST = 0, PTYPE_STRING, PTYPE_INT, PTYPE_FLOAT, PTYPE_END = 0xff };
 
 class CParameter {
 	int type;
+	int group;
 	const char *name;
 	const char *options;
 	void *data;
 
 public:
-	CParameter(int _type, const char *_name = 0, const char *_options = 0, void *_data = 0)
+	CParameter(int _type, int _group = 0, const char *_name = NULL, const char *_options = 0, void *_data = 0)
 	{
 		type = _type;
+		group = _group;
 		name = _name;
 		options = _options;
 		data = _data;
 	}
 
 	int GetType() const { return type; }
+	int GetGroup() const { return group; }
 	const char *GetName() const { return name; }
 
 	int GetValue() const;
@@ -47,7 +46,7 @@ public:
 	float GetValueDeltaFloat() const;
 };
 
-const CParameter *GetParam(const CParameter *iniParameters, const char *name);
+const CParameter *GetParam(const CParameter *iniParameters, const char *name, int group = 0);
 
 class CSettingsFile {
 	FIL file;
@@ -55,7 +54,7 @@ class CSettingsFile {
 	CString currentGroupName;
 
 public:
-	CSettingsFile(const char *name = 0, bool createNew = false) { Open(name, createNew); }
+	CSettingsFile(const char *name, bool createNew = false) { Open(name, createNew); }
 	~CSettingsFile() { Close(); }
 
 	bool Open(const char *name, bool createNew = false);

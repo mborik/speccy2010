@@ -30,6 +30,9 @@ extern "C" {
 
 #define floppy_leds     beta_leds
 
+#define floppy_set_fast_mode(...)
+#define floppy_disk_wp(d, wp) beta_set_disk_wp(d, *wp)
+
 #endif
 
 #define BETADSK_NUM_DRIVES 4

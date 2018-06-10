@@ -95,12 +95,22 @@ void SD_Init()
 }
 
 //---------------------------------------------------------------------------------------
-bool Spectrum_LoadRomPage(int page, const char *romFileName)
+bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbackRomFile = NULL)
 {
+	if (romFileName == NULL || strlen(romFileName) == 0)
+		return false;
+
 	FIL romImage;
 	if (f_open(&romImage, romFileName, FA_READ) != FR_OK) {
-		__TRACE("Cannot open rom image %s \n", romFileName);
-		return false;
+		__TRACE("Cannot open rom image '%s'\n", romFileName);
+
+		if (fallbackRomFile == NULL)
+			return false;
+
+		if (f_open(&romImage, fallbackRomFile, FA_READ) != FR_OK) {
+			__TRACE("Cannot open rom image '%s'\n", fallbackRomFile);
+			return false;
+		}
 	}
 
 	bool result = true;
@@ -167,19 +177,30 @@ void Spectrum_InitRom()
 {
 	__TRACE("ROM configuration started...\n");
 
-	specConfig.specUseBank0 = false;
+	specConfig.specUseBank0 = 0;
 
-	if (specConfig.specRom == SpecRom_Classic48) {
-		Spectrum_LoadRomPage(1, "roms/trdos.rom");
-		Spectrum_LoadRomPage(3, "roms/48.rom");
+	if (specConfig.specMachine == SpecRom_Classic48) {
+		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
+			Spectrum_LoadRomPage(1, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
+
+		Spectrum_LoadRomPage(3, specConfig.specRomFile_Classic48, "roms/48.rom");
 	}
-	else if (specConfig.specRom == SpecRom_Scorpion) {
-		Spectrum_LoadRomPage(0, "roms/scorpion.rom");
+	else if (specConfig.specMachine == SpecRom_Classic128) {
+		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
+			Spectrum_LoadRomPage(1, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
+
+		Spectrum_LoadRomPage(2, specConfig.specRomFile_Classic128, "roms/128.rom");
+	}
+	else if (specConfig.specMachine == SpecRom_Scorpion) {
+		Spectrum_LoadRomPage(0, specConfig.specRomFile_Scorpion, "roms/scorpion.rom");
 	}
 	else {
-		specConfig.specUseBank0 = Spectrum_LoadRomPage(0, "roms/system.rom");
-		Spectrum_LoadRomPage(1, "roms/trdos.rom");
-		Spectrum_LoadRomPage(2, "roms/pentagon.rom");
+		if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
+			specConfig.specUseBank0 = Spectrum_LoadRomPage(0, specConfig.specRomFile_TRD_Service);
+			Spectrum_LoadRomPage(1, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
+		}
+
+		Spectrum_LoadRomPage(2, specConfig.specRomFile_Pentagon, "roms/pentagon.rom");
 	}
 
 	__TRACE("ROM configuration finished...\n");
@@ -198,12 +219,30 @@ void Spectrum_InitRom()
 	timer_flag_100Hz = 0;
 }
 
-void Spectrum_UpdateConfig()
+void Spectrum_UpdateConfig(bool forceUpdateRoms)
 {
-	if (fpgaStatus != FPGA_SPECCY2010)
-		return;
+	word fpgaRomRamCfg;
+	switch (specConfig.specMachine) {
+		case SpecRom_Classic48:
+			fpgaRomRamCfg = 0;
+			break;
 
-	SystemBus_Write(0xc00040, specConfig.specRom);
+		default:
+		case SpecRom_Classic128:
+		case SpecRom_Pentagon128:
+			fpgaRomRamCfg = 1;
+			break;
+
+		case SpecRom_Pentagon1024:
+			fpgaRomRamCfg = 2;
+			break;
+
+		case SpecRom_Scorpion:
+			fpgaRomRamCfg = 3;
+			break;
+	}
+
+	SystemBus_Write(0xc00040, fpgaRomRamCfg);
 	SystemBus_Write(0xc00041, specConfig.specSync);
 	SystemBus_Write(0xc00042, specConfig.specTurbo);
 
@@ -216,9 +255,9 @@ void Spectrum_UpdateConfig()
 
 	floppy_set_fast_mode(specConfig.specBdiMode);
 
-	if (romConfigPrev != (dword)specConfig.specRom) {
+	if (forceUpdateRoms || romConfigPrev != (dword) specConfig.specMachine) {
 		Spectrum_InitRom();
-		romConfigPrev = specConfig.specRom;
+		romConfigPrev = specConfig.specMachine;
 	}
 }
 
@@ -226,7 +265,7 @@ void Spectrum_UpdateDisks()
 {
 	for (int i = 0; i < 4; i++) {
 		fdc_open_image(i, specConfig.specImages[i].name);
-		floppy_disk_wp(i, &specConfig.specImages[i].readOnly);
+		floppy_disk_wp(i, &specConfig.specImages[i].writeProtect);
 	}
 }
 
@@ -448,8 +487,17 @@ void Timer_Routine()
 		portEXIT_CRITICAL();
 	}
 
-	if (fpgaStatus == FPGA_SPECCY2010)
-		SpectrumTimer_Routine();
+	SpectrumTimer_Routine();
+}
+
+void DiskIF_Routine()
+{
+	if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
+		BDI_Routine();
+	}
+	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC) {
+		// TODO: To be implemented...
+	}
 }
 
 void BDI_ResetWrite()
@@ -477,8 +525,6 @@ bool BDI_Read(byte *data)
 
 void BDI_Routine()
 {
-	if (fpgaStatus != FPGA_SPECCY2010)
-		return;
 	int ioCounter = 0x20;
 
 	word trdosStatus = SystemBus_Read(0xc00019);
@@ -706,8 +752,8 @@ void __TRACE(const char *str, ...)
 volatile dword delayTimer = 0;
 volatile dword tapeTimer = 0;
 
-volatile bool bdiTimerFlag = true;
-volatile dword bdiTimer = 0;
+volatile bool diskIfTimerFlag = true;
+volatile dword diskIfTimer = 0;
 
 void TIM0_UP_IRQHandler() //40kHz
 {
@@ -718,8 +764,8 @@ void TIM0_UP_IRQHandler() //40kHz
 	else
 		delayTimer = 0;
 
-	if (bdiTimerFlag)
-		bdiTimer += 25;
+	if (diskIfTimerFlag)
+		diskIfTimer += 25;
 
 	tick++;
 	if (tick >= 400) // 100Hz
@@ -768,17 +814,17 @@ void DelayMs(dword delay)
 
 dword get_ticks()
 {
-	return bdiTimer;
+	return diskIfTimer;
 }
 
-void BDI_StopTimer()
+void DiskIF_StopTimer()
 {
-	bdiTimerFlag = false;
+	diskIfTimerFlag = false;
 }
 
-void BDI_StartTimer()
+void DiskIF_StartTimer()
 {
-	bdiTimerFlag = true;
+	diskIfTimerFlag = true;
 }
 
 dword prevEIC_ICR = 0;
@@ -865,7 +911,7 @@ int main()
 
 		Keyboard_Routine();
 		Tape_Routine();
-		BDI_Routine();
+		DiskIF_Routine();
 	}
 }
 

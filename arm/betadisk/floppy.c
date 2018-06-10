@@ -73,21 +73,21 @@ int floppy_open(int drv, const char *filename)
 	byte open_mode;
 	int i;
 
-    char lfn[1];
-    fi.lfsize = 0;
-    fi.lfname = lfn;
+	char lfn[1];
+	fi.lfsize = 0;
+	fi.lfname = lfn;
 
-    floppy_close(drv);
-    if( strcmp( filename, "" ) == 0 ) return FLPO_ERR_READ;
+	floppy_close(drv);
+	if( strcmp( filename, "" ) == 0 ) return FLPO_ERR_READ;
 
 	if (f_stat(filename, &fi) != FR_OK) {
-	    FLP_TRACE(("flp: FLPO_ERR_READ"));
+		FLP_TRACE(("flp: FLPO_ERR_READ"));
 		return FLPO_ERR_READ;
 	}
 
 	p_ext = strchr(fi.fname, '.');
 	if (p_ext == 0 || strlen(p_ext) > 4) {
-	    FLP_TRACE(("flp: FLPO_ERR_FORMAT"));
+		FLP_TRACE(("flp: FLPO_ERR_FORMAT"));
 		return FLPO_ERR_FORMAT;
 	}
 
@@ -119,16 +119,16 @@ int floppy_open(int drv, const char *filename)
 	}
 
 	drives[drv].set_trk = 1;
-    drives[drv].rps = FLOPPY_RPS;
+	drives[drv].rps = FLOPPY_RPS;
 
 	drives[drv].trk_sz = STD_TRK_SZ;
 
-    /*
+	/*
 	p_file = strchr(filename, '/');
 	if (p_file == NULL && (p_file = strchr(filename, '\\')) == NULL) {
 		p_file = filename;
-    }
-    i = strlen(p_file) - (sizeof(drives[drv].fname) - 1);
+	}
+	i = strlen(p_file) - (sizeof(drives[drv].fname) - 1);
 	strcpy(drives[drv].fname, p_file + (i < 0 ? 0 : i));
 	*/
 
@@ -179,8 +179,8 @@ static void floppy_init_am(void)
 void floppy_set_sec_id(byte sec)
 {
 	if (
-	    floppy_fast_mode  &&
-	    sel_drv->ops->set_sec_id && sel_drv->ops->set_sec_id(sec)) {
+		floppy_fast_mode  &&
+		sel_drv->ops->set_sec_id && sel_drv->ops->set_sec_id(sec)) {
 
 		sel_drv->sec_done = 0;
 		sel_drv->stat |= FLP_STAT_AM;
@@ -196,7 +196,7 @@ void floppy_set_sec_id(byte sec)
 
 byte floppy_read(void)
 {
-    byte data = 0;
+	byte data = 0;
 	if (!sel_drv->no_data) {
 		if ((sel_drv->stat & FLP_STAT_AM) != 0) {
 			data = sel_drv->am_buf[sb_get];
@@ -214,12 +214,12 @@ byte floppy_read(void)
 					goto done;
 				}
 
-				BDI_StopTimer();
+				DiskIF_StopTimer();
 				if (!sel_drv->ops->read(sbuf)) {
 					sel_drv->stat |= (FLP_STAT_ERR|FLP_STAT_EOD);
 					sel_drv->no_data = 1;
 				}
-				BDI_StartTimer();
+				DiskIF_StartTimer();
 
 				sb_get = 0;
 				sb_put = FLP_BUF_SIZE;
@@ -246,11 +246,11 @@ void floppy_write(byte data)
 		sbuf[sb_put++] = data;
 		if (sb_put == FLP_BUF_SIZE)
 		{
-            BDI_StopTimer();
+			DiskIF_StopTimer();
 			if (!sel_drv->ops->write(sbuf)) {
 				sel_drv->stat |= (FLP_STAT_ERR|FLP_STAT_EOD);
 			}
-			BDI_StartTimer();
+			DiskIF_StartTimer();
 
 			if ((sel_drv->stat & FLP_STAT_EOD) != 0) {
 				sel_drv->no_data = 1;
@@ -346,8 +346,8 @@ void floppy_dispatch(void)
 
 	if (hld) {
 		if (index /*&& ready */&& elapsed() > (4000 / CNTR_INTERVAL)) {		// no division
-	    	FLP_TRACE(("flp: clearing index signal, time=%s\n", ticks_str(get_ticks())));
-	    	index = 0;
+			FLP_TRACE(("flp: clearing index signal, time=%s\n", ticks_str(get_ticks())));
+			index = 0;
 		}
 
 		if (ready) {
@@ -395,10 +395,10 @@ int floppy_disk_wp(int drive, int *protect)
 
 int floppy_set_all_wp(int mask)
 {
-    int i;
-    for (i = 0; i < MAX_FLOPPIES; i++) {
-    	drives[i].wp = (mask & (1 << i)) != 0;
-    }
+	int i;
+	for (i = 0; i < MAX_FLOPPIES; i++) {
+		drives[i].wp = (mask & (1 << i)) != 0;
+	}
 	return 0;
 }
 
@@ -415,7 +415,7 @@ word floppy_byte_time(void)
 int floppy_leds(void)
 {
 	int led = sel_drv->hld & (sel_drv->ops ? 1 : 0);
-    return led;
+	return led;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -444,10 +444,10 @@ void floppy_init(void)
 		drives[i].flp_num = i;
   		drives[i].ops = 0;
 		drives[i].trk_ptr = 0;
-    	drives[i].set_trk = 0;
-    	drives[i].hld = 0;
-    	drives[i].rps = FLOPPY_RPS;
-    	drives[i].interleave = 1;
+		drives[i].set_trk = 0;
+		drives[i].hld = 0;
+		drives[i].rps = FLOPPY_RPS;
+		drives[i].interleave = 1;
 	}
 	sel_drv = drives;
 }
@@ -456,37 +456,3 @@ void floppy_set_fast_mode(int fast)
 {
 	floppy_fast_mode = fast;
 }
-
-///////////////////////////////////////////////////////////////////////
-/*
-byte floppy_sec(struct flp_image *img)
-{
-	if (sel_drv->interleave) {
-		static PROGMEM char interleave[16] = { 0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15 };
-		return interleave[sel_drv->sec_n];
-		// 0, 3, 6, 9, 12, 15, 1, 4, 7, 10, 13, 2, 5, 8, 11, 14
-		// 0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15
-		// ����४��� (�४���) ���૨� ��।���� �⭮�⥫쭮� �ᯮ������� ᥪ�஢
-		// �� �ᥤ��� 䨧��᪨� ��஦���. �� ��᪠�, ���ଠ�஢����� � ������� TR-DOS � DCU,
-		// �� ࠢ�� 0 - �� ����砥�, �� ᥪ�� �� ��� ��஦��� �ᯮ�������� ���������.
-		// � �������� ��᪮��� �⨫��� ���� ����������� ��⠭����� ���㫥��� ����४��� ���૨�.
-		// ���ਬ��, �� ����४���� ���૨��, ࠢ��� 5, ᥪ�� �� �ᥤ��� 䨧��᪨� ��஦��� �ᯮ�������� ⠪:
-   		// 1. 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
-   		// 2. 12,13,14,15,16,1,2,3,4,5,6,7,8,9,10,11
-   		// 3. 7,8,9,10,11,12,13,14,15,16,1,2,3,4,5,6
-   		// �ਣ������ TR-DOS ᮤ�ন� ����প� �� ���室� �� �ᥤ��� 䨧����� ��஦��.
-   		// �� ����প� �ਡ����⥫쭮 ࠢ�� �� �६��� 7 ᥪ�ࠬ. � १���� ���,
-   		// ���ଠ�஢���� � ⠪�� ����४��� ���૨���, �㤥� ������ �� ����� TR-DOS ����॥ -
-   		// �� �㤥� ������� ����� ��᪠ �� ���室� �� ᫥������ ��஦��.
-   		// ������ TR-DOS 5.1xf � 6.xxE ᮤ�ঠ� ����প� ⮫쪮 �� �����
-   		// (�� ������⢨� �ॢ�� ���ࠢ��쭮� �������, �.�. ������� �� ����樮��஢���� �஦��),
-   		// � ⠪�� ����让 ����४��� ���૨� �� �⥭�� � ��� ������ TR-DOS �� �ॡ����.
-
-		//sel_drv->am_sec = sel_drv->sec_n + 1;
-	} else {
-		return sel_drv->sec_n;
-//		sel_drv->am_sec = sel_drv->sec_n + 1;
-	}
-}
-*/
-///////////////////////////////////////////////////////////////////////

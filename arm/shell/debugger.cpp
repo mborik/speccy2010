@@ -210,7 +210,7 @@ void Shell_Debugger()
 		{
 			SystemBus_Write(0xc00008, 0x01);
 			DelayMs(1);
-			BDI_Routine();
+			DiskIF_Routine();
 
 			addr = SystemBus_Read(0xC00001);
 			CurX = addr & 0x0007;

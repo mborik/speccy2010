@@ -6,21 +6,25 @@
 
 #define ADVANCED_BETADISK 1
 
-enum SpecRom_Type { SpecRom_Classic48, SpecRom_Pentagon128, SpecRom_Pentagon1024 ,SpecRom_Scorpion };
+enum SpecCfg_Group { PGRP_GENERAL = 0, PGRP_TRDOS, PGRP_ROMS };
+
+enum SpecRom_Type { SpecRom_Classic48, SpecRom_Classic128, SpecRom_Pentagon128, SpecRom_Pentagon1024, SpecRom_Scorpion };
+enum SpecDiskIf_Type { SpecDiskIf_Betadisk, SpecDiskIf_DivMMC };
 enum SpecTurbo_Type { SpecTurbo_None, SpecTurbo_x2, SpecTurbo_x4, SpecTurbo_None_x8 };
 enum SpecJoy_Type { SpecJoy_Kempston, SpecJoy_Sinclair1, SpecJoy_Sinclair2, SpecJoy_Cursor, SpecJoy_Qaopm };
 
 struct CDiskImage {
 	char name[PATH_SIZE];
-	int readOnly;
+	int writeProtect;
 };
 
 struct CSpecConfig {
 	char fpgaConfigName[PATH_SIZE];
 
-	int specRom;
-	int specUseBank0;
+	int specMachine;
 	int specSync;
+	int specDiskIf;
+	int specUseBank0;
 	int specTurbo;
 	int specVideoMode;
 	int specVideoAspectRatio;
@@ -38,6 +42,14 @@ struct CSpecConfig {
 	int specFont;
 
 	CDiskImage specImages[4];
+
+	char specRomFile_Classic48[PATH_SIZE];
+	char specRomFile_Classic128[PATH_SIZE];
+	char specRomFile_Pentagon[PATH_SIZE];
+	char specRomFile_Scorpion[PATH_SIZE];
+	char specRomFile_TRD_ROM[PATH_SIZE];
+	char specRomFile_TRD_Service[PATH_SIZE];
+	char specRomFile_DivMMC_FW[PATH_SIZE];
 
 	char snaName[PATH_SIZE];
 };

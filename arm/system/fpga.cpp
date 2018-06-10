@@ -16,15 +16,10 @@ byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
 
 dword fpgaConfigVersionPrev = 0;
-dword fpgaStatus = FPGA_NONE;
-
 dword romConfigPrev = -1;
 //---------------------------------------------------------------------------------------
 void FPGA_TestClock()
 {
-	if (fpgaStatus != FPGA_SPECCY2010)
-		return;
-
 	CPU_Stop();
 
 	SystemBus_Write(0xc00050, 0);
@@ -83,7 +78,6 @@ void FPGA_Config()
 	//--------------------------------------------------------------------------
 
 	__TRACE("FPGA_Config: Flashing started...\n");
-	fpgaStatus = FPGA_NONE;
 
 	GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -171,9 +165,8 @@ void FPGA_Config()
 	DelayMs(10);
 
 	romConfigPrev = -1;
-	SystemBus_TestConfiguration();
 
-	if (fpgaStatus == FPGA_SPECCY2010) {
+	if (SystemBus_TestConfiguration()) {
 		__TRACE("Speccy2010 FPGA configuration found...\n");
 
 		FPGA_TestClock();
@@ -184,7 +177,15 @@ void FPGA_Config()
 		Spectrum_UpdateDisks();
 	}
 	else {
-		__TRACE("Wrong FPGA configuration...\n");
+		__TRACE("Invalid FPGA configuration...\n");
+
+		// halt and hang in infinite loop with keyboard LEDs warning flash
+		byte kbdFlash[2] = { 0xed, 0x07 };
+		while (true) {
+			Keyboard_Send(kbdFlash, 2);
+			kbdFlash[1] ^= 0x07;
+			DelayMs(200);
+		}
 	}
 
 	WDT_Kick();

@@ -29,16 +29,14 @@ extern "C" {
 
 	void Mouse_Reset();
 
-	void Spectrum_UpdateConfig();
-	void Spectrum_UpdateDisks();
-
 	void BDI_Routine();
 	void BDI_ResetWrite();
 	void BDI_Write(byte data);
 	void BDI_ResetRead(word counter);
 	bool BDI_Read(byte *data);
-	void BDI_StopTimer();
-	void BDI_StartTimer();
+	void DiskIF_StopTimer();
+	void DiskIF_StartTimer();
+	void DiskIF_Routine();
 
 	void WDT_Kick();
 
@@ -68,6 +66,9 @@ extern "C" {
 
 	void Timer_Routine();
 	dword Timer_GetTickCounter();
+
+	void Spectrum_UpdateConfig(bool forceUpdateRoms = false);
+	void Spectrum_UpdateDisks();
 #endif
 
 #endif

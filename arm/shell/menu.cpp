@@ -7,44 +7,45 @@
 
 //---------------------------------------------------------------------------------------
 CMenuItem mainMenu[] = {
-	CMenuItem(1, 2, "Date: ", "00"),
-	CMenuItem(9, 2, ".", "00"),
-	CMenuItem(12, 2, ".", "00"),
+	CMenuItem( 1,  2, "Date: ", "0000"),
+	CMenuItem(11,  2, "-", "00"),
+	CMenuItem(14,  2, "-", "00"),
 
-	CMenuItem(1, 3, "Time: ", "00"),
-	CMenuItem(9, 3, ":", "00"),
-	CMenuItem(12, 3, ":", "0000"),
+	CMenuItem( 1,  3, "Time: ", "00"),
+	CMenuItem( 9,  3, ":", "00"),
+	CMenuItem(12,  3, ":", "00"),
 
-	CMenuItem(1, 5, "ROM/RAM: ", GetParam(iniParameters, "ROM/RAM")),
-	CMenuItem(1, 6, "Timings: ", GetParam(iniParameters, "Timings")),
-	CMenuItem(1, 7, "Turbo: ", GetParam(iniParameters, "Turbo")),
-	CMenuItem(1, 8, "AY mode: ", GetParam(iniParameters, "AY mode")),
-	CMenuItem(14, 8, "Covox:", GetParam(iniParameters, "Covox")),
-	CMenuItem(1, 9, "AY Chip:", GetParam(iniParameters, "AY Chip")),
-	CMenuItem(14, 9, "Turbo Sound: ", GetParam(iniParameters, "Turbo Sound")),
-	CMenuItem(1, 10, "BDI mode: ", GetParam(iniParameters, "BDI mode")),
+	CMenuItem( 1,  5, "Machine: ", GetParam(iniParameters, "Machine", PGRP_GENERAL)),
+	CMenuItem( 1,  6, "Timings: ", GetParam(iniParameters, "Timings", PGRP_GENERAL)),
+	CMenuItem( 1,  7, "Disk IF: ", GetParam(iniParameters, "Disk Interface", PGRP_GENERAL)),
+	CMenuItem(19,  7, "BDI mode:", GetParam(iniParameters, "BDI mode", PGRP_TRDOS)),
+	CMenuItem( 1,  8, "Turbo: ", GetParam(iniParameters, "Turbo", PGRP_GENERAL)),
+	CMenuItem( 1,  9, "AY Chip: ", GetParam(iniParameters, "AY Chip", PGRP_GENERAL)),
+	CMenuItem(14,  9, "Turbo Sound: ", GetParam(iniParameters, "Turbo Sound", PGRP_GENERAL)),
+	CMenuItem( 1, 10, "AY mode: ", GetParam(iniParameters, "AY mode", PGRP_GENERAL)),
+	CMenuItem(14, 10, "Covox:", GetParam(iniParameters, "Covox", PGRP_GENERAL)),
 
-	CMenuItem(1, 11, "Joystick emulation: ", GetParam(iniParameters, "Joystick emulation")),
-	CMenuItem(1, 12, "Joystick 1: ", GetParam(iniParameters, "Joystick 1")),
-	CMenuItem(1, 13, "Joystick 2: ", GetParam(iniParameters, "Joystick 2")),
-	CMenuItem(1, 14, "Mouse Sensitivity: ", GetParam(iniParameters, "Mouse Sensitivity")),
-	CMenuItem(1, 15, "Swap mouse buttons: ", GetParam(iniParameters, "Swap mouse buttons")),
+	CMenuItem( 1, 11, "Joystick emulation: ", GetParam(iniParameters, "Joystick emulation", PGRP_GENERAL)),
+	CMenuItem( 1, 12, "Joystick 1: ", GetParam(iniParameters, "Joystick 1", PGRP_GENERAL)),
+	CMenuItem( 1, 13, "Joystick 2: ", GetParam(iniParameters, "Joystick 2", PGRP_GENERAL)),
+	CMenuItem( 1, 14, "Mouse Sensitivity: ", GetParam(iniParameters, "Mouse Sensitivity", PGRP_GENERAL)),
+	CMenuItem( 1, 15, "Swap mouse buttons: ", GetParam(iniParameters, "Swap mouse buttons", PGRP_GENERAL)),
 
-	CMenuItem(1, 16, "Video mode: ", GetParam(iniParameters, "Video mode")),
-	CMenuItem(1, 17, "Video aspect ratio: ", GetParam(iniParameters, "Video aspect ratio")),
-	CMenuItem(1, 18, "Audio DAC mode: ", GetParam(iniParameters, "Audio DAC mode")),
-	CMenuItem(1, 19, "Font: ", GetParam(iniParameters, "Font")),
+	CMenuItem( 1, 16, "Video mode: ", GetParam(iniParameters, "Video mode", PGRP_GENERAL)),
+	CMenuItem( 1, 17, "Video aspect ratio: ", GetParam(iniParameters, "Video aspect ratio", PGRP_GENERAL)),
+	CMenuItem( 1, 18, "Audio DAC mode: ", GetParam(iniParameters, "Audio DAC mode", PGRP_GENERAL)),
+	CMenuItem( 1, 19, "Font: ", GetParam(iniParameters, "Font", PGRP_GENERAL))
 };
 //---------------------------------------------------------------------------------------
 CMenuItem disksMenu[] = {
-	CMenuItem(1, 3, "A: ", GetParam(iniParameters, "Disk A")),
-	CMenuItem(3, 4, "read only :", GetParam(iniParameters, "Disk A read only")),
-	CMenuItem(1, 6, "B: ", GetParam(iniParameters, "Disk B")),
-	CMenuItem(3, 7, "read only :", GetParam(iniParameters, "Disk B read only")),
-	CMenuItem(1, 9, "C: ", GetParam(iniParameters, "Disk C")),
-	CMenuItem(3, 10, "read only :", GetParam(iniParameters, "Disk C read only")),
-	CMenuItem(1, 12, "D: ", GetParam(iniParameters, "Disk D")),
-	CMenuItem(3, 13, "read only :", GetParam(iniParameters, "Disk D read only")),
+	CMenuItem(1, 3, "A: ", GetParam(iniParameters, "Disk A", PGRP_TRDOS)),
+	CMenuItem(3, 4, "write protect :", GetParam(iniParameters, "Disk A WP", PGRP_TRDOS)),
+	CMenuItem(1, 6, "B: ", GetParam(iniParameters, "Disk B", PGRP_TRDOS)),
+	CMenuItem(3, 7, "write protect :", GetParam(iniParameters, "Disk B WP", PGRP_TRDOS)),
+	CMenuItem(1, 9, "C: ", GetParam(iniParameters, "Disk C", PGRP_TRDOS)),
+	CMenuItem(3, 10, "write protect :", GetParam(iniParameters, "Disk C WP", PGRP_TRDOS)),
+	CMenuItem(1, 12, "D: ", GetParam(iniParameters, "Disk D", PGRP_TRDOS)),
+	CMenuItem(3, 13, "write protect :", GetParam(iniParameters, "Disk D WP", PGRP_TRDOS)),
 };
 //---------------------------------------------------------------------------------------
 void Shell_SettingsMenu()
@@ -129,11 +130,11 @@ void Shell_Menu(CMenuItem *menu, int menuSize)
 
 				if (menu == mainMenu && menuPos >= 0 && menuPos < 6) {
 					if (menuPos == 0)
-						time.tm_mday += delta;
+						time.tm_year += delta;
 					if (menuPos == 1)
 						time.tm_mon += delta;
 					if (menuPos == 2)
-						time.tm_year += delta;
+						time.tm_mday += delta;
 					if (menuPos == 3)
 						time.tm_hour += delta;
 					if (menuPos == 4)
@@ -220,11 +221,11 @@ void Shell_Menu(CMenuItem *menu, int menuSize)
 			mainMenu[3].UpdateData(temp);
 
 			sniprintf(temp, sizeof(temp), "%.2d", time.tm_mday);
-			mainMenu[0].UpdateData(temp);
+			mainMenu[2].UpdateData(temp);
 			sniprintf(temp, sizeof(temp), "%.2d", time.tm_mon + 1);
 			mainMenu[1].UpdateData(temp);
 			sniprintf(temp, sizeof(temp), "%.4d", time.tm_year + 1900);
-			mainMenu[2].UpdateData(temp);
+			mainMenu[0].UpdateData(temp);
 
 			tickCounter = Timer_GetTickCounter();
 		}
