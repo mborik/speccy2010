@@ -23,18 +23,19 @@ CMenuItem mainMenu[] = {
 	CMenuItem( 1,  9, "AY Chip: ", GetParam(iniParameters, "AY Chip", PGRP_GENERAL)),
 	CMenuItem(14,  9, "Turbo Sound: ", GetParam(iniParameters, "Turbo Sound", PGRP_GENERAL)),
 	CMenuItem( 1, 10, "AY mode: ", GetParam(iniParameters, "AY mode", PGRP_GENERAL)),
-	CMenuItem(14, 10, "Covox:", GetParam(iniParameters, "Covox", PGRP_GENERAL)),
+	CMenuItem(14, 10, "Covox: ", GetParam(iniParameters, "Covox", PGRP_GENERAL)),
+	CMenuItem( 1, 11, "Audio DAC mode: ", GetParam(iniParameters, "Audio DAC mode", PGRP_GENERAL)),
 
-	CMenuItem( 1, 11, "Joystick emulation: ", GetParam(iniParameters, "Joystick emulation", PGRP_GENERAL)),
-	CMenuItem( 1, 12, "Joystick 1: ", GetParam(iniParameters, "Joystick 1", PGRP_GENERAL)),
-	CMenuItem( 1, 13, "Joystick 2: ", GetParam(iniParameters, "Joystick 2", PGRP_GENERAL)),
-	CMenuItem( 1, 14, "Mouse Sensitivity: ", GetParam(iniParameters, "Mouse Sensitivity", PGRP_GENERAL)),
-	CMenuItem( 1, 15, "Swap mouse buttons: ", GetParam(iniParameters, "Swap mouse buttons", PGRP_GENERAL)),
+	CMenuItem( 1, 12, "Joystick emulation: ", GetParam(iniParameters, "Joystick emulation", PGRP_GENERAL)),
+	CMenuItem( 1, 13, "Joystick 1: ", GetParam(iniParameters, "Joystick 1", PGRP_GENERAL)),
+	CMenuItem( 1, 14, "Joystick 2: ", GetParam(iniParameters, "Joystick 2", PGRP_GENERAL)),
+	CMenuItem( 1, 15, "Mouse Sensitivity: ", GetParam(iniParameters, "Mouse Sensitivity", PGRP_GENERAL)),
+	CMenuItem( 1, 16, "Swap mouse buttons: ", GetParam(iniParameters, "Swap mouse buttons", PGRP_GENERAL)),
 
-	CMenuItem( 1, 16, "Video mode: ", GetParam(iniParameters, "Video mode", PGRP_GENERAL)),
-	CMenuItem( 1, 17, "Video aspect ratio: ", GetParam(iniParameters, "Video aspect ratio", PGRP_GENERAL)),
-	CMenuItem( 1, 18, "Audio DAC mode: ", GetParam(iniParameters, "Audio DAC mode", PGRP_GENERAL)),
-	CMenuItem( 1, 19, "Font: ", GetParam(iniParameters, "Font", PGRP_GENERAL))
+	CMenuItem( 1, 17, "Video mode: ", GetParam(iniParameters, "Video mode", PGRP_GENERAL)),
+	CMenuItem( 1, 18, "Video aspect ratio: ", GetParam(iniParameters, "Video aspect ratio", PGRP_GENERAL)),
+	CMenuItem( 1, 19, "TV Interlace: ", GetParam(iniParameters, "Video interlace", PGRP_GENERAL)),
+	CMenuItem(20, 19, "Font: ", GetParam(iniParameters, "Font", PGRP_GENERAL))
 };
 //---------------------------------------------------------------------------------------
 CMenuItem disksMenu[] = {

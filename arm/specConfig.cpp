@@ -16,13 +16,14 @@ const CParameter iniParameters[] = {
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "AY Chip", "YM|AY", &specConfig.specAyYm),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Video mode", "Composite/S-Video|PAL RGB|VGA 50Hz|VGA 60Hz|VGA 75Hz", &specConfig.specVideoMode),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Video aspect ratio", "4:3|5:4|16:9", &specConfig.specVideoAspectRatio),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Video interlace", "Off|On", &specConfig.specVideoInterlace),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Audio DAC mode", "R-2R|TDA1543|TDA1543A", &specConfig.specDacMode),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Joystick emulation", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyModeEmulation),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Joystick 1", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode1),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Joystick 2", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode2),
 	CParameter(PTYPE_INT,  PGRP_GENERAL, "Mouse Sensitivity", "1|6|1", &specConfig.specMouseSensitivity),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Swap mouse buttons", "Off|On", &specConfig.specMouseSwap),
-	CParameter(PTYPE_LIST, PGRP_GENERAL, "Font", "Classic|Alt|Bold", &specConfig.specFont),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Font", "Speccy|Alt|Bold", &specConfig.specFont),
 
 	CParameter(PTYPE_LIST,   PGRP_TRDOS, "BDI mode", "Slow|Fast", &specConfig.specBdiMode),
 	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk A", (char *) sizeof(specConfig.specImages[0].name), specConfig.specImages[0].name),
@@ -82,6 +83,7 @@ void RestoreConfig()
 	specConfig.specTurbo = SpecTurbo_None;
 	specConfig.specVideoMode = 0;
 	specConfig.specVideoAspectRatio = 0;
+	specConfig.specVideoInterlace = 0;
 	specConfig.specDacMode = 1;
 	specConfig.specAyMode = 1;
 	specConfig.specTurboSound = 1;

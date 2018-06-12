@@ -28,6 +28,7 @@ struct CSpecConfig {
 	int specTurbo;
 	int specVideoMode;
 	int specVideoAspectRatio;
+	int specVideoInterlace;
 	int specDacMode;
 	int specAyMode;
 	int specTurboSound;

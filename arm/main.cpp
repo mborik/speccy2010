@@ -242,23 +242,32 @@ void Spectrum_UpdateConfig(bool forceUpdateRoms)
 			break;
 	}
 
-	SystemBus_Write(0xc00040, fpgaRomRamCfg);
-	SystemBus_Write(0xc00041, specConfig.specSync);
-	SystemBus_Write(0xc00042, specConfig.specTurbo);
+	// machine, RAM, ROM and Turbo configuration...
+	SystemBus_Write(0xc00040, fpgaRomRamCfg |
+		((specConfig.specSync << 3) & 0x38) | ((specConfig.specTurbo << 6) & 0xC0));
 
-	SystemBus_Write(0xc00043, specConfig.specVideoMode);
-	SystemBus_Write(0xc00048, specConfig.specVideoAspectRatio);
+	// video mode and aspect ratio configuration...
+	SystemBus_Write(0xc00041, specConfig.specVideoMode  |
+		((specConfig.specVideoAspectRatio << 4) & 0x70) |
+		(specConfig.specVideoInterlace << 7));
 
-	SystemBus_Write(0xc00046, specConfig.specDacMode);
-	SystemBus_Write(0xc00047, specConfig.specAyMode);
-	SystemBus_Write(0xc00045, specConfig.specTurboSound | ((specConfig.specCovox << 1) & 0x0E) | (specConfig.specAyYm << 4));
+	// disk interface configuration...
+	SystemBus_Write(0xc00042, specConfig.specDiskIf + 1);
 
-	floppy_set_fast_mode(specConfig.specBdiMode);
+	// audio configuration (AY, YM, TurboSound)...
+	SystemBus_Write(0xc00045, specConfig.specTurboSound |
+		((specConfig.specAyMode << 1) & 0x0E) | (specConfig.specAyYm << 4));
 
+	// Covox and D/A converter configuration...
+	SystemBus_Write(0xc00046, specConfig.specCovox | (specConfig.specDacMode << 3));
+
+	// ROMs initialization...
 	if (forceUpdateRoms || romConfigPrev != (dword) specConfig.specMachine) {
 		Spectrum_InitRom();
 		romConfigPrev = specConfig.specMachine;
 	}
+
+	floppy_set_fast_mode(specConfig.specBdiMode);
 }
 
 void Spectrum_UpdateDisks()
