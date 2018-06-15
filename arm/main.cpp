@@ -101,42 +101,40 @@ bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbac
 		return false;
 
 	FIL romImage;
+	const char *romImageFileName = romFileName;
+
 	if (f_open(&romImage, romFileName, FA_READ) != FR_OK) {
 		__TRACE("Cannot open rom image '%s'\n", romFileName);
 
 		if (fallbackRomFile == NULL)
 			return false;
 
+		romImageFileName = fallbackRomFile;
 		if (f_open(&romImage, fallbackRomFile, FA_READ) != FR_OK) {
 			__TRACE("Cannot open rom image '%s'\n", fallbackRomFile);
 			return false;
 		}
 	}
 
-	bool result = true;
-
-	int writeErrors = 0;
-	int readErrors = 0;
 
 	CPU_Stop();
 	SystemBus_Write(0xc00020, 0); // use bank 0
-	dword addr = 0x800000 | (((0x100 + page) * 0x4000) >> 1);
-
 	f_lseek(&romImage, 0);
 
-	dword pos;
-	for (pos = 0; pos < romImage.fsize; pos += 2) {
-		word data;
+	bool result = true;
+	int writeErrors = 0;
+	int readErrors = 0;
+	dword pos, addr = 0x800000 | (((0x100 + page) * 0x4000) >> 1);
+	word data, temp;
+	UINT res;
 
-		UINT res;
+	__TRACE("Loading '%s' into page %d (0x%x)\n", romImageFileName, page, addr << 1);
+
+	for (pos = 0; pos < romImage.fsize; pos += 2) {
 		if (f_read(&romImage, &data, 2, &res) != FR_OK)
 			break;
 		if (res == 0)
 			break;
-
-		word temp;
-		//temp = SystemBus_Read(addr);
-		//if (temp != data) __TRACE("a: 0x%.4x -> r: 0x%.4x w: 0x%.4x\n", addr << 1, temp, data);
 
 		SystemBus_Write(addr, data);
 		temp = SystemBus_Read(addr);
@@ -180,28 +178,31 @@ void Spectrum_InitRom()
 	specConfig.specUseBank0 = 0;
 
 	if (specConfig.specMachine == SpecRom_Classic48) {
-		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
-			Spectrum_LoadRomPage(1, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
-
 		Spectrum_LoadRomPage(3, specConfig.specRomFile_Classic48, "roms/48.rom");
 	}
 	else if (specConfig.specMachine == SpecRom_Classic128) {
-		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
-			Spectrum_LoadRomPage(1, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
-
 		Spectrum_LoadRomPage(2, specConfig.specRomFile_Classic128, "roms/128.rom");
 	}
 	else if (specConfig.specMachine == SpecRom_Scorpion) {
 		Spectrum_LoadRomPage(0, specConfig.specRomFile_Scorpion, "roms/scorpion.rom");
 	}
 	else {
-		if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
+		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
 			specConfig.specUseBank0 = Spectrum_LoadRomPage(0, specConfig.specRomFile_TRD_Service);
-			Spectrum_LoadRomPage(1, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
-		}
 
 		Spectrum_LoadRomPage(2, specConfig.specRomFile_Pentagon, "roms/pentagon.rom");
 	}
+
+	if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
+		Spectrum_LoadRomPage(1, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
+	}
+	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC) {
+		specConfig.specUseBank0 = Spectrum_LoadRomPage(0, specConfig.specRomFile_DivMMC_FW);
+
+		if (!specConfig.specUseBank0)
+			__TRACE("DivMMC firmware missing!\n");
+	}
+
 
 	__TRACE("ROM configuration finished...\n");
 
@@ -221,7 +222,8 @@ void Spectrum_InitRom()
 
 void Spectrum_UpdateConfig(bool forceUpdateRoms)
 {
-	word fpgaRomRamCfg;
+	word fpgaRomRamCfg, fpgaDiskIfCfg = 0;
+
 	switch (specConfig.specMachine) {
 		case SpecRom_Classic48:
 			fpgaRomRamCfg = 0;
@@ -242,6 +244,15 @@ void Spectrum_UpdateConfig(bool forceUpdateRoms)
 			break;
 	}
 
+	switch (specConfig.specDiskIf) {
+		case SpecDiskIf_Betadisk:
+			fpgaDiskIfCfg = 1;
+			break;
+		case SpecDiskIf_DivMMC:
+			fpgaDiskIfCfg = 2;
+			break;
+	}
+
 	// machine, RAM, ROM and Turbo configuration...
 	SystemBus_Write(0xc00040, fpgaRomRamCfg |
 		((specConfig.specSync << 3) & 0x38) | ((specConfig.specTurbo << 6) & 0xC0));
@@ -252,7 +263,7 @@ void Spectrum_UpdateConfig(bool forceUpdateRoms)
 		(specConfig.specVideoInterlace << 7));
 
 	// disk interface configuration...
-	SystemBus_Write(0xc00042, specConfig.specDiskIf + 1);
+	SystemBus_Write(0xc00042, fpgaDiskIfCfg);
 
 	// audio configuration (AY, YM, TurboSound)...
 	SystemBus_Write(0xc00045, specConfig.specTurboSound |
@@ -262,9 +273,10 @@ void Spectrum_UpdateConfig(bool forceUpdateRoms)
 	SystemBus_Write(0xc00046, specConfig.specCovox | (specConfig.specDacMode << 3));
 
 	// ROMs initialization...
-	if (forceUpdateRoms || romConfigPrev != (dword) specConfig.specMachine) {
+	dword newMachineConfig = specConfig.specMachine | (fpgaDiskIfCfg << 4);
+	if (prevMachineConfig != newMachineConfig || forceUpdateRoms) {
 		Spectrum_InitRom();
-		romConfigPrev = specConfig.specMachine;
+		prevMachineConfig = newMachineConfig;
 	}
 
 	floppy_set_fast_mode(specConfig.specBdiMode);
@@ -272,6 +284,9 @@ void Spectrum_UpdateConfig(bool forceUpdateRoms)
 
 void Spectrum_UpdateDisks()
 {
+	if (specConfig.specDiskIf != SpecDiskIf_Betadisk)
+		return;
+
 	for (int i = 0; i < 4; i++) {
 		fdc_open_image(i, specConfig.specImages[i].name);
 		floppy_disk_wp(i, &specConfig.specImages[i].writeProtect);
@@ -435,7 +450,12 @@ void SpectrumTimer_Routine()
 		}
 
 		static byte leds_prev = 0;
-		byte leds = (floppy_leds() << 2) | ((ReadKeyFlags() & fKeyPCEmu) ? 1 : 0) | 2;
+		bool activity = Tape_Started();
+
+		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
+			activity ^= floppy_leds();
+
+		byte leds = (activity << 2) | (ReadKeyFlags() & fKeyPCEmu) | 2;
 
 		if (leds != leds_prev && kbdInited == KBD_OK) {
 			byte data[2] = { 0xed, leds };
@@ -501,12 +521,10 @@ void Timer_Routine()
 
 void DiskIF_Routine()
 {
-	if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
+	if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
 		BDI_Routine();
-	}
-	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC) {
-		// TODO: To be implemented...
-	}
+	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
+		DivMMC_Routine();
 }
 
 void BDI_ResetWrite()
@@ -614,12 +632,36 @@ void BDI_Routine()
 			break;
 
 		trdosStatus = SystemBus_Read(0xc00019);
-		if ((trdosStatus & 1) == 0)
-			break;
 	}
 
 	fdc_dispatch();
 	SystemBus_Write(0xc0001d, fdc_read(0xff));
+}
+
+void DivMMC_Routine()
+{
+	int ioCounter = 0x20;
+	word divmmcStatus = SystemBus_Read(0xc00019);
+
+	while ((divmmcStatus & 1) != 0) {
+		bool divmmcWr = (divmmcStatus & 0x02) != 0;
+
+		if (divmmcWr) {
+			byte data = SystemBus_Read(0xc0001b);
+			xmit_spi(data);
+		}
+		else {
+			byte data = rcvr_spi();
+			SystemBus_Write(0xc0001b, data);
+		}
+
+		SystemBus_Write(0xc00019, 0);
+
+		if (--ioCounter == 0)
+			break;
+
+		divmmcStatus = SystemBus_Read(0xc00019);
+	}
 }
 
 const dword STACK_FILL = 0x37ACF177;
@@ -678,28 +720,20 @@ void Serial_Routine()
 			cmd[cmdSize] = 0;
 			cmdSize = 0;
 
-			if (strcmp(cmd, "test stack") == 0)
+			if (strcmp(cmd, "stack") == 0)
 				TestStack();
 			else if (strcmp(cmd, "log bdi") == 0)
-				LOG_BDI_PORTS = true;
-			else if (strcmp(cmd, "update rom") == 0) {
-				Spectrum_InitRom();
-			}
-			else if (strcmp(cmd, "log wait off") == 0)
-				LOG_WAIT = false;
-			else if (strcmp(cmd, "log wait") == 0)
-				LOG_WAIT = true;
-			//else if( strcmp( cmd, "test heap" ) == 0 ) TestHeap();
+				LOG_BDI_PORTS = !LOG_BDI_PORTS;
+			else if (strcmp(cmd, "update rom") == 0)
+				Spectrum_UpdateConfig(true);
 			else if (strcmp(cmd, "reset") == 0)
-				while (true)
-					;
-			else if (strcmp(cmd, "pc") == 0) {
-				SystemBus_TestConfiguration();
+				while (true); // dihalt
+			else if (strncmp(cmd, "video ", 6) == 0 && cmd[6] >= '1' && cmd[6] <= '5') {
+				specConfig.specVideoMode = cmd[6] - '1';
+				Spectrum_UpdateConfig();
 			}
-			else {
+			else
 				__TRACE("cmd: %s\n", cmd);
-				LOG_BDI_PORTS = false;
-			}
 		}
 		else if (temp == 0x08) {
 			if (cmdSize > 0) {

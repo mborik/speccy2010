@@ -163,21 +163,19 @@ void show_sel(bool redraw = false)
 		char sname[31];
 		make_short_name(sname, sizeof(sname), fr.name);
 		WriteStrAttr(1, 19, sname, get_sel_attr(fr), 30);
+		WriteStrAttr(24, 18, "\xC4\xC4\xC4\xC4\xC4\xC4", 0117, 6);
 
 		if (files_sel_number > 0) {
 			sniprintf(sname, sizeof(sname), "(%u)", files_sel_number);
 			size_t len = strlen(sname);
 			WriteStrAttr(30 - len, 18, sname, 0116, len);
 		}
-		else {
-			WriteStrAttr(24, 18, "\xC4\xC4\xC4\xC4\xC4\xC4", 0117, 6);
-		}
 
 		if (fr.date == 0) {
 			WriteStr(1, 20, "---------- -----", 16);
 		}
 		else {
-			sniprintf(sname, sizeof(sname), "%04hu-%02hu-%02hu %02hu:%02hu",
+			sniprintf(sname, sizeof(sname), "%04u-%02u-%02u %02u:%02u",
 				(1980 + (fr.date >> 9)),
 				(fr.date >> 5) & 0x0f,
 				fr.date & 0x1f,
@@ -567,6 +565,60 @@ bool Shell_EmptyTrd(const char *_name)
 	return result;
 }
 //---------------------------------------------------------------------------------------
+void Shell_ScreenBrowser(char *fullName)
+{
+	dword pos, addr = VIDEO_PAGE_PTR;
+
+	while (true) {
+		for (pos = 0x1800; pos < 0x1b00; pos++)
+			SystemBus_Write(addr + pos, 0);
+
+		FIL image;
+		if (f_open(&image, fullName, FA_READ) == FR_OK) {
+			byte data;
+			UINT res;
+
+			for (pos = 0; pos < 0x1b00; pos++) {
+				if (f_read(&image, &data, 1, &res) != FR_OK)
+					break;
+				if (res == 0)
+					break;
+
+				SystemBus_Write(addr++, data);
+			}
+
+			f_close(&image);
+		}
+		else
+			break;
+
+		char key = GetKey(true);
+		if (key != ' ')
+			break;
+
+		int i = files_size;
+		while (i--) {
+			files_sel++;
+			if (files_sel >= files_size)
+				files_sel = 0;
+
+			FRECORD fr;
+			Read(&fr, table_buffer, files_sel);
+			strlwr(fr.name);
+
+			char *ext = fr.name + strlen(fr.name);
+			while (ext > fr.name && *ext != '.')
+				ext--;
+
+			if (strcmp(ext, ".scr") == 0) {
+				sniprintf(fullName, sizeof(fullName), "%s%s", get_current_dir(), fr.name);
+				break;
+			}
+		}
+
+	}
+}
+//---------------------------------------------------------------------------------------
 // COMMANDER CORE -----------------------------------------------------------------------
 //---------------------------------------------------------------------------------------
 void Shell_Commander()
@@ -644,7 +696,7 @@ void Shell_Commander()
 			show_sel(true);
 		}
 		else if (key >= '1' && key <= '4') {
-			if ((fr.attr & AM_DIR) == 0) {
+			if (specConfig.specDiskIf == SpecDiskIf_Betadisk && (fr.attr & AM_DIR) == 0) {
 				char fullName[PATH_SIZE];
 				sniprintf(fullName, sizeof(fullName), "%s%s", get_current_dir(), fr.name);
 
@@ -686,7 +738,18 @@ void Shell_Commander()
 			if ((fr.attr & AM_DIR) == 0) {
 				char fullName[PATH_SIZE];
 				sniprintf(fullName, sizeof(fullName), "%s%s", get_current_dir(), fr.name);
-				Shell_Viewer(fullName);
+				strlwr(fr.name);
+
+				char *ext = fr.name + strlen(fr.name);
+				while (ext > fr.name && *ext != '.')
+					ext--;
+
+				if (strcmp(ext, ".scr") == 0) {
+					Shell_ScreenBrowser(fullName);
+				}
+				else {
+					Shell_Viewer(fullName);
+				}
 
 				init_screen();
 				show_table();
@@ -697,7 +760,6 @@ void Shell_Commander()
 			hide_sel();
 			if (Shell_EmptyTrd(""))
 				read_dir();
-			;
 			show_sel(true);
 		}
 		else if (key == K_F5) {
@@ -761,21 +823,7 @@ void Shell_Commander()
 				while (ext > fr.name && *ext != '.')
 					ext--;
 
-				if (strcmp(ext, ".rbf") == 0) {
-					sniprintf(specConfig.fpgaConfigName, sizeof(specConfig.fpgaConfigName), "%s", fullName);
-					SaveConfig();
-
-					SystemBus_Write(0xc00021, 0); // Enable Video
-					SystemBus_Write(0xc00022, 0);
-					CPU_Start();
-
-					FPGA_Config();
-
-					return;
-				}
-				else if (strcmp(ext, ".tap") == 0 || strcmp(ext, ".tzx") == 0) {
-					sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s.00.sna", fullName);
-
+				if (strcmp(ext, ".tap") == 0 || strcmp(ext, ".tzx") == 0) {
 					Tape_SelectFile(fullName);
 					break;
 				}
@@ -787,7 +835,7 @@ void Shell_Commander()
 					}
 				}
 				else if (strcmp(ext, ".trd") == 0 || strcmp(ext, ".fdi") == 0 || strcmp(ext, ".scl") == 0) {
-					if (fdc_open_image(0, fullName)) {
+					if (specConfig.specDiskIf == SpecDiskIf_Betadisk && fdc_open_image(0, fullName)) {
 						sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s.00.sna", fullName);
 
 						floppy_disk_wp(0, &specConfig.specImages[0].writeProtect);
@@ -813,50 +861,7 @@ void Shell_Commander()
 					}
 				}
 				else if (strcmp(ext, ".scr") == 0) {
-					while (true) {
-						FIL image;
-						if (f_open(&image, fullName, FA_READ) == FR_OK) {
-							dword addr = VIDEO_PAGE_PTR;
-
-							for (dword pos = 0; pos < 0x1b00; pos++) {
-								byte data;
-
-								UINT res;
-								if (f_read(&image, &data, 1, &res) != FR_OK)
-									break;
-								if (res == 0)
-									break;
-
-								SystemBus_Write(addr++, data);
-							}
-						}
-						else
-							break;
-
-						byte key = GetKey();
-
-						if (key == ' ') {
-							while (true) {
-								files_sel++;
-								if (files_sel >= files_size)
-									files_sel = 0;
-
-								Read(&fr, table_buffer, files_sel);
-								strlwr(fr.name);
-
-								ext = fr.name + strlen(fr.name);
-								while (ext > fr.name && *ext != '.')
-									ext--;
-
-								if (strcmp(ext, ".scr") == 0)
-									break;
-							}
-
-							sniprintf(fullName, sizeof(fullName), "%s%s", get_current_dir(), fr.name);
-						}
-						else if (key != 0)
-							break;
-					}
+					Shell_ScreenBrowser(fullName);
 
 					init_screen();
 					show_table();

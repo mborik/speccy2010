@@ -148,7 +148,7 @@ void Shell_Menu(CMenuItem *menu, int menuSize)
 				}
 				else {
 					const CParameter *param = menu[menuPos].GetParam();
-					if (param != 0) {
+					if (param != NULL) {
 						if (param->GetType() == PTYPE_INT) {
 							int value = param->GetValue() + delta;
 							if (value < param->GetValueMin())
@@ -174,14 +174,26 @@ void Shell_Menu(CMenuItem *menu, int menuSize)
 			}
 			else {
 				const CParameter *param = menu[menuPos].GetParam();
-				if (param != 0) {
+				if (param != NULL) {
 					if (param->GetType() == PTYPE_LIST) {
 						param->SetValue((param->GetValue() + 1) % (param->GetValueMax() + 1));
 
-						if (param == GetParam(iniParameters, "Font")) {
+						if (param == GetParam(iniParameters, "Font", PGRP_GENERAL)) {
 							InitScreen();
 							for (int i = 0; i < menuSize; i++)
 								menu[i].Redraw();
+						}
+						else {
+							const CParameter *machine = GetParam(iniParameters, "Machine", PGRP_GENERAL);
+							if (param == machine && machine->GetValue() >= SpecRom_Pentagon128) {
+								menu[8].GetParam()->SetValue(SpecDiskIf_Betadisk);
+								menu[8].UpdateData();
+								menu[8].Redraw();
+							}
+							else if (param == GetParam(iniParameters, "Disk Interface", PGRP_GENERAL)) {
+								if (machine->GetValue() >= SpecRom_Pentagon128)
+									param->SetValue(SpecDiskIf_Betadisk);
+							}
 						}
 
 						menu[menuPos].UpdateData();
@@ -199,7 +211,7 @@ void Shell_Menu(CMenuItem *menu, int menuSize)
 		}
 		else if (key == K_BACKSPACE) {
 			const CParameter *param = menu[menuPos].GetParam();
-			if (param != 0) {
+			if (param != NULL) {
 				if (param->GetType() == PTYPE_STRING) {
 					param->SetValueText("");
 					menu[menuPos].UpdateData();

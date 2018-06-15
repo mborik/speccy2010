@@ -35,7 +35,16 @@ DRESULT disk_write (BYTE, const BYTE*, DWORD, BYTE);
 DRESULT disk_ioctl (BYTE, BYTE, void*);
 void	disk_timerproc (void);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+volatile BYTE xmit_spi (BYTE dat);
+volatile BYTE rcvr_spi (void);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 /* Disk Status Bits (DSTATUS) */

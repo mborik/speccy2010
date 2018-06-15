@@ -290,7 +290,8 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_F6:
-					Shell_DisksMenu();
+					if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
+						Shell_DisksMenu();
 					break;
 
 				case KEY_F7:

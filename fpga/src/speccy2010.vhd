@@ -97,10 +97,6 @@ architecture rtl of speccy2010_top is
 	signal armVideoPage : std_logic_vector(15 downto 0) := x"0000";
 	signal armBorder    : std_logic_vector(15 downto 0) := x"0000";
 
---	signal dendyDat     : std_logic;
---	signal dendyCodePrev: std_logic_vector(15 downto 0) := "1111111111111111";
---	signal dendyCode    : std_logic_vector(15 downto 0) := "1111111111111111";
-
 	signal keysDataOut  : std_logic_vector(7 downto 0);
 	signal keysDataIn   : std_logic_vector(7 downto 0);
 
@@ -161,8 +157,8 @@ architecture rtl of speccy2010_top is
 	signal ulaWaitCancel    : std_logic := '0';
 	signal ulaWait          : std_logic := '0';
 
-	signal specPortFe   : std_logic_vector(7 downto 0);
-	signal specPortFf   : std_logic_vector(7 downto 0);
+	signal specPortFE   : std_logic_vector(7 downto 0);
+	signal specPortFF   : std_logic_vector(7 downto 0);
 	signal specPort7ffd : std_logic_vector(7 downto 0);
 	signal specPort1ffd : std_logic_vector(7 downto 0); -- Scorpion
 
@@ -172,8 +168,8 @@ architecture rtl of speccy2010_top is
 	signal specTrdosEnabled : std_logic := '0';
 	signal specTrdosTglFlag : std_logic := '0';
 	signal specTrdosFlag    : std_logic := '0';
-	signal specTrdosWait    : std_logic := '0';
-	signal specTrdosWr      : std_logic := '0';
+	signal specDiskIfWait   : std_logic := '0';
+	signal specDiskIfWr     : std_logic := '0';
 	signal specTrdosCounter : unsigned(15 downto 0) := x"0000";
 	signal specTrdosPortFF  : std_logic_vector(7 downto 0) := x"00";
 
@@ -190,12 +186,12 @@ architecture rtl of speccy2010_top is
 	signal videoAspectRatio : unsigned(2 downto 0) := "000";  -- 0: 4/3 | 1: 5/4 | 2: 16/9
 	signal videoInterlace   : std_logic := '0';
 
-	signal covoxMode    : unsigned(2 downto 0) := "000";
-	signal dacMode      : unsigned(1 downto 0) := "00";
+	signal covoxMode    : unsigned(2 downto 0) := "000"; -- 1: SD1 | 2: SD2 | 3: GS#B3 | 4: Pent#FB| 5: Scorp#DD | 6: Profi/BB55
+	signal dacMode      : unsigned(1 downto 0) := "00";  -- 0: R-2R | 1: TDA1543 | 2: TDA1543A
 
 	signal turboSound   : std_logic := '0';
-	signal ayymMode     : std_logic := '0';
-	signal ayMode       : unsigned(2 downto 0) := "000";
+	signal ayymMode     : std_logic := '0';              -- 0: YM  | 1: AY
+	signal ayMode       : unsigned(2 downto 0) := "000"; -- 1: ABC | 2: ACB | 3: Mono
 
 	signal testVideo    : unsigned(7 downto 0) := x"00";
 
@@ -719,7 +715,7 @@ begin
 			O_AUDIO        => mixedOutputR
 		);
 
-		process( sysclk )
+	process( sysclk )
 
 		variable iCLK_20 : std_logic_vector( 1 downto 0 ) := "11";
 		variable counter20_en_prev : std_logic := '0';
@@ -814,48 +810,8 @@ begin
 	joyCode0 <= "0000000000" & not JOY0(5) & not JOY0(1) & not JOY0(4) & not JOY0(3) & not JOY0(2) & not JOY0(0);
 	joyCode1 <= "0000000000" & not JOY1(5) & not JOY1(1) & not JOY1(4) & not JOY1(3) & not JOY1(2) & not JOY1(0);
 
-	-- Dendy joystick routine
 
---	dendyDat <= pJoystick0(2);
---
---	process (memclk)
---
---		variable dendyCounter : unsigned(5 downto 0);
---		variable dendyCodeCounter : unsigned(3 downto 0) := "1111";
---		variable dendyCodeTemp : std_logic_vector(15 downto 0);
---
---	begin
---		if (memclk'event and memclk = '1' and clk14m = '1') then
---
---			if( counter( 9 downto 0 ) = 0 ) then
---				if( dendyCounter = 0 ) then
---					if( dendyCodeTemp /= dendyCodePrev ) then
---						dendyCodePrev <= dendyCodeTemp;
---						dendyCodeCounter := "1111";
---					elsif dendyCodeCounter /= 0 then
---						dendyCodeCounter := dendyCodeCounter - 1;
---					else
---						dendyCode <= dendyCodeTemp;
---					end if;
---
---					DENDY_LE <= '0';
---				elsif( dendyCounter = 1 ) then
---					DENDY_LE <= '1';
---				elsif( dendyCounter( 1 downto 0 ) = 0 ) then
---					DENDY_CLK <= '0';
---				elsif( dendyCounter( 1 downto 0 ) = 1 ) then
---					DENDY_CLK <= '1';
---				elsif( dendyCounter( 1 downto 0 ) = 2 ) then
---					dendyCodeTemp := dendyDat & dendyCodeTemp( 15 downto 1 );
---				end if;
---
---				dendyCounter := dendyCounter + 1;
---			end if;
---
---			counter <= counter + 1;
---
---		end if;
---	end process;
+--	paging ------------------------------------------------------------------------------
 
 	reset <= not RESET_n;
 
@@ -880,6 +836,7 @@ begin
 	covoxDin  <= cpuDout;
 
 	scorpRom <= '1' when cpuA( 15 downto 14 ) = "00" and ( specMode /= 3 or specPort1ffd(0) = '0' ) else '0';
+
 
 	process( memclk )
 
@@ -925,7 +882,7 @@ begin
 			rtcRamDataRdPrev := rtcRam( to_integer( rtcRamAddressRd ) );
 
 			if cpuReset = '1' then
-				specTrdosWait <= '0';
+				specDiskIfWait <= '0';
 			end if;
 
 			if specTrdosTglFlag = '1' then
@@ -989,14 +946,14 @@ begin
 			trdosFifoWriteWr <= '0';
 			trdosFifoWriteRst <= '0';
 
-			----------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
 
 			if ulaWait /= '1' and cpuTurbo = 3 then
 				iCpuWr := iCpuWr(0) & cpuWR;
 				iCpuRd := iCpuRd(0) & cpuRD;
 			end if;
 
-			----------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
 
 			if cpuRD /= '0' then
 				cpuDin <= x"ff";
@@ -1004,7 +961,7 @@ begin
 				ayRD <= '0';
 				ay2RD <= '0';
 			elsif portFfReq = '1' then
-				cpuDin <= specPortFf;
+				cpuDin <= specPortFF;
 			elsif ayRD = '1' then
 				cpuDin <= ayDout;
 			elsif ay2RD = '1' then
@@ -1019,7 +976,7 @@ begin
 				covoxAddr <= x"0000";
 			end if;
 
-			--if cpuCLK_prev = '1' and cpuWR = '0' then
+--			if cpuCLK_prev = '1' and cpuWR = '0' then
 			if iCpuWr = "10" then
 
 				if cpuMREQ = '0' then
@@ -1040,12 +997,12 @@ begin
 							trdosFifoWriteWr <= '1';
 							trdosFifoWriteCounter <= trdosFifoWriteCounter - 1;
 						else
-							specTrdosWait <= '1';
-							specTrdosWr <= '1';
+							specDiskIfWait <= '1';
+							specDiskIfWr <= '1';
 						end if;
 					else
 						if cpuA( 7 downto 0 ) = x"FE" then
-							specPortFe <= cpuDout;
+							specPortFE <= cpuDout;
 						elsif cpuA = x"eff7" then
 							specPortEff7 <= cpuDout;
 						elsif cpuA = x"dff7" and specPortEff7(7) = '1' then
@@ -1087,7 +1044,7 @@ begin
 
 				end if;
 
-			--elsif cpuCLK_prev = '1' and cpuRD = '0' then
+--			elsif cpuCLK_prev = '1' and cpuRD = '0' then
 			elsif iCpuRd = "10" then
 
 				cpuDin <= x"FF";
@@ -1145,8 +1102,8 @@ begin
 
 						else
 
-							specTrdosWait <= '1';
-							specTrdosWr <= '0';
+							specDiskIfWait <= '1';
+							specDiskIfWr <= '0';
 
 						end if;
 
@@ -1172,7 +1129,7 @@ begin
 
 				armReq := '0';
 
-				if addressReg( 23 ) = '0' and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
+				if addressReg( 23 ) = '0' and ( cpuHaltAck = '1' or specDiskIfWait = '1' ) then
 					memAddress <= std_logic_vector( activeBank ) & std_logic_vector(addressReg( 22 downto 1 ) );
 					memDataIn <= ARM_AD( 7 downto 0 ) & ARM_AD( 7 downto 0 );
 					memDataMask( 0 ) <= not addressReg( 0 );
@@ -1182,7 +1139,7 @@ begin
 					cpuReq := '0';
 					memReq <= '1';
 
-				elsif addressReg( 23 downto 22 ) = "10" and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
+				elsif addressReg( 23 downto 22 ) = "10" and ( cpuHaltAck = '1' or specDiskIfWait = '1' ) then
 					memAddress <= std_logic_vector( activeBank ) & std_logic_vector(addressReg( 21 downto 0 ) );
 					memDataIn <= ARM_AD;
 					memDataMask <= "11";
@@ -1227,7 +1184,7 @@ begin
 							tapeFifoWr <= '1';
 
 						elsif addressReg( 7 downto 0 ) = x"16" then
-							specPortFe <= ARM_AD(7 downto 0);
+							specPortFE <= ARM_AD(7 downto 0);
 						elsif addressReg( 7 downto 0 ) = x"17" then
 							specPort7ffd <= ARM_AD(7 downto 0);
 						elsif addressReg( 7 downto 0 ) = x"23" then
@@ -1235,7 +1192,7 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"18" then
 							specTrdosFlag <= ARM_AD(0);
 						elsif addressReg( 7 downto 0 ) = x"19" then
-							specTrdosWait <= '0';
+							specDiskIfWait <= '0';
 						elsif addressReg( 7 downto 0 ) = x"1b" then
 							cpuDin <= ARM_AD(7 downto 0);
 						elsif addressReg( 7 downto 0 ) = x"1d" then
@@ -1313,13 +1270,13 @@ begin
 
 				armReq := '0';
 
-				if addressReg( 23 ) = '0' and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
+				if addressReg( 23 ) = '0' and ( cpuHaltAck = '1' or specDiskIfWait = '1' ) then
 					memAddress <= std_logic_vector( activeBank ) & std_logic_vector(addressReg( 22 downto 1 ) );
 					memWr <= '0';
 
 					cpuReq := '0';
 					memReq <= '1';
-				elsif addressReg( 23 downto 22 ) = "10" and ( cpuHaltAck = '1' or specTrdosWait = '1' ) then
+				elsif addressReg( 23 downto 22 ) = "10" and ( cpuHaltAck = '1' or specDiskIfWait = '1' ) then
 					memAddress <= std_logic_vector( activeBank ) & std_logic_vector (addressReg( 21 downto 0 ) );
 					memWr <= '0';
 
@@ -1339,7 +1296,7 @@ begin
 							ARM_AD <= x"00" & "0000000" & tapeFifoFull;
 
 						elsif addressReg( 7 downto 0 ) = x"16" then
-							ARM_AD <= x"00" & specPortFe;
+							ARM_AD <= x"00" & specPortFE;
 						elsif addressReg( 7 downto 0 ) = x"17" then
 							ARM_AD <= x"00" & specPort7ffd;
 						elsif addressReg( 7 downto 0 ) = x"23" then
@@ -1347,7 +1304,7 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"18" then
 							ARM_AD <= x"00" & b"0000000" & specTrdosFlag;
 						elsif addressReg( 7 downto 0 ) = x"19" then
-							ARM_AD <= x"00" & b"000000" & specTrdosWr & specTrdosWait;
+							ARM_AD <= x"00" & b"000000" & specDiskIfWr & specDiskIfWait;
 						elsif addressReg( 7 downto 0 ) = x"1a" then
 							ARM_AD <= cpuA;
 						elsif addressReg( 7 downto 0 ) = x"1b" then
@@ -1599,7 +1556,7 @@ begin
 			( cpuMREQ = '1' and ( cpuA( 15 downto 14 ) = "01" ) and ulaWaitIo = '1' and ulaWaitCancel = '0' )
 		) else '0';
 
-	cpuWait <= cpuHaltAck or cpuMemoryWait or specTrdosWait or cpuOneCycleWaitReq or ulaWait;
+	cpuWait <= cpuHaltAck or cpuMemoryWait or specDiskIfWait or cpuOneCycleWaitReq or ulaWait;
 
 	ChrC_Cnt <= hCnt( 2 downto 0 );
 	Hor_Cnt <= hCnt( 8 downto 3 );
@@ -1628,7 +1585,7 @@ begin
 
 			refresh <= '0';
 
-			if cpuReset = '1' or cpuHaltAck = '1' or specTrdosWait = '1' or ( cpuMREQ = '0' and cpuRFSH = '0' ) then
+			if cpuReset = '1' or cpuHaltAck = '1' or specDiskIfWait = '1' or ( cpuMREQ = '0' and cpuRFSH = '0' ) then
 				refresh <= '1';
 			end if;
 
@@ -1640,7 +1597,7 @@ begin
 					cpuINT <= '1';
 				end if;
 
-				if cpuHaltAck = '0' and specTrdosWait = '0' then
+				if cpuHaltAck = '0' and specDiskIfWait = '0' then
 					specIntCounter <= specIntCounter + 1;
 				end if;
 
@@ -1733,7 +1690,7 @@ begin
 					end if;
 				end if;
 
-				--if cpuHaltAck = '1' or specTrdosWait = '1' then
+				--if cpuHaltAck = '1' or specDiskIfWait = '1' then
 				if cpuHaltAck = '1' then
 					cpuINT <= '1';
 					cpuIntSkip := '1';
@@ -1761,8 +1718,8 @@ begin
 		if memclk'event and memclk = '1' then
 
 			if cpuCLK_nowait = '1' then
-				--specPortFf <= x"ff";
-				--specPortFf <= std_logic_vector( Hor_Cnt( 3 downto 0) & "0" & ChrC_Cnt );
+				--specPortFF <= x"ff";
+				--specPortFF <= std_logic_vector( Hor_Cnt( 3 downto 0) & "0" & ChrC_Cnt );
 				portFfTemp := x"ff";
 			end if;
 
@@ -1844,7 +1801,7 @@ begin
 				videoPage  := "000" & vramPage;
 			end if;
 
-			specPortFf <= portFfTemp;
+			specPortFF <= portFfTemp;
 
 		end if;
 
@@ -1912,8 +1869,8 @@ begin
 
 	------------------------------------------------------------------------------------------------
 
-	borderAttr <= specPortFe( 2 downto 0 );
-	speaker <= specPortFe( 4 );
+	borderAttr <= specPortFE( 2 downto 0 );
+	speaker <= specPortFE( 4 );
 
 	process( sysclk, clk7m )
 

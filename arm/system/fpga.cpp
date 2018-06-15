@@ -16,7 +16,7 @@ byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
 
 dword fpgaConfigVersionPrev = 0;
-dword romConfigPrev = -1;
+dword prevMachineConfig = -1;
 //---------------------------------------------------------------------------------------
 void FPGA_TestClock()
 {
@@ -140,7 +140,7 @@ void FPGA_Config()
 	}
 
 	f_close(&fpgaConfig);
-	__TRACE("FPGA_Config: Flashing done...\n");
+	__TRACE("\nFPGA_Config: Flashing done...\n");
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_9;
@@ -164,7 +164,7 @@ void FPGA_Config()
 	GPIO_WriteBit(GPIO1, GPIO_Pin_13, Bit_SET); // FPGA RESET HIGH
 	DelayMs(10);
 
-	romConfigPrev = -1;
+	prevMachineConfig = -1;
 
 	if (SystemBus_TestConfiguration()) {
 		__TRACE("Speccy2010 FPGA configuration found...\n");
