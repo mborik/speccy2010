@@ -1,7 +1,7 @@
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.STD_LOGIC_ARITH.ALL;
-use IEEE.STD_LOGIC_UNSIGNED.ALL;
+library ieee;
+use IEEE.std_logic_1164.all;
+use IEEE.std_logic_arith.all;
+use IEEE.std_logic_unsigned.all;
 
 entity divmmc is
 port (
@@ -9,6 +9,7 @@ port (
 	EN_I			: in std_logic;
 	RESET_I			: in std_logic;
 	ADDR_I			: in std_logic_vector(15 downto 0);
+	DATA_O			: in std_logic_vector(7 downto 0);
 	DATA_I			: in std_logic_vector(7 downto 0);
 	WR_N_I			: in std_logic;
 	RD_N_I			: in std_logic;
@@ -17,8 +18,9 @@ port (
 	M1_N_I			: in std_logic;
 	E3REG_O			: out std_logic_vector(7 downto 0);
 	AMAP_O			: out std_logic;
-	DISKIF_WAIT		: inout std_logic;
-	DISKIF_WR		: inout std_logic;
+	DISKIF_WAIT		: out std_logic;
+	DISKIF_WR		: out std_logic
+);
 end divmmc;
 
 architecture rtl of divmmc is
@@ -27,12 +29,16 @@ architecture rtl of divmmc is
 	signal automap		: std_logic := '0';
 	signal detect		: std_logic := '0';
 	signal reg_e3		: std_logic_vector(7 downto 0) := "00000000";
+	signal flagWait		: std_logic := '0';
+	signal flagWr		: std_logic := '0';
 begin
 
 process (RESET_I, CLK_I, WR_N_I, ADDR_I, IORQ_N_I, EN_I, DATA_I)
 begin
 	if (RESET_I = '1') then
 		cs <= '1';
+		flagWait <= '0';
+		flagWr <= '0';
 --		reg_e3(5 downto 0) <= (others => '0');
 --		reg_e3(7) <= '0';
 		reg_e3 <= (others => '0');
@@ -47,8 +53,8 @@ begin
 			then cs <= DATA_I(0);
 		end if;
 		if (IORQ_N_I = '0' and EN_I = '1' and ADDR_I(7 downto 0) = x"EB") then	-- #EB
-			DISKIF_WAIT <= '1';
-			DISKIF_WR <= not WR_N_I;
+			flagWait <= '1';
+			flagWr <= not WR_N_I;
 		end if;
 	end if;
 end process;
@@ -71,7 +77,9 @@ begin
 	end if;
 end process;
 
-E3REG_O <= reg_e3;
-AMAP_O  <= automap;
+E3REG_O     <= reg_e3;
+AMAP_O      <= automap;
+DISKIF_WAIT <= flagWait;
+DISKIF_WR   <= flagWr;
 
 end rtl;

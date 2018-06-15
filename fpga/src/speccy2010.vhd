@@ -165,18 +165,20 @@ architecture rtl of speccy2010_top is
 	signal specPortEff7 : std_logic_vector(7 downto 0);
 --	signal specPortDff7 : std_logic_vector(7 downto 0);
 
+	signal specDiskIfWait   : std_logic := '0';
+	signal specDiskIfWr     : std_logic := '0';
+
 	signal specTrdosEnabled : std_logic := '0';
 	signal specTrdosTglFlag : std_logic := '0';
 	signal specTrdosFlag    : std_logic := '0';
-	signal specDiskIfWait   : std_logic := '0';
-	signal specDiskIfWr     : std_logic := '0';
 	signal specTrdosCounter : unsigned(15 downto 0) := x"0000";
 	signal specTrdosPortFF  : std_logic_vector(7 downto 0) := x"00";
 
 	signal divmmcEnabled    : std_logic := '0';
-	signal divmmcDataOut    : std_logic_vector(7 downto 0);
-	signal divmmcE3reg      : std_logic_vector(7 downto 0);
-	signal divmmcAmap       : std_logic;
+	signal divmmcSPIWait    : std_logic := '0';
+	signal divmmcSPIWr      : std_logic := '0';
+	signal divmmcE3reg      : std_logic_vector(7 downto 0) := "00000000";
+	signal divmmcAmap       : std_logic := '0';
 
 	signal specMode         : unsigned(2 downto 0) := "000";  -- 0: ZX 48 | 1: ZX 128 | 2: Pentagon 1024 | 3: Scorpion
 	signal syncMode         : unsigned(2 downto 0) := "000";  -- 0: ZX 48 | 1: ZX 128 | 2: Pentagon | 3: Scorpion
@@ -382,7 +384,7 @@ begin
 			c1     => sysclk
 		);
 
-
+	-- Z80
 	U01 : entity work.t80se
 		port map(
 			RESET_n => not ( cpuReset or reset ),
@@ -413,9 +415,9 @@ begin
 			RestorePC_n => cpuRestorePC_n
 		);
 
+	-- PSG chip
 	U02 : entity work.YM2149
 		port map(
-
 			RESET_L => not ( cpuReset or reset ),
 			CLK     => sysclk,
 			ENA     => ayCLK and not cpuHaltAck,
@@ -436,7 +438,6 @@ begin
 
 	U02B : entity work.YM2149
 		port map(
-
 			RESET_L => not ( cpuReset or reset ),
 			CLK     => sysclk,
 			ENA     => ayCLK and not cpuHaltAck,
@@ -456,10 +457,9 @@ begin
 			O_AUDIO_C    => ay2OUT_C
 		);
 
+	-- video encoder
 	U03 : entity work.vencode
-		generic map(
-			freq => sysFreq
-		)
+		generic map( freq => sysFreq )
 
 		port map(
 			clk => sysclk,
@@ -476,10 +476,9 @@ begin
 			videoV => videoV
 		);
 
+	-- memory
 	U04 : entity work.sdram
-		generic map(
-			freq => memFreq
-		)
+		generic map( freq => memFreq )
 
 		port map(
 			clk => memclk,
@@ -516,6 +515,7 @@ begin
 			pMemDat => pMemDat
 		);
 
+	-- keyboard
 	U05: entity work.ps2fifo
 		port map(
 			clk_i => memclk,
@@ -536,6 +536,7 @@ begin
 			ps2_data_io => KEYS_DATA
 		);
 
+	-- mouse
 	U06: entity work.ps2fifo
 		port map(
 			clk_i => memclk,
@@ -556,6 +557,7 @@ begin
 			ps2_data_io => MOUSE_DATA
 		);
 
+	-- tape
 	U07 : entity work.fifo
 		generic map(
 			fifo_width => 16,
@@ -576,6 +578,7 @@ begin
 			in_full_o => tapeFifoFull
 		);
 
+	-- Betadisk interface
 	U08 : entity work.fifo
 		generic map(
 			fifo_width => 8,
@@ -616,23 +619,24 @@ begin
 			in_full_o => trdosFifoWriteFull
 		);
 
+	-- Covox
 	U10 : entity work.SounDrive
 		port map(
-			CLK     => sysclk,
+			CLK         => sysclk,
 
-			I_DA    => covoxDin,
+			I_DA        => covoxDin,
 
-			bus_addr  	 => covoxAddr,
-			busctrl_we 	 => covoxWR,
-			covox_mode 	 => covoxMode,
+			bus_addr    => covoxAddr,
+			busctrl_we  => covoxWR,
+			covox_mode  => covoxMode,
 
-			O_AUDIO_L1	=> covoxOUT_L1,
-			O_AUDIO_L2	=> covoxOUT_L2,
-			O_AUDIO_R1	=> covoxOUT_R1,
-			O_AUDIO_R2	=> covoxOUT_R2
+			O_AUDIO_L1  => covoxOUT_L1,
+			O_AUDIO_L2  => covoxOUT_L2,
+			O_AUDIO_R1  => covoxOUT_R1,
+			O_AUDIO_R2  => covoxOUT_R2
 		);
 
-
+	-- SoundMixer L/R
 	U11_L : entity work.SoundMixer
 		port map (
 			CLK     => sysclk,
@@ -640,28 +644,28 @@ begin
 			I_AUDIO1_AY_B => ayOUT_B,
 			I_AUDIO1_AY_C => ayOUT_C,
 
-			I_AUDIO2_AY_A => ay2OUT_A,--AY2
+			I_AUDIO2_AY_A => ay2OUT_A,	--AY2
 			I_AUDIO2_AY_B => ay2OUT_B,
 			I_AUDIO2_AY_C => ay2OUT_C,
 
-			WEIGHT_AUDIO1_AY_A => weightAY_L(0),--AY1 - WEIGHT
-			WEIGHT_AUDIO1_AY_B => weightAY_L(1),-- sum should be <=1
+			WEIGHT_AUDIO1_AY_A => weightAY_L(0),	-- AY1 - WEIGHT
+			WEIGHT_AUDIO1_AY_B => weightAY_L(1),	-- sum should be <=1
 			WEIGHT_AUDIO1_AY_C => weightAY_L(2),
 
-			WEIGHT_AUDIO2_AY_A => weightAY_L(0),--AY2 - WEIGHT
-			WEIGHT_AUDIO2_AY_B => weightAY_L(1),-- sum should be <=1
+			WEIGHT_AUDIO2_AY_A => weightAY_L(0),	-- AY2 - WEIGHT
+			WEIGHT_AUDIO2_AY_B => weightAY_L(1),	-- sum should be <=1
 			WEIGHT_AUDIO2_AY_C => weightAY_L(2),
 
-			I_AUDIO_AUX_1  => covoxOUT_L1,--COVOX C1
-			I_AUDIO_AUX_2  => covoxOUT_L2,--COVOX C2
-			I_AUDIO_AUX_3  => x"0000",
+			I_AUDIO_AUX_1 => covoxOUT_L1,			-- COVOX C1
+			I_AUDIO_AUX_2 => covoxOUT_L2,			-- COVOX C2
+			I_AUDIO_AUX_3 => x"0000",
 
-			WEIGHT_AUDIO_AUX_1 => x"000100",--COVOX C1
-			WEIGHT_AUDIO_AUX_2 => x"000100",--COVOX C2
-			WEIGHT_AUDIO_AUX_3 => x"000001",--SID -- in data in 16bit format
+			WEIGHT_AUDIO_AUX_1 => x"000100",		-- COVOX C1
+			WEIGHT_AUDIO_AUX_2 => x"000100",		-- COVOX C2
+			WEIGHT_AUDIO_AUX_3 => x"000001",		-- SID -- in data in 16bit format
 
-			I_AUDIO_BEEPER	=> speaker,
-			I_AUDIO_TAPE	=> tapeIn,
+			I_AUDIO_BEEPER => speaker,
+			I_AUDIO_TAPE   => tapeIn,
 
 			WEIGHT_AUDIO_BEEPER => x"000055",
 			WEIGHT_AUDIO_TAPE   => x"000020",
@@ -681,28 +685,28 @@ begin
 			I_AUDIO1_AY_B => ayOUT_B,
 			I_AUDIO1_AY_C => ayOUT_C,
 
-			I_AUDIO2_AY_A => ay2OUT_A,--AY2
+			I_AUDIO2_AY_A => ay2OUT_A,	--AY2
 			I_AUDIO2_AY_B => ay2OUT_B,
 			I_AUDIO2_AY_C => ay2OUT_C,
 
-			WEIGHT_AUDIO1_AY_A => weightAY_R(0),--AY1 - WEIGHT
-			WEIGHT_AUDIO1_AY_B => weightAY_R(1),-- sum should be <=1
+			WEIGHT_AUDIO1_AY_A => weightAY_R(0),	-- AY1 - WEIGHT
+			WEIGHT_AUDIO1_AY_B => weightAY_R(1),	-- sum should be <=1
 			WEIGHT_AUDIO1_AY_C => weightAY_R(2),
 
-			WEIGHT_AUDIO2_AY_A => weightAY_R(0),--AY2 - WEIGHT
-			WEIGHT_AUDIO2_AY_B => weightAY_R(1),-- sum should be <=1
+			WEIGHT_AUDIO2_AY_A => weightAY_R(0),	-- AY2 - WEIGHT
+			WEIGHT_AUDIO2_AY_B => weightAY_R(1),	-- sum should be <=1
 			WEIGHT_AUDIO2_AY_C => weightAY_R(2),
 
-			I_AUDIO_AUX_1  => covoxOUT_R1,--COVOX C1
-			I_AUDIO_AUX_2  => covoxOUT_R2,--COVOX C2
-			I_AUDIO_AUX_3  => x"0000",--SID
+			I_AUDIO_AUX_1 => covoxOUT_R1,			-- COVOX C1
+			I_AUDIO_AUX_2 => covoxOUT_R2,			-- COVOX C2
+			I_AUDIO_AUX_3 => x"0000",				-- SID
 
-			WEIGHT_AUDIO_AUX_1 => x"000100",--COVOX C1
-			WEIGHT_AUDIO_AUX_2 => x"000100",--COVOX C2
-			WEIGHT_AUDIO_AUX_3 => x"000001",--SID -- in data in 16bit format
+			WEIGHT_AUDIO_AUX_1 => x"000100",		-- COVOX C1
+			WEIGHT_AUDIO_AUX_2 => x"000100",		-- COVOX C2
+			WEIGHT_AUDIO_AUX_3 => x"000001",		-- SID -- in data in 16bit format
 
-			I_AUDIO_BEEPER	=> speaker,
-			I_AUDIO_TAPE	=> tapeIn,
+			I_AUDIO_BEEPER => speaker,
+			I_AUDIO_TAPE   => tapeIn,
 
 			WEIGHT_AUDIO_BEEPER => x"000055",
 			WEIGHT_AUDIO_TAPE   => x"000020",
@@ -714,6 +718,27 @@ begin
 			I_AUX3_ENABLED => '0',
 			O_AUDIO        => mixedOutputR
 		);
+
+	-- DivMMC
+	U12 : entity work.divMMC
+		port map (
+			CLK_I		=> clk28m,
+			EN_I		=> specPort7ffd(4),
+			RESET_I		=> cpuReset,
+			ADDR_I		=> cpuA,
+			DATA_O		=> cpuDout,
+			DATA_I		=> cpuDin,
+			WR_N_I		=> cpuWR,
+			RD_N_I		=> cpuRD,
+			IORQ_N_I	=> cpuIORQ,
+			MREQ_N_I	=> cpuMREQ,
+			M1_N_I		=> cpuM1,
+			E3REG_O		=> divmmcE3reg,
+			AMAP_O		=> divmmcAmap,
+			DISKIF_WAIT	=> divmmcSPIWait,
+			DISKIF_WR	=> divmmcSPIWr
+		);
+
 
 	process( sysclk )
 
@@ -991,7 +1016,7 @@ begin
 						cpuMemoryWait <= '1';
 					end if;
 				elsif cpuIORQ = '0' and cpuM1 = '1' then
-					if ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
+					if specTrdosEnabled = '1' and ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
 						if cpuA( 7 downto 0 ) = x"7F" and trdosFifoWriteCounter > 0 then
 							trdosFifoWriteWrTmp <= cpuDout;
 							trdosFifoWriteWr <= '1';
@@ -1089,7 +1114,7 @@ begin
 						--cpuDin <= rtcRam( to_integer( unsigned( specPortDff7( 5 downto 0 ) ) ) );
 						cpuDin <= rtcRamDataRd;
 
-					elsif ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
+					elsif specTrdosEnabled = '1' and ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
 
 						if cpuA( 7 downto 0 ) = x"FF" then
 
@@ -1304,6 +1329,10 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"18" then
 							ARM_AD <= x"00" & b"0000000" & specTrdosFlag;
 						elsif addressReg( 7 downto 0 ) = x"19" then
+							if divmmcEnabled = '1' then
+								specDiskIfWait <= specDiskIfWait;
+								specDiskIfWr   <= specDiskIfWr;
+							end if;
 							ARM_AD <= x"00" & b"000000" & specDiskIfWr & specDiskIfWait;
 						elsif addressReg( 7 downto 0 ) = x"1a" then
 							ARM_AD <= cpuA;
@@ -2178,19 +2207,17 @@ begin
 
 	end process;
 
-	VIDEO_R <= videoV when videoMode = 0 else 						-- ( Composite --> SCART 20, 17 )
+	VIDEO_R <= videoV when videoMode = 0 else						-- ( Composite --> SCART 20, 17 )
 			"0" & rgbR( 7 downto 1 ) when videoMode = 1 else		-- ( VGA 1, 6  --> SCART 15, 13 )
 			"0" & vgaR( 7 downto 1 );
-	VIDEO_G <= "0" & videoC( 7 downto 1 ) when videoMode = 0 else 	-- ( S-Video 4, 2 --> SCART 15, 13 )
-			"0" & rgbG( 7 downto 1 ) when videoMode = 1 else      	-- ( VGA 2, 7  --> SCART 11, 9 )
+	VIDEO_G <= "0" & videoC( 7 downto 1 ) when videoMode = 0 else	-- ( S-Video 4, 2 --> SCART 15, 13 )
+			"0" & rgbG( 7 downto 1 ) when videoMode = 1 else		-- ( VGA 2, 7  --> SCART 11, 9 )
 			"0" & vgaG( 7 downto 1 );
-	VIDEO_B <= videoY when videoMode = 0 else 						-- ( S-Video 3, 1 --> SCART 20, 17 )
-			"0" & rgbB( 7 downto 1 ) when videoMode = 1 else      	-- ( VGA 3, 8  --> SCART 7, 5 )
+	VIDEO_B <= videoY when videoMode = 0 else						-- ( S-Video 3, 1 --> SCART 20, 17 )
+			"0" & rgbB( 7 downto 1 ) when videoMode = 1 else		-- ( VGA 3, 8  --> SCART 7, 5 )
 			"0" & vgaB( 7 downto 1 );
 
-	VIDEO_HSYNC <= '1' when videoMode = 0 or videoMode = 1 else 	-- VGA 13 --> SCART 16
-					vgaHSync;
-	VIDEO_VSYNC <= palSync when videoMode = 0 or videoMode = 1 else -- VGA 14 --> SCART 20
-					vgaVSync;
+	VIDEO_HSYNC <= '1' when videoMode = 0 or videoMode = 1 else vgaHSync;		-- VGA 13 --> SCART 16
+	VIDEO_VSYNC <= palSync when videoMode = 0 or videoMode = 1 else vgaVSync;	-- VGA 14 --> SCART 20
 
 end rtl;

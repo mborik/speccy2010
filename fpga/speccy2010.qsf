@@ -88,7 +88,6 @@ set_location_assignment PIN_132 -to CLK_20
 set_location_assignment PIN_57 -to ARM_WAIT
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 set_global_assignment -name MISC_FILE "D:/workSvn/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
 set_location_assignment PIN_152 -to pMemUdq
 set_location_assignment PIN_151 -to pMemClk
@@ -196,6 +195,8 @@ set_location_assignment PIN_24 -to CLK_20_ALT
 set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL OFF
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
 set_global_assignment -name ADD_PASS_THROUGH_LOGIC_TO_INFERRED_RAMS ON
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name VHDL_FILE src/peripheral/diskif/divmmc.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/sound/SoundMixer.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/sound/SounDrive15.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80se.vhd
@@ -216,5 +217,6 @@ set_global_assignment -name VHDL_FILE src/peripheral/video/vencode.vhd
 set_global_assignment -name VHDL_FILE src/speccy2010.vhd
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll.qip
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll2.qip
-set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name USE_CONFIGURATION_DEVICE ON
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
