@@ -712,7 +712,7 @@ char GetKey(bool wait)
 void WaitKey()
 {
 	CPU_Stop();
-	GetKey(true);
+	GetKey();
 	CPU_Start();
 }
 //---------------------------------------------------------------------------------------

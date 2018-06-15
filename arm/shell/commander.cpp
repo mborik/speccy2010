@@ -567,10 +567,9 @@ bool Shell_EmptyTrd(const char *_name)
 //---------------------------------------------------------------------------------------
 void Shell_ScreenBrowser(char *fullName)
 {
-	dword pos, addr = VIDEO_PAGE_PTR;
-
 	while (true) {
-		for (pos = 0x1800; pos < 0x1b00; pos++)
+		dword pos = 0x1800, addr = VIDEO_PAGE_PTR;
+		for (; pos < 0x1b00; pos++)
 			SystemBus_Write(addr + pos, 0);
 
 		FIL image;
@@ -592,12 +591,12 @@ void Shell_ScreenBrowser(char *fullName)
 		else
 			break;
 
-		char key = GetKey(true);
+		char key = GetKey();
 		if (key != ' ')
 			break;
 
 		int i = files_size;
-		while (i--) {
+		while (true) {
 			files_sel++;
 			if (files_sel >= files_size)
 				files_sel = 0;
@@ -611,11 +610,13 @@ void Shell_ScreenBrowser(char *fullName)
 				ext--;
 
 			if (strcmp(ext, ".scr") == 0) {
-				sniprintf(fullName, sizeof(fullName), "%s%s", get_current_dir(), fr.name);
+				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
 				break;
 			}
-		}
 
+			if (--i == 0)
+				return;
+		}
 	}
 }
 //---------------------------------------------------------------------------------------
@@ -698,7 +699,7 @@ void Shell_Commander()
 		else if (key >= '1' && key <= '4') {
 			if (specConfig.specDiskIf == SpecDiskIf_Betadisk && (fr.attr & AM_DIR) == 0) {
 				char fullName[PATH_SIZE];
-				sniprintf(fullName, sizeof(fullName), "%s%s", get_current_dir(), fr.name);
+				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
 
 				strlwr(fr.name);
 
@@ -737,7 +738,7 @@ void Shell_Commander()
 		else if (key == K_F3) {
 			if ((fr.attr & AM_DIR) == 0) {
 				char fullName[PATH_SIZE];
-				sniprintf(fullName, sizeof(fullName), "%s%s", get_current_dir(), fr.name);
+				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
 				strlwr(fr.name);
 
 				char *ext = fr.name + strlen(fr.name);
@@ -815,7 +816,7 @@ void Shell_Commander()
 			}
 			else {
 				char fullName[PATH_SIZE];
-				sniprintf(fullName, sizeof(fullName), "%s%s", get_current_dir(), fr.name);
+				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
 
 				strlwr(fr.name);
 
