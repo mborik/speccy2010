@@ -197,12 +197,9 @@ void Spectrum_InitRom()
 		Spectrum_LoadRomPage(1, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
 	}
 	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC) {
-		specConfig.specUseBank0 = Spectrum_LoadRomPage(0, specConfig.specRomFile_DivMMC_FW);
-
-		if (!specConfig.specUseBank0)
+		if (!Spectrum_LoadRomPage(0, specConfig.specRomFile_DivMMC_FW))
 			__TRACE("DivMMC firmware missing!\n");
 	}
-
 
 	__TRACE("ROM configuration finished...\n");
 
@@ -450,12 +447,12 @@ void SpectrumTimer_Routine()
 		}
 
 		static byte leds_prev = 0;
-		bool activity = Tape_Started();
+		int activity = Tape_Started() ? 1 : 0;
 
 		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
-			activity ^= floppy_leds();
+			activity = (activty ^ floppy_leds()) & 1;
 
-		byte leds = (activity << 2) | (ReadKeyFlags() & fKeyPCEmu) | 2;
+		byte leds = (ReadKeyFlags() & fKeyPCEmu) | 2 | (activity << 2);
 
 		if (leds != leds_prev && kbdInited == KBD_OK) {
 			byte data[2] = { 0xed, leds };

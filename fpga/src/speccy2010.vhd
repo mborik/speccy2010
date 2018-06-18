@@ -175,9 +175,11 @@ architecture rtl of speccy2010_top is
 	signal specTrdosPortFF  : std_logic_vector(7 downto 0) := x"00";
 
 	signal divmmcEnabled    : std_logic := '0';
-	signal divmmcSPIWait    : std_logic := '0';
-	signal divmmcSPIWr      : std_logic := '0';
-	signal divmmcE3reg      : std_logic_vector(7 downto 0) := "00000000";
+	signal divmmcSramPage   : std_logic_vector(5 downto 0) := "000000";
+	signal divmmcMapram     : std_logic := '0';
+	signal divmmcConmem     : std_logic := '0';
+	signal divmmcCardSelect : std_logic := '0';
+	signal divmmcAmapRq     : std_logic := '0';
 	signal divmmcAmap       : std_logic := '0';
 
 	signal specMode         : unsigned(2 downto 0) := "000";  -- 0: ZX 48 | 1: ZX 128 | 2: Pentagon 1024 | 3: Scorpion
@@ -719,26 +721,6 @@ begin
 			O_AUDIO        => mixedOutputR
 		);
 
-	-- DivMMC
-	U12 : entity work.divMMC
-		port map (
-			CLK_I		=> clk28m,
-			EN_I		=> specPort7ffd(4),
-			RESET_I		=> cpuReset,
-			ADDR_I		=> cpuA,
-			DATA_O		=> cpuDout,
-			DATA_I		=> cpuDin,
-			WR_N_I		=> cpuWR,
-			RD_N_I		=> cpuRD,
-			IORQ_N_I	=> cpuIORQ,
-			MREQ_N_I	=> cpuMREQ,
-			M1_N_I		=> cpuM1,
-			E3REG_O		=> divmmcE3reg,
-			AMAP_O		=> divmmcAmap,
-			DISKIF_WAIT	=> divmmcSPIWait,
-			DISKIF_WR	=> divmmcSPIWr
-		);
-
 
 	process( sysclk )
 
@@ -840,7 +822,8 @@ begin
 
 	reset <= not RESET_n;
 
-	specTrdosTglFlag <=	'1' when specTrdosFlag = '0' and cpuM1 = '0' and cpuMREQ = '0' and specPort7ffd(4) = '1' and cpuA( 15 downto 8 ) = "00111101" else
+	specTrdosTglFlag <=	'0' when specTrdosEnabled = '0' else
+						'1' when specTrdosFlag = '0' and cpuM1 = '0' and cpuMREQ = '0' and specPort7ffd(4) = '1' and cpuA( 15 downto 8 ) = x"3D" else
 						'1' when specTrdosFlag = '0' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' and scorpROM = '0' else
 						'1' when specTrdosFlag = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '1' and scorpROM = '0' else
 						'0';
@@ -908,6 +891,14 @@ begin
 
 			if cpuReset = '1' then
 				specDiskIfWait <= '0';
+				specDiskIfWr <= '0';
+
+				divmmcSramPage <= (others => '0');
+				divmmcMapram <= '0';
+				divmmcConmem <= '0';
+				divmmcCardSelect <= '0';
+				divmmcAmapRq <= '0';
+				divmmcAmap <= '0';
 			end if;
 
 			if specTrdosTglFlag = '1' then
@@ -1025,6 +1016,19 @@ begin
 							specDiskIfWait <= '1';
 							specDiskIfWr <= '1';
 						end if;
+
+					elsif divmmcEnabled = '1' and cpuA( 7 downto 4 ) = "1110" then
+						if cpuA ( 7 downto 0 ) = x"E3" then		-- #E3
+							divmmcSramPage <= cpuDout( 5 downto 0 );
+							divmmcMapram <= cpuDout(6);
+							divmmcConmem <= cpuDout(7);
+						elsif cpuA ( 7 downto 0 ) = x"E7" then	-- #E7
+							divmmcCardSelect <= cpuDout(0);
+						elsif cpuA ( 7 downto 0 ) = x"EB" then	-- #EB
+							specDiskIfWait <= '1';
+							specDiskIfWr <= '1';
+						end if;
+
 					else
 						if cpuA( 7 downto 0 ) = x"FE" then
 							specPortFE <= cpuDout;
@@ -1049,14 +1053,16 @@ begin
 							else
 								ayWR <= '1';
 							end if;
-						elsif specMode = 3 then -- Scorpion
+
+						-- Scorpion
+						elsif specMode = 3 then
 							if cpuA( 15 downto 12 ) = "0001" and cpuA(1) = '0' then
 							--if cpuA( 15 downto 0 ) = x"1ffd" then
 									specPort1ffd <= cpuDout;
 							elsif cpuA( 15 downto 14 ) = "01" and cpuA(5) = '1' and cpuA( 1 downto 0 ) = "01" and specPort7ffd(5) = '0' then
 									specPort7ffd <= cpuDout;
 							end if;
-						elsif cpuA( 15 ) = '0' and cpuA( 7 downto 0 ) = x"fd" and ( specMode = 2 or specPort7ffd(5) = '0' ) then
+						elsif cpuA( 15 ) = '0' and cpuA( 7 downto 0 ) = x"FD" and ( specMode = 2 or specPort7ffd(5) = '0' ) then
 								specPort7ffd <= cpuDout;
 						end if;
 
@@ -1076,17 +1082,30 @@ begin
 
 				if cpuMREQ = '0' then
 
-					if scorpRom = '1' then
+					if specTrdosEnabled = '1' and scorpRom = '1' then
 						memAddress <= "001" & "00000" & romPage & cpuA( 13 downto 1 );
 					else
 						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );
 					end if;
 
-					memWr <= '0';
+					if divmmcEnabled = '1' and cpuM1 = '0' then
+						if (cpuA = x"0000" or cpuA = x"0008" or cpuA = x"0038" or
+							cpuA = x"0066" or cpuA = x"04C6" or cpuA = x"0562") then
+							-- activate automapper after this cycle
+							divmmcAmapRq <= '1';
+						elsif cpuA(15 downto 8) = x"3D" then
+							-- activate automapper immediately
+							divmmcAmap <= '1';
+							divmmcAmapRq <= '1';
+						elsif cpuA(15 downto 3) & "000" = x"1FF8" then
+							-- deactivate automapper after this cycle on 0x1FF8-0x1FFF
+							divmmcAmapRq <= '0';
+						end if;
+					end if;
 
+					memWr <= '0';
 					cpuReq := '1';
 					memReq <= '1';
-
 					cpuMemoryWait <= '1';
 
 				elsif cpuIORQ = '0' and cpuM1 = '1' then
@@ -1115,23 +1134,19 @@ begin
 						cpuDin <= rtcRamDataRd;
 
 					elsif specTrdosEnabled = '1' and ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
-
 						if cpuA( 7 downto 0 ) = x"FF" then
-
 							cpuDin <= specTrdosPortFF;
-
 						elsif cpuA( 7 downto 0 ) = x"7F" and trdosFifoReadReady = '1' then
-
 							cpuDin <= trdosFifoReadRdTmp;
 							trdosFifoReadRd <= '1';
-
 						else
-
 							specDiskIfWait <= '1';
 							specDiskIfWr <= '0';
-
 						end if;
 
+					elsif divmmcEnabled = '1' and cpuA( 7 downto 0 ) = x"EB" then
+						specDiskIfWait <= '1';
+						specDiskIfWr <= '0';
 					else
 
 						if cpuA( 7 downto 0 ) = x"1F" then
@@ -1149,6 +1164,10 @@ begin
 					end if;
 
 				end if;
+
+			elsif divmmcEnabled = '1' and cpuM1 = '0' then
+
+				divmmcAmap <= divmmcAmapRq;
 
 			elsif armReq = '1' and ARM_WR = '0' then
 
@@ -1329,10 +1348,6 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"18" then
 							ARM_AD <= x"00" & b"0000000" & specTrdosFlag;
 						elsif addressReg( 7 downto 0 ) = x"19" then
-							if divmmcEnabled = '1' then
-								specDiskIfWait <= specDiskIfWait;
-								specDiskIfWr   <= specDiskIfWr;
-							end if;
 							ARM_AD <= x"00" & b"000000" & specDiskIfWr & specDiskIfWait;
 						elsif addressReg( 7 downto 0 ) = x"1a" then
 							ARM_AD <= cpuA;
