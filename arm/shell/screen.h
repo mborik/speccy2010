@@ -4,6 +4,7 @@
 #include "../types.h"
 #include "../system/sdram.h"
 
+void ResetScreen(bool active);
 void WriteDisplay(word address, byte data);
 void ClrScr(byte attr);
 void DrawLine(byte y, byte cy);

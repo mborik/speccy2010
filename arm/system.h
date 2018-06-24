@@ -68,7 +68,7 @@ extern "C" {
 	void Timer_Routine();
 	dword Timer_GetTickCounter();
 
-	void Spectrum_UpdateConfig(bool forceUpdateRoms = false);
+	void Spectrum_UpdateConfig(bool hardReset = false);
 	void Spectrum_UpdateDisks();
 #endif
 

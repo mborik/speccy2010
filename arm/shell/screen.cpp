@@ -9,6 +9,19 @@
 #include "../specConfig.h"
 
 //---------------------------------------------------------------------------------------
+void ResetScreen(bool active)
+{
+	if (active) {
+		ClrScr(0022);
+		SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
+		SystemBus_Write(0xc00022, 0x8002); // Enable shell border
+	}
+	else {
+		SystemBus_Write(0xc00021, 0); // Enable Video
+		SystemBus_Write(0xc00022, 0);
+	}
+}
+//---------------------------------------------------------------------------------------
 void WriteDisplay(word address, byte data)
 {
 	SystemBus_Write(VIDEO_PAGE_PTR + address, data);

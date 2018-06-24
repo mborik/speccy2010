@@ -105,6 +105,7 @@ void Shell_Menu(CMenuItem *menu, int menuSize)
 
 	menu[menuPos].UpdateState(1);
 	bool editMode = false;
+	bool hardReset = false;
 
 	while (true) {
 		byte key = GetKey(false);
@@ -218,7 +219,7 @@ void Shell_Menu(CMenuItem *menu, int menuSize)
 				}
 			}
 		}
-		else if (key == K_ESC)
+		else if (key == K_ESC || (hardReset = (menu == mainMenu && key == K_F5)))
 			break;
 
 		// main menu RTC auto-update...
@@ -249,7 +250,7 @@ void Shell_Menu(CMenuItem *menu, int menuSize)
 	SystemBus_Write(0xc00021, 0); // Enable Video
 	SystemBus_Write(0xc00022, 0);
 
+	Spectrum_UpdateConfig(hardReset);
 	CPU_Start();
-	Spectrum_UpdateConfig();
 }
 //---------------------------------------------------------------------------------------

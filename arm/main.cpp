@@ -10,6 +10,7 @@
 #include "specKeyboard.h"
 #include "specRtc.h"
 #include "specTape.h"
+#include "shell/screen.h"
 
 bool LOG_BDI_PORTS = false;
 bool LOG_WAIT = false;
@@ -95,6 +96,46 @@ void SD_Init()
 }
 
 //---------------------------------------------------------------------------------------
+void Spectrum_CleanupSDRAM()
+{
+	CPU_Stop();
+	ResetScreen(true);
+
+	__TRACE("Cleanup of SD-RAM (1MB of RAM pages, 64kB of ROMs)\n");
+	SystemBus_Write(0xc00020, 0); // use bank 0
+
+	dword addr = 0x800000;
+	dword amount = 0x100000;
+	dword i = 0;
+
+	for (; i < amount; i += 2) {
+		SystemBus_Write(addr, 0);
+
+		addr++;
+		if ((addr & 0x0fff) == 0)
+			WDT_Kick();
+		if ((addr & 0x3fff) == 0)
+			__TRACE(".");
+	}
+
+	addr += amount;
+	amount >>= 4;
+	for (i = 0; i < amount; i += 2) {
+		SystemBus_Write(addr, 0);
+
+		addr++;
+		if ((addr & 0x0fff) == 0)
+			WDT_Kick();
+		if ((addr & 0x3fff) == 0)
+			__TRACE(".");
+	}
+
+	__TRACE("\nCleanup done...\n");
+
+	ResetScreen(false);
+	CPU_Start();
+}
+
 bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbackRomFile = NULL)
 {
 	if (!(romFileName != NULL && strlen(romFileName) > 0))
@@ -185,7 +226,7 @@ void Spectrum_InitRom()
 	}
 	else {
 		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
-			specConfig.specTrdosFlag = Spectrum_LoadRomPage(0x8000, specConfig.specRomFile_TRD_Service);
+			specConfig.specTrdosFlag = Spectrum_LoadRomPage(2, specConfig.specRomFile_TRD_Service);
 
 		Spectrum_LoadRomPage(0, specConfig.specRomFile_Pentagon, "roms/pentagon.rom");
 	}
@@ -217,7 +258,7 @@ void Spectrum_InitRom()
 	timer_flag_100Hz = 0;
 }
 
-void Spectrum_UpdateConfig(bool forceUpdateRoms)
+void Spectrum_UpdateConfig(bool hardReset)
 {
 	word fpgaRomRamCfg, fpgaDiskIfCfg = 0;
 
@@ -246,7 +287,7 @@ void Spectrum_UpdateConfig(bool forceUpdateRoms)
 			fpgaDiskIfCfg = 1;
 			break;
 		case SpecDiskIf_DivMMC:
-			fpgaDiskIfCfg = 2;
+			fpgaDiskIfCfg = hardReset ? 0x8002 : 2;
 			break;
 	}
 
@@ -270,9 +311,14 @@ void Spectrum_UpdateConfig(bool forceUpdateRoms)
 	SystemBus_Write(0xc00046, specConfig.specCovox | (specConfig.specDacMode << 3));
 
 	// ROMs initialization...
-	dword newMachineConfig = specConfig.specMachine | (fpgaDiskIfCfg << 4);
-	if (prevMachineConfig != newMachineConfig || forceUpdateRoms) {
+	dword newMachineConfig = specConfig.specMachine | ((fpgaDiskIfCfg & 0x0F) << 4);
+	if (prevMachineConfig != newMachineConfig || hardReset) {
+		if (hardReset)
+			Spectrum_CleanupSDRAM();
+
 		Spectrum_InitRom();
+		Spectrum_UpdateDisks();
+
 		prevMachineConfig = newMachineConfig;
 	}
 

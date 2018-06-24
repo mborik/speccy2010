@@ -173,8 +173,7 @@ void FPGA_Config()
 		Keyboard_Reset();
 		Mouse_Reset();
 
-		Spectrum_UpdateConfig();
-		Spectrum_UpdateDisks();
+		Spectrum_UpdateConfig(true);
 	}
 	else {
 		__TRACE("Invalid FPGA configuration...\n");
