@@ -2,6 +2,7 @@
 #include "screen.h"
 #include "../system.h"
 #include "../system/sdram.h"
+#include "../specConfig.h"
 #include "../specKeyboard.h"
 #include "../specSnapshot.h"
 
@@ -60,6 +61,16 @@ void Debugger_Screen0()
 //- HEX editor --------------------------------------------------------------------------
 void Debugger_Screen1(word addr, byte CurX, byte CurY) //hex editor
 {
+	if (specConfig.specDiskIf == SpecDiskIf_DivMMC) {
+		word divmmcPortE3 = SystemBus_Read(0xc0001d);
+		__TRACE("PC:%04X Amap:%d AmapRq:%d CONMEM:%d MAPRAM:%d BANK:%d\n", addr,
+			(divmmcPortE3 & 0x200) ? 1 : 0,
+			(divmmcPortE3 & 0x100) ? 1 : 0,
+			(divmmcPortE3 & 0x80) ? 1 : 0,
+			(divmmcPortE3 & 0x40) ? 1 : 0,
+			divmmcPortE3 & 0x3F);
+	}
+
 	char str[0x20];
 	for (int i = 0; i < 23; i++) {
 		sniprintf(str, sizeof(str), "%.4X", (addr & 0xFFF8) + (i << 3));

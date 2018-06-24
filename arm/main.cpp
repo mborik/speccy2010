@@ -97,7 +97,7 @@ void SD_Init()
 //---------------------------------------------------------------------------------------
 bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbackRomFile = NULL)
 {
-	if (romFileName == NULL || strlen(romFileName) == 0)
+	if (!(romFileName != NULL && strlen(romFileName) > 0))
 		return false;
 
 	FIL romImage;
@@ -116,8 +116,6 @@ bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbac
 		}
 	}
 
-
-	CPU_Stop();
 	SystemBus_Write(0xc00020, 0); // use bank 0
 	f_lseek(&romImage, 0);
 
@@ -166,8 +164,6 @@ bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbac
 	}
 
 	f_close(&romImage);
-	CPU_Start();
-
 	return result;
 }
 
@@ -175,29 +171,32 @@ void Spectrum_InitRom()
 {
 	__TRACE("ROM configuration started...\n");
 
-	specConfig.specUseBank0 = 0;
+	CPU_Stop();
+	specConfig.specTrdosFlag = 0;
 
 	if (specConfig.specMachine == SpecRom_Classic48) {
-		Spectrum_LoadRomPage(3, specConfig.specRomFile_Classic48, "roms/48.rom");
+		Spectrum_LoadRomPage(1, specConfig.specRomFile_Classic48, "roms/48.rom");
 	}
 	else if (specConfig.specMachine == SpecRom_Classic128) {
-		Spectrum_LoadRomPage(2, specConfig.specRomFile_Classic128, "roms/128.rom");
+		Spectrum_LoadRomPage(0, specConfig.specRomFile_Classic128, "roms/128.rom");
 	}
 	else if (specConfig.specMachine == SpecRom_Scorpion) {
 		Spectrum_LoadRomPage(0, specConfig.specRomFile_Scorpion, "roms/scorpion.rom");
 	}
 	else {
 		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
-			specConfig.specUseBank0 = Spectrum_LoadRomPage(0, specConfig.specRomFile_TRD_Service);
+			specConfig.specTrdosFlag = Spectrum_LoadRomPage(0x8000, specConfig.specRomFile_TRD_Service);
 
-		Spectrum_LoadRomPage(2, specConfig.specRomFile_Pentagon, "roms/pentagon.rom");
+		Spectrum_LoadRomPage(0, specConfig.specRomFile_Pentagon, "roms/pentagon.rom");
 	}
 
 	if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
-		Spectrum_LoadRomPage(1, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
+		Spectrum_LoadRomPage(3, specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
 	}
 	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC) {
-		if (!Spectrum_LoadRomPage(0, specConfig.specRomFile_DivMMC_FW))
+		// DivMMC banks [00-3F] are mapped in RAM section of memspace [0x080000-0x100000]
+		// and DivMMC firmware is mapped on 3rd place of ROM memspace [0x40C000-0x40DFFF]
+		if (!Spectrum_LoadRomPage(3, specConfig.specRomFile_DivMMC_FW))
 			__TRACE("DivMMC firmware missing!\n");
 	}
 
@@ -209,6 +208,7 @@ void Spectrum_InitRom()
 	ResetKeyboard();
 	RTC_Update();
 
+	CPU_Start();
 	CPU_Reset(true);
 	CPU_Reset(false);
 
@@ -450,9 +450,9 @@ void SpectrumTimer_Routine()
 		int activity = Tape_Started() ? 1 : 0;
 
 		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
-			activity = (activty ^ floppy_leds()) & 1;
+			activity = (activity ^ floppy_leds()) & 1;
 
-		byte leds = (ReadKeyFlags() & fKeyPCEmu) | 2 | (activity << 2);
+		byte leds = ((ReadKeyFlags() & fKeyPCEmu) ? 1 : 0) | (activity << 2) | 2;
 
 		if (leds != leds_prev && kbdInited == KBD_OK) {
 			byte data[2] = { 0xed, leds };
@@ -637,6 +637,8 @@ void BDI_Routine()
 
 void DivMMC_Routine()
 {
+	static int lastWasWr = -1;
+
 	int ioCounter = 0x20;
 	word divmmcStatus = SystemBus_Read(0xc00019);
 
@@ -646,10 +648,30 @@ void DivMMC_Routine()
 		if (divmmcWr) {
 			byte data = SystemBus_Read(0xc0001b);
 			xmit_spi(data);
+
+			if (LOG_BDI_PORTS) {
+				if (lastWasWr != 0)
+					__TRACE("\nW: ");
+				lastWasWr = 0;
+
+				__TRACE("%02X ", data);
+			}
 		}
 		else {
+			if (lastWasWr != 1)
+				GPIO_WriteBit(GPIO1, GPIO_Pin_10, Bit_RESET);
+
 			byte data = rcvr_spi();
 			SystemBus_Write(0xc0001b, data);
+
+			if (LOG_BDI_PORTS) {
+				if (lastWasWr != 1)
+					__TRACE("\nR: ");
+				lastWasWr = 1;
+
+				if (data != 0xff)
+					__TRACE("%02X ", data);
+			}
 		}
 
 		SystemBus_Write(0xc00019, 0);
@@ -719,7 +741,7 @@ void Serial_Routine()
 
 			if (strcmp(cmd, "stack") == 0)
 				TestStack();
-			else if (strcmp(cmd, "log bdi") == 0)
+			else if (strcmp(cmd, "log") == 0)
 				LOG_BDI_PORTS = !LOG_BDI_PORTS;
 			else if (strcmp(cmd, "update rom") == 0)
 				Spectrum_UpdateConfig(true);

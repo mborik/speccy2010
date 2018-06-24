@@ -39,8 +39,8 @@ void	disk_timerproc (void);
 extern "C" {
 #endif
 
-volatile BYTE xmit_spi (BYTE dat);
-volatile BYTE rcvr_spi (void);
+extern BYTE xmit_spi (BYTE dat);
+extern BYTE rcvr_spi (void);
 
 #ifdef __cplusplus
 }

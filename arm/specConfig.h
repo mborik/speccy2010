@@ -24,8 +24,8 @@ struct CSpecConfig {
 	int specMachine;
 	int specSync;
 	int specDiskIf;
-	int specUseBank0;
 	int specTurbo;
+	int specTrdosFlag;
 	int specVideoMode;
 	int specVideoAspectRatio;
 	int specVideoInterlace;

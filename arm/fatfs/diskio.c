@@ -65,7 +65,6 @@ BYTE CardType;			/* Card type flags */
 //#define xmit_spi(dat) 	SPDR=(dat); loop_until_bit_is_set(SPSR,SPIF)
 //#define xmit_spi(dat)       { SSP_SendData( SSP0, dat ); while( SSP_GetFlagStatus( SSP0, SSP_FLAG_RxFifoNotEmpty ) == RESET ); }
 
-volatile
 BYTE xmit_spi ( BYTE dat )
 {
     SSP_SendData( SSP0, dat );
@@ -79,7 +78,6 @@ BYTE xmit_spi ( BYTE dat )
 /* Receive a byte from MMC via SPI  (Platform dependent)                 */
 /*-----------------------------------------------------------------------*/
 
-volatile
 BYTE rcvr_spi (void)
 {
     SSP_SendData( SSP0, 0xff );

@@ -79,8 +79,8 @@ void RestoreConfig()
 	specConfig.specMachine = SpecRom_Pentagon128;
 	specConfig.specSync = SpecRom_Classic128;
 	specConfig.specDiskIf = SpecDiskIf_Betadisk;
-	specConfig.specUseBank0 = 0;
 	specConfig.specTurbo = SpecTurbo_None;
+	specConfig.specTrdosFlag = 0;
 	specConfig.specVideoMode = 0;
 	specConfig.specVideoAspectRatio = 0;
 	specConfig.specVideoInterlace = 0;

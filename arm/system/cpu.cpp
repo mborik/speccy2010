@@ -53,7 +53,7 @@ void CPU_NMI()
 void CPU_Reset(bool res)
 {
 	if (res == false) {
-		SystemBus_Write(0xC00018, specConfig.specUseBank0 ? 1 : 0); //specTrdosFlag
+		SystemBus_Write(0xC00018, specConfig.specTrdosFlag & 1); //specTrdosFlag
 
 		if (specConfig.specMachine == SpecRom_Classic48) {
 			SystemBus_Write(0xC00017, 0x30); //specPort7ffd

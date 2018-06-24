@@ -181,6 +181,7 @@ architecture rtl of speccy2010_top is
 	signal divmmcCardSelect : std_logic := '0';
 	signal divmmcAmapRq     : std_logic := '0';
 	signal divmmcAmap       : std_logic := '0';
+	signal divmmcMemAddr    : std_logic_vector(23 downto 0) := x"000000";
 
 	signal specMode         : unsigned(2 downto 0) := "000";  -- 0: ZX 48 | 1: ZX 128 | 2: Pentagon 1024 | 3: Scorpion
 	signal syncMode         : unsigned(2 downto 0) := "000";  -- 0: ZX 48 | 1: ZX 128 | 2: Pentagon | 3: Scorpion
@@ -306,7 +307,7 @@ architecture rtl of speccy2010_top is
 	signal cpuReset     : std_logic := '0';
 
 	signal cpuInvokeNMI : std_logic := '0';
-	signal scorpRom     : std_logic := '0';
+	signal accessRom     : std_logic := '0';
 
 	signal cpuINT       : std_logic;
 	signal cpuNMI       : std_logic;
@@ -822,28 +823,48 @@ begin
 
 	reset <= not RESET_n;
 
-	specTrdosTglFlag <=	'0' when specTrdosEnabled = '0' else
-						'1' when specTrdosFlag = '0' and cpuM1 = '0' and cpuMREQ = '0' and specPort7ffd(4) = '1' and cpuA( 15 downto 8 ) = x"3D" else
-						'1' when specTrdosFlag = '0' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' and scorpROM = '0' else
-						'1' when specTrdosFlag = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '1' and scorpROM = '0' else
+	specTrdosTglFlag <=	'1' when specTrdosFlag = '0' and cpuM1 = '0' and cpuMREQ = '0' and specPort7ffd(4) = '1' and cpuA( 15 downto 8 ) = x"3D" else
+						'1' when specTrdosFlag = '0' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' and accessRom = '0' else
+						'1' when specTrdosFlag = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '1' and accessRom = '0' else
 						'0';
 
-	romPage <=	"0" & not ( specTrdosFlag xor specTrdosTglFlag ) & specPort7ffd(4) when specMode /= 3 else
+	-- 000 > ROM 0 (128k BASIC and menu)
+	-- 001 > ROM 1 (classic 48k BASIC)
+	-- 010 > Service ROM
+	-- 011 > TR-DOS ROM or DivMMC firmware
+	romPage <=	"00" & specPort7ffd(4) when specTrdosEnabled = '0' else
+				"0" & ( specTrdosFlag xor specTrdosTglFlag ) & specPort7ffd(4) when specMode /= 3 else
 				"010" when specPort1ffd(1) = '1' else
 				"011" when ( specTrdosFlag xor specTrdosTglFlag ) = '1' else
 				"00" & specPort7ffd(4);
 
+	-- 0000-3FFF > bank #00
+	-- 4000-7FFF > bank #05
+	-- 8000-BFFF > bank #02
 	ramPage <=	"00000000" when cpuA( 15 downto 14 ) = "00" else
 				"00000101" when cpuA( 15 downto 14 ) = "01" else
 				"00000010" when cpuA( 15 downto 14 ) = "10" else
-				"00" & specPort7ffd( 7 downto 5 ) & specPort7ffd( 2 downto 0 ) when specMode = 2 else
-				"0000"  & specPort1ffd(4) & specPort7ffd( 2 downto 0 )         when specMode = 3 else
+	-- C000-FFFF > bank  #00-3F (Pentagon 128/1024)
+				"00" & specPort7ffd(5) & specPort7ffd( 7 downto 6 ) & specPort7ffd( 2 downto 0 ) when specMode = 2 else
+	-- C000-FFFF > bank  #00-0F (Scorpion)
+				"0000"  & specPort1ffd(4) & specPort7ffd( 2 downto 0 ) when specMode = 3 else
+	-- C000-FFFF > bank #00-#07 (ZX Spectrum 128)
 				"00000" & specPort7ffd( 2 downto 0 );
+
+	divmmcMemAddr <=
+	-- 0000-1FFF > DivMMC bank #03
+		"000001000011" & cpuA( 12 downto 1 ) when cpuA(13) = '0' and divmmcMapram = '1' and divmmcAmap = '1' and divmmcConmem = '0' else
+	-- 0000-1FFF > DivMMC (E)EPROM (firmware in ROM3)
+		"001000000110" & cpuA( 12 downto 1 ) when cpuA(13) = '0' and (divmmcConmem = '1' or divmmcAmap = '1') else
+	-- 2000-3FFF > DivMMC bank #00-#3F (controlled by #E3)
+		"000001" & divmmcSramPage & cpuA( 12 downto 1 ) when cpuA(13) = '1' and (divmmcConmem = '1' or divmmcAmap = '1') else
+	-- 0000-3FFF > ZX ROM otherwise
+		"0010000000" & specPort7ffd(4) & cpuA( 13 downto 1 );
+
+	accessRom <= '1' when cpuA( 15 downto 14 ) = "00" and ( specMode /= 3 or specPort1ffd(0) = '0' ) else '0';
 
 	ayDin <= cpuDout;
 	covoxDin  <= cpuDout;
-
-	scorpRom <= '1' when cpuA( 15 downto 14 ) = "00" and ( specMode /= 3 or specPort1ffd(0) = '0' ) else '0';
 
 
 	process( memclk )
@@ -971,6 +992,30 @@ begin
 
 ----------------------------------------------------------------------------------
 
+			-- DivMMC automapper
+			if divmmcEnabled = '1' and reset = '0' then
+				if cpuMREQ = '0' and cpuRD = '0' and cpuM1 = '0' then
+					if (cpuA = x"0000" or cpuA = x"0008" or cpuA = x"0038" or
+						cpuA = x"0066" or cpuA = x"04C6" or cpuA = x"0562") then
+						-- activate automapper after this cycle
+						divmmcAmapRq <= '1';
+					elsif cpuA(15 downto 8) = x"3D" then
+						-- activate automapper immediately
+						divmmcAmap <= '1';
+						divmmcAmapRq <= '1';
+					elsif cpuA(15 downto 3) & "000" = x"1FF8" then
+						-- deactivate automapper after this cycle on 0x1FF8-0x1FFF
+						divmmcAmapRq <= '0';
+					end if;
+				end if;
+
+				if cpuM1 = '1' then
+					divmmcAmap <= divmmcAmapRq;
+				end if;
+			end if;
+
+----------------------------------------------------------------------------------
+
 			if cpuRD /= '0' then
 				cpuDin <= x"ff";
 				portFfReq := '0';
@@ -996,8 +1041,19 @@ begin
 			if iCpuWr = "10" then
 
 				if cpuMREQ = '0' then
-					if scorpRom = '0' then
+					-- memory write into RAM
+					if accessRom = '0' then
 						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );
+						memDataIn <= cpuDout & cpuDout;
+						memDataMask(0) <= not cpuA(0);
+						memDataMask(1) <= cpuA(0);
+						memWr <= '1';
+						cpuReq := '1';
+						memReq <= '1';
+						cpuMemoryWait <= '1';
+					-- memory write into #2000-3FFF segment of DivMMC SRAMx
+					elsif divmmcEnabled = '1' and cpuA( 15 downto 13 ) = "001" and (divmmcConmem = '1' or divmmcAmap = '1') then
+						memAddress <= divmmcMemAddr;
 						memDataIn <= cpuDout & cpuDout;
 						memDataMask(0) <= not cpuA(0);
 						memDataMask(1) <= cpuA(0);
@@ -1007,6 +1063,8 @@ begin
 						cpuMemoryWait <= '1';
 					end if;
 				elsif cpuIORQ = '0' and cpuM1 = '1' then
+
+					-- Betadisk control or data-transfer ports
 					if specTrdosEnabled = '1' and ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
 						if cpuA( 7 downto 0 ) = x"7F" and trdosFifoWriteCounter > 0 then
 							trdosFifoWriteWrTmp <= cpuDout;
@@ -1017,10 +1075,11 @@ begin
 							specDiskIfWr <= '1';
 						end if;
 
+					-- DivMMC control or data-transfer ports
 					elsif divmmcEnabled = '1' and cpuA( 7 downto 4 ) = "1110" then
 						if cpuA ( 7 downto 0 ) = x"E3" then		-- #E3
 							divmmcSramPage <= cpuDout( 5 downto 0 );
-							divmmcMapram <= cpuDout(6);
+							divmmcMapram <= divmmcMapram or cpuDout(6);
 							divmmcConmem <= cpuDout(7);
 						elsif cpuA ( 7 downto 0 ) = x"E7" then	-- #E7
 							divmmcCardSelect <= cpuDout(0);
@@ -1063,7 +1122,7 @@ begin
 									specPort7ffd <= cpuDout;
 							end if;
 						elsif cpuA( 15 ) = '0' and cpuA( 7 downto 0 ) = x"FD" and ( specMode = 2 or specPort7ffd(5) = '0' ) then
-								specPort7ffd <= cpuDout;
+							specPort7ffd <= cpuDout;
 						end if;
 
 						if(cpuA(15) ='1' or cpuA(14) = '1') then
@@ -1082,25 +1141,12 @@ begin
 
 				if cpuMREQ = '0' then
 
-					if specTrdosEnabled = '1' and scorpRom = '1' then
-						memAddress <= "001" & "00000" & romPage & cpuA( 13 downto 1 );
+					if accessRom = '1' and divmmcEnabled = '1' then
+						memAddress <= divmmcMemAddr;
+					elsif accessRom = '1' then
+						memAddress <= "00100000" & romPage & cpuA( 13 downto 1 );
 					else
 						memAddress <= "000" & ramPage & cpuA( 13 downto 1 );
-					end if;
-
-					if divmmcEnabled = '1' and cpuM1 = '0' then
-						if (cpuA = x"0000" or cpuA = x"0008" or cpuA = x"0038" or
-							cpuA = x"0066" or cpuA = x"04C6" or cpuA = x"0562") then
-							-- activate automapper after this cycle
-							divmmcAmapRq <= '1';
-						elsif cpuA(15 downto 8) = x"3D" then
-							-- activate automapper immediately
-							divmmcAmap <= '1';
-							divmmcAmapRq <= '1';
-						elsif cpuA(15 downto 3) & "000" = x"1FF8" then
-							-- deactivate automapper after this cycle on 0x1FF8-0x1FFF
-							divmmcAmapRq <= '0';
-						end if;
 					end if;
 
 					memWr <= '0';
@@ -1112,13 +1158,13 @@ begin
 
 					if cpuA( 7 downto 0 ) = x"FE" then
 						kbdTmp := ( keyboard(  4 downto  0 ) or ( cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) & cpuA(8) ) )
-								and ( keyboard(  9 downto  5 ) or ( cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) ) )
-								and ( keyboard( 14 downto 10 ) or ( cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) ) )
-								and ( keyboard( 19 downto 15 ) or ( cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) ) )
-								and ( keyboard( 24 downto 20 ) or ( cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) ) )
-								and ( keyboard( 29 downto 25 ) or ( cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) ) )
-								and ( keyboard( 34 downto 30 ) or ( cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) ) )
-								and ( keyboard( 39 downto 35 ) or ( cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) ) );
+							and ( keyboard(  9 downto  5 ) or ( cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) & cpuA(9) ) )
+							and ( keyboard( 14 downto 10 ) or ( cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) & cpuA(10) ) )
+							and ( keyboard( 19 downto 15 ) or ( cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) & cpuA(11) ) )
+							and ( keyboard( 24 downto 20 ) or ( cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) & cpuA(12) ) )
+							and ( keyboard( 29 downto 25 ) or ( cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) & cpuA(13) ) )
+							and ( keyboard( 34 downto 30 ) or ( cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) & cpuA(14) ) )
+							and ( keyboard( 39 downto 35 ) or ( cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) & cpuA(15) ) );
 						cpuDin <= "1" & tapeIn & "1" & kbdTmp;
 
 					elsif cpuA( 15 downto 0 ) = x"FADF" then
@@ -1164,10 +1210,6 @@ begin
 					end if;
 
 				end if;
-
-			elsif divmmcEnabled = '1' and cpuM1 = '0' then
-
-				divmmcAmap <= divmmcAmapRq;
 
 			elsif armReq = '1' and ARM_WR = '0' then
 
@@ -1355,6 +1397,8 @@ begin
 							ARM_AD <= x"00" & cpuDout;
 						elsif addressReg( 7 downto 0 ) = x"1c" then
 							ARM_AD <= std_logic_vector( specTrdosCounter );
+						elsif addressReg( 7 downto 0 ) = x"1d" then
+							ARM_AD <= divmmcCardSelect & "00000" & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & divmmcSramPage( 5 downto 0 );
 						elsif addressReg( 7 downto 0 ) = x"61" then
 							ARM_AD <= trdosFifoWriteReady & "0000000" & trdosFifoWriteRdTmp;
 							if trdosFifoWriteReady = '1' then
@@ -1652,10 +1696,10 @@ begin
 			if cpuCLK = '1' then
 
 				if cpuMREQ = '0' and cpuM1 = '0' then
-					if scorpROM = '0' then
-						cpuNMI <= not cpuInvokeNMI;
-					elsif scorpROM = '1' then
+					if accessRom = '1' then
 						cpuNMI <= '1';
+					else
+						cpuNMI <= not cpuInvokeNMI;
 					end if;
 				end if;
 
