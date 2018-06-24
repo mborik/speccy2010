@@ -915,7 +915,7 @@ begin
 				specDiskIfWr <= '0';
 
 				divmmcSramPage <= (others => '0');
-				divmmcMapram <= '0';
+				divmmcMapram <= divmmcMapram or '0';
 				divmmcConmem <= '0';
 				divmmcCardSelect <= '0';
 				divmmcAmapRq <= '0';
@@ -1052,7 +1052,10 @@ begin
 						memReq <= '1';
 						cpuMemoryWait <= '1';
 					-- memory write into #2000-3FFF segment of DivMMC SRAMx
-					elsif divmmcEnabled = '1' and cpuA( 15 downto 13 ) = "001" and (divmmcConmem = '1' or divmmcAmap = '1') then
+					elsif divmmcEnabled = '1' and cpuA( 15 downto 13 ) = "001"
+						and (divmmcConmem = '1' or divmmcAmap = '1')
+						and not (divmmcMapram = '1' and divmmcSramPage = "000011") then
+
 						memAddress <= divmmcMemAddr;
 						memDataIn <= cpuDout & cpuDout;
 						memDataMask(0) <= not cpuA(0);
@@ -1328,6 +1331,16 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"42" then
 							specTrdosEnabled <= ARM_AD(0);
 							divmmcEnabled    <= ARM_AD(1);
+
+							if ARM_AD = x"8002" then
+								-- hard reset of DivMMC
+								divmmcSramPage <= (others => '0');
+								divmmcMapram <= '0';
+								divmmcConmem <= '0';
+								divmmcCardSelect <= '0';
+								divmmcAmapRq <= '0';
+								divmmcAmap <= '0';
+							end if;
 						elsif addressReg( 7 downto 0 ) = x"45" then
 							turboSound <= ARM_AD(0);
 							ayMode     <= unsigned( ARM_AD(3 downto 1) );
@@ -1398,7 +1411,7 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"1c" then
 							ARM_AD <= std_logic_vector( specTrdosCounter );
 						elsif addressReg( 7 downto 0 ) = x"1d" then
-							ARM_AD <= divmmcCardSelect & "00000" & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & divmmcSramPage( 5 downto 0 );
+							ARM_AD <= "00000" & divmmcCardSelect & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & divmmcSramPage( 5 downto 0 );
 						elsif addressReg( 7 downto 0 ) = x"61" then
 							ARM_AD <= trdosFifoWriteReady & "0000000" & trdosFifoWriteRdTmp;
 							if trdosFifoWriteReady = '1' then
@@ -1696,10 +1709,10 @@ begin
 			if cpuCLK = '1' then
 
 				if cpuMREQ = '0' and cpuM1 = '0' then
-					if accessRom = '1' then
-						cpuNMI <= '1';
-					else
+					if accessRom = '0' or (divmmcEnabled = '1' and divmmcAmap = '0') then
 						cpuNMI <= not cpuInvokeNMI;
+					elsif accessRom = '1' then
+						cpuNMI <= '1';
 					end if;
 				end if;
 
