@@ -17,6 +17,9 @@ bool LOG_WAIT = false;
 
 dword tickCounter = 0;
 
+word lastCpuConfig = 0;
+int divmmcWasActive = 0;
+
 int mouseInited = 0;
 const int MOUSE_OK = 4;
 int mouseResetTimer = 0;
@@ -101,33 +104,27 @@ void Spectrum_CleanupSDRAM()
 	CPU_Stop();
 	ResetScreen(true);
 
-	__TRACE("Cleanup of SD-RAM (1MB of RAM pages, 64kB of ROMs)\n");
+	__TRACE("Cleanup of SD-RAM...\n");
+
 	SystemBus_Write(0xc00020, 0); // use bank 0
 
-	dword addr = 0x800000;
-	dword amount = 0x100000;
-	dword i = 0;
+	// 256kB of DivMMC SRAM pages  (32 x #2000)
+	// 128kB of ZX-Spectrum RAM     (8 x #4000)
+	//  64kB of all switchable ROMs (4 x #4000)
+	dword addr, bases[3] = { 0x840000, 0x800000, 0xA00000 };
 
-	for (; i < amount; i += 2) {
-		SystemBus_Write(addr, 0);
+	for (int i, j = 0, amount = 0x40000; j < 3; j++) {
+		for (addr = bases[j], i = 0; i < amount; i += 2) {
+			SystemBus_Write(addr, 0);
 
-		addr++;
-		if ((addr & 0x0fff) == 0)
-			WDT_Kick();
-		if ((addr & 0x3fff) == 0)
-			__TRACE(".");
-	}
+			addr++;
+			if ((addr & 0x0fff) == 0)
+				WDT_Kick();
+			if ((addr & 0x3fff) == 0)
+				__TRACE(".");
+		}
 
-	addr += amount;
-	amount >>= 4;
-	for (i = 0; i < amount; i += 2) {
-		SystemBus_Write(addr, 0);
-
-		addr++;
-		if ((addr & 0x0fff) == 0)
-			WDT_Kick();
-		if ((addr & 0x3fff) == 0)
-			__TRACE(".");
+		amount >>= 1;
 	}
 
 	__TRACE("\nCleanup done...\n");
@@ -292,8 +289,9 @@ void Spectrum_UpdateConfig(bool hardReset)
 	}
 
 	// machine, RAM, ROM and Turbo configuration...
-	SystemBus_Write(0xc00040, fpgaRomRamCfg |
-		((specConfig.specSync << 3) & 0x38) | ((specConfig.specTurbo << 6) & 0xC0));
+	lastCpuConfig = fpgaRomRamCfg |
+		((specConfig.specSync << 3) & 0x38) | ((specConfig.specTurbo << 6) & 0xC0);
+	SystemBus_Write(0xc00040, lastCpuConfig);
 
 	// video mode and aspect ratio configuration...
 	SystemBus_Write(0xc00041, specConfig.specVideoMode  |
@@ -493,12 +491,14 @@ void SpectrumTimer_Routine()
 		}
 
 		static byte leds_prev = 0;
-		int activity = Tape_Started() ? 1 : 0;
+		bool activity = Tape_Started();
 
 		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
-			activity = (activity ^ floppy_leds()) & 1;
+			activity ^= floppy_leds();
+		else if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
+			activity ^= (divmmcWasActive > 0);
 
-		byte leds = ((ReadKeyFlags() & fKeyPCEmu) ? 1 : 0) | (activity << 2) | 2;
+		byte leds = ((ReadKeyFlags() & fKeyPCEmu) ? 1 : 0) | 2 | (activity ? 4 : 0);
 
 		if (leds != leds_prev && kbdInited == KBD_OK) {
 			byte data[2] = { 0xed, leds };
@@ -683,10 +683,13 @@ void BDI_Routine()
 
 void DivMMC_Routine()
 {
-	static int lastWasWr = -1;
-
 	int ioCounter = 0x20;
+
 	word divmmcStatus = SystemBus_Read(0xc00019);
+	bool isActiveNow = (divmmcStatus & 1) != 0;
+
+	if (isActiveNow && divmmcWasActive == 0)
+		GPIO_WriteBit(GPIO1, GPIO_Pin_10, Bit_RESET);
 
 	while ((divmmcStatus & 1) != 0) {
 		bool divmmcWr = (divmmcStatus & 0x02) != 0;
@@ -694,30 +697,10 @@ void DivMMC_Routine()
 		if (divmmcWr) {
 			byte data = SystemBus_Read(0xc0001b);
 			xmit_spi(data);
-
-			if (LOG_BDI_PORTS) {
-				if (lastWasWr != 0)
-					__TRACE("\nW: ");
-				lastWasWr = 0;
-
-				__TRACE("%02X ", data);
-			}
 		}
 		else {
-			if (lastWasWr != 1)
-				GPIO_WriteBit(GPIO1, GPIO_Pin_10, Bit_RESET);
-
 			byte data = rcvr_spi();
 			SystemBus_Write(0xc0001b, data);
-
-			if (LOG_BDI_PORTS) {
-				if (lastWasWr != 1)
-					__TRACE("\nR: ");
-				lastWasWr = 1;
-
-				if (data != 0xff)
-					__TRACE("%02X ", data);
-			}
 		}
 
 		SystemBus_Write(0xc00019, 0);
@@ -726,6 +709,21 @@ void DivMMC_Routine()
 			break;
 
 		divmmcStatus = SystemBus_Read(0xc00019);
+	}
+
+	if (isActiveNow) {
+		if (divmmcWasActive == 0) {
+			divmmcWasActive = 255;
+			SystemBus_Write(0xc00040, lastCpuConfig | 0x80); // full speed
+		}
+		else if (divmmcWasActive < 256)
+			divmmcWasActive++;
+	}
+	else {
+		if (divmmcWasActive > 0)
+			divmmcWasActive--;
+		else
+			SystemBus_Write(0xc00040, lastCpuConfig);
 	}
 }
 
