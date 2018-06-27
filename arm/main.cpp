@@ -683,13 +683,15 @@ void BDI_Routine()
 
 void DivMMC_Routine()
 {
-	int ioCounter = 0x20;
+	int ioCounter = 0x40;
 
 	word divmmcStatus = SystemBus_Read(0xc00019);
 	bool isActiveNow = (divmmcStatus & 1) != 0;
 
-	if (isActiveNow && divmmcWasActive == 0)
+	if (isActiveNow && divmmcWasActive == 0) {
+		SystemBus_Write(0xc00040, lastCpuConfig | 0x80); // full speed
 		GPIO_WriteBit(GPIO1, GPIO_Pin_10, Bit_RESET);
+	}
 
 	while ((divmmcStatus & 1) != 0) {
 		bool divmmcWr = (divmmcStatus & 0x02) != 0;
@@ -708,15 +710,15 @@ void DivMMC_Routine()
 		if (--ioCounter == 0)
 			break;
 
+		WDT_Kick();
 		divmmcStatus = SystemBus_Read(0xc00019);
 	}
 
 	if (isActiveNow) {
 		if (divmmcWasActive == 0) {
-			divmmcWasActive = 255;
-			SystemBus_Write(0xc00040, lastCpuConfig | 0x80); // full speed
+			divmmcWasActive = 1023;
 		}
-		else if (divmmcWasActive < 256)
+		else if (divmmcWasActive < 1024)
 			divmmcWasActive++;
 	}
 	else {
