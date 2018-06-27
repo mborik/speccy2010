@@ -10,7 +10,7 @@ void Shell_Window(int x, int y, int w, int h, const char *title, byte attr)
 
 	DrawFrame(x, y, w, h, attr, "\xC9\xCD\xBB\xBA\xC8\xCD\xBC");
 	WriteChar(titlePos - 1, y, ' ');
-	WriteStr(titlePos, y, title, attr);
+	WriteStrAttr(titlePos, y, title, attr);
 	WriteChar(titlePos + titleSize, y, ' ');
 }
 //---------------------------------------------------------------------------------------

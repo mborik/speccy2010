@@ -171,14 +171,14 @@ void show_sel(bool redraw = false)
 			WriteStrAttr(30 - len, 18, sname, 0116, len);
 		}
 
-		if (fr.date == 0) {
+		if ((fr.date & 0x1ff) == 0 || strcmp(sname, "..") == 0) {
 			WriteStr(1, 20, "---------- -----", 16);
 		}
 		else {
 			sniprintf(sname, sizeof(sname), "%04u-%02u-%02u %02u:%02u",
 				(1980 + (fr.date >> 9)),
 				(fr.date >> 5) & 0x0f,
-				fr.date & 0x1f,
+				(fr.date & 0x1f),
 				(fr.time >> 11) & 0x1f,
 				(fr.time >> 5) & 0x3f);
 			WriteStr(1, 20, sname, 16);
@@ -199,6 +199,8 @@ void show_sel(bool redraw = false)
 //---------------------------------------------------------------------------------------
 void init_screen()
 {
+	SystemBus_Write(0xc00022, 0x8000); // Enable shell border
+
 	ClrScr(0006);
 	DrawFrame(0, 18, 32,  4, 0117, "\xC3\xC4\xB4\xB3\xC0\xC4\xD9");
 	DrawFrame(0,  1, 16, 18, 0117, "\xD1\xCD\xD1\xB3\xC3\xC4\xC1");
@@ -212,7 +214,6 @@ void init_screen()
 		WriteAttr(fnKeys[i], 23, 0107);
 
 	SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
-	SystemBus_Write(0xc00022, 0x8000); // Enable shell border
 }
 //---------------------------------------------------------------------------------------
 //- COMMANDER ACTION HANDLERS -----------------------------------------------------------
