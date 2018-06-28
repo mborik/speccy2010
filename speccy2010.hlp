@@ -12,8 +12,9 @@ Alt+F5 - reset
 F6 - disk menu
 F7 - save SNA
 Alt+F7 - save SNA as...
-F8 - clear attributes
+Alt+F8 - clear attributes
 F9 - settings
+Alt+F9 - ROM configuration
 F10/NumPlus - play tape
 F11/NumMinus - stop/resume tape
 F12 - file manager

@@ -5,7 +5,8 @@
 
 void Shell_SettingsMenu();
 void Shell_DisksMenu();
+void Shell_RomCfgMenu();
 
-void Shell_Menu(CMenuItem *menu, int menuSize);
+void Shell_Menu(const char *title, CMenuItem *menu, int menuSize);
 
 #endif

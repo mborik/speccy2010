@@ -247,6 +247,10 @@ void DecodeKey(word keyCode, word keyFlags)
 				}
 				break;
 
+				case KEY_F9:
+					Shell_RomCfgMenu();
+					break;
+
 				case KEY_F12:
 					Shell_Debugger();
 					break;

@@ -5,7 +5,7 @@
 CMenuItem::CMenuItem(int _x, int _y, const char *_name, const char *_data)
 {
 	data = _data;
-	int maxLen = 32 - (x + strlen(name));
+	int maxLen = 32 - (x + strlen(_name));
 	if (data.Length() > maxLen) {
 		data.Delete(0, 1 + data.Length() - maxLen);
 		data.Insert(0, "~");
@@ -22,10 +22,10 @@ CMenuItem::CMenuItem(int _x, int _y, const char *_name, const CParameter *_param
 void CMenuItem::Init(int _x, int _y, const char *_name, const CParameter *_param)
 {
 	x = _x;
-	y = _y;
+	y = origY = _y;
 
 	param = _param;
-	name = _name;
+	origName = _name;
 	state = 0;
 
 	colors[0] = 0107; /* inactive */
@@ -36,14 +36,23 @@ void CMenuItem::Init(int _x, int _y, const char *_name, const CParameter *_param
 //---------------------------------------------------------------------------------------
 void CMenuItem::Redraw()
 {
-	WriteStr(x, y, name);
-	WriteAttr(x, y, colors[3], strlen(name));
+	char *name = (char *) origName;
+	size = strlen(origName);
 
-	int x2 = x + strlen(name);
-	int size = strlen(data);
+	y = origY;
+	char *ptr = name;
+	while (*ptr != 0) {
+		if (*ptr++ == '\n') {
+			int offset = (ptr - name);
+			WriteStrAttr(x, y, name, colors[3], offset - 1);
+			name += offset;
+			size -= offset;
+			y++;
+		}
+	}
 
-	WriteStr(x2, y, data);
-	WriteAttr(x2, y, colors[state], size);
+	WriteStrAttr(x, y, name, colors[3], size);
+	WriteStrAttr(x + size, y, data, colors[state]);
 }
 //---------------------------------------------------------------------------------------
 void CMenuItem::UpdateData()
@@ -52,7 +61,7 @@ void CMenuItem::UpdateData()
 		int delNumber = data.Length();
 
 		param->GetValueText(data);
-		int maxLen = 32 - (x + strlen(name));
+		int maxLen = 32 - (x + size);
 		if (data.Length() > maxLen) {
 			data.Delete(0, 1 + data.Length() - maxLen);
 			data.Insert(0, "~");
@@ -63,7 +72,7 @@ void CMenuItem::UpdateData()
 		Redraw();
 
 		if (delNumber > 0) {
-			int x2 = x + strlen(name) + strlen(data);
+			int x2 = x + size + strlen(data);
 			WriteStr(x2, y, "", delNumber);
 			WriteAttr(x2, y, colors[0], delNumber);
 		}
@@ -79,7 +88,7 @@ void CMenuItem::UpdateData(const char *_data)
 		Redraw();
 
 		if (delNumber > 0) {
-			int x2 = x + strlen(name) + strlen(data);
+			int x2 = x + size + strlen(data);
 			WriteStr(x2, y, "", delNumber);
 			WriteAttr(x2, y, colors[0], delNumber);
 		}
@@ -91,7 +100,7 @@ void CMenuItem::UpdateState(int _state)
 	if (state != _state) {
 		state = _state;
 
-		int x2 = x + strlen(name);
+		int x2 = x + size;
 		int size = strlen(data);
 
 		WriteAttr(x2, y, colors[state], size);

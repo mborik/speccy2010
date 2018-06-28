@@ -102,7 +102,7 @@ bool Shell_InputBox(const char *title, const char *str, CString &buff)
 	WriteStr(x, y++, str);
 	WriteAttr(x, y, 0150, w);
 
-	int p = strlen(buff);
+	int p = buff.Length();
 	int s = 0;
 
 	while (true) {

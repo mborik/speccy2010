@@ -5,8 +5,8 @@
 #include "../utils/cstring.h"
 
 class CMenuItem {
-	int x, y, state;
-	const char *name;
+	int x, y, state, size, origY;
+	const char *origName;
 	byte colors[4];
 
 	CString data;
@@ -23,7 +23,7 @@ public:
 	void UpdateData(const char *_data);
 	void UpdateState(int _state);
 
-	inline const char *GetName() { return name; }
+	inline const char *GetName() { return origName; }
 	inline const CParameter *GetParam() { return param; }
 };
 
