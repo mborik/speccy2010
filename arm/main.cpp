@@ -85,7 +85,7 @@ void SD_Init()
 			__TRACE("SD card init OK..\n");
 
 			FATFS *fatfs = new FATFS;
-			FRESULT result = f_mount(0, fatfs);
+			FRESULT result = f_mount(fatfs, "", 1);
 
 			if (result != FR_OK) {
 				__TRACE("FAT mounting error (%d)\n", result);

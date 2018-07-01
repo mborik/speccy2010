@@ -1,11 +1,16 @@
-/*-----------------------------------------------------------------------
-/  Low level disk interface modlue include file  R0.05   (C)ChaN, 2007
+/*-----------------------------------------------------------------------/
+/  Low level disk interface modlue include file   (C)ChaN, 2014          /
 /-----------------------------------------------------------------------*/
 
-#ifndef _DISKIO
+#ifndef _DISKIO_DEFINED
+#define _DISKIO_DEFINED
 
-#define _READONLY	0	/* 1: Read-only mode */
-#define _USE_IOCTL	1
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define _USE_WRITE	1	/* 1: Enable disk_write function */
+#define _USE_IOCTL	1	/* 1: Enable disk_ioctl fucntion */
 
 #include "integer.h"
 
@@ -26,25 +31,20 @@ typedef enum {
 /*---------------------------------------*/
 /* Prototypes for disk control functions */
 
-DSTATUS disk_initialize (BYTE);
-DSTATUS disk_status (BYTE);
-DRESULT disk_read (BYTE, BYTE*, DWORD, BYTE);
-#if	_READONLY == 0
-DRESULT disk_write (BYTE, const BYTE*, DWORD, BYTE);
-#endif
-DRESULT disk_ioctl (BYTE, BYTE, void*);
-void	disk_timerproc (void);
 
-#ifdef __cplusplus
-extern "C" {
+DSTATUS disk_initialize (BYTE pdrv);
+DSTATUS disk_status (BYTE pdrv);
+DRESULT disk_read (BYTE pdrv, BYTE* buff, DWORD sector, BYTE count);
+#if	_USE_WRITE
+DRESULT disk_write (BYTE pdrv, const BYTE* buff, DWORD sector, BYTE count);
 #endif
+DRESULT disk_ioctl (BYTE pdrv, BYTE cmd, void* buff);
+void    disk_timerproc (void);
 
+
+// low-level SPI methods
 extern BYTE xmit_spi (BYTE dat);
 extern BYTE rcvr_spi (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 
 /* Disk Status Bits (DSTATUS) */
@@ -54,29 +54,32 @@ extern BYTE rcvr_spi (void);
 #define STA_PROTECT		0x04	/* Write protected */
 
 
+/* Command code for disk_ioctrl fucntion */
 
-/* Command code for disk_ioctrl() */
+/* Generic command (Used by FatFs) */
+#define CTRL_SYNC			0	/* Complete pending write process (needed at _FS_READONLY == 0) */
+#define GET_SECTOR_COUNT	1	/* Get media size (needed at _USE_MKFS == 1) */
+#define GET_SECTOR_SIZE		2	/* Get sector size (needed at _MAX_SS != _MIN_SS) */
+#define GET_BLOCK_SIZE		3	/* Get erase block size (needed at _USE_MKFS == 1) */
+#define CTRL_TRIM			4	/* Inform device that the data on the block of sectors is no longer used (needed at _USE_TRIM == 1) */
 
-/* Generic command */
-#define CTRL_SYNC			0	/* Mandatory for write functions */
-#define GET_SECTOR_COUNT	1	/* Mandatory for only f_mkfs() */
-#define GET_SECTOR_SIZE		2
-#define GET_BLOCK_SIZE		3	/* Mandatory for only f_mkfs() */
-#define CTRL_POWER			4
-#define CTRL_LOCK			5
-#define CTRL_EJECT			6
-/* MMC/SDC command */
-#define MMC_GET_TYPE		10
-#define MMC_GET_CSD			11
-#define MMC_GET_CID			12
-#define MMC_GET_OCR			13
-#define MMC_GET_SDSTAT		14
-/* ATA/CF command */
-#define ATA_GET_REV			20
-#define ATA_GET_MODEL		21
-#define ATA_GET_SN			22
+/* Generic command (Not used by FatFs) */
+#define CTRL_POWER			5	/* Get/Set power status */
+#define CTRL_LOCK			6	/* Lock/Unlock media removal */
+#define CTRL_EJECT			7	/* Eject media */
+#define CTRL_FORMAT			8	/* Create physical format on the media */
 
+/* MMC/SDC specific ioctl command */
+#define MMC_GET_TYPE		10	/* Get card type */
+#define MMC_GET_CSD			11	/* Get CSD */
+#define MMC_GET_CID			12	/* Get CID */
+#define MMC_GET_OCR			13	/* Get OCR */
+#define MMC_GET_SDSTAT		14	/* Get SD status */
 
+/* ATA/CF specific ioctl command */
+#define ATA_GET_REV			20	/* Get F/W revision */
+#define ATA_GET_MODEL		21	/* Get model name */
+#define ATA_GET_SN			22	/* Get serial number */
 
 /* Card type flags (CardType) */
 #define CT_MMC				0x01	/* MMC ver 3 */
@@ -85,6 +88,8 @@ extern BYTE rcvr_spi (void);
 #define CT_SDC				(CT_SD1|CT_SD2)	/* SD */
 #define CT_BLOCK			0x08	/* Block addressing */
 
+#ifdef __cplusplus
+}
+#endif
 
-#define _DISKIO
 #endif

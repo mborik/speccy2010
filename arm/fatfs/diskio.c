@@ -1,13 +1,12 @@
 /*-----------------------------------------------------------------------*/
-/* MMCv3/SDv1/SDv2 (in SPI mode) control module  (C)ChaN, 2007           */
+/* Low level disk I/O module skeleton for FatFs     (C)ChaN, 2014        */
 /*-----------------------------------------------------------------------*/
-/* Only rcvr_spi(), xmit_spi(), disk_timerproc() and some macros         */
+/* rcvr_spi(), xmit_spi(), disk_timerproc() and some macros              */
 /* are platform dependent.                                               */
 /*-----------------------------------------------------------------------*/
 
-
+#include "diskio.h"		/* FatFs lower layer API */
 #include "../system.h"
-#include "diskio.h"
 
 /* Definitions for MMC/SDC command */
 #define CMD0	(0x40+0)	/* GO_IDLE_STATE */
@@ -25,14 +24,14 @@
 #define	ACMD23	(0xC0+23)	/* SET_WR_BLK_ERASE_COUNT (SDC) */
 #define CMD24	(0x40+24)	/* WRITE_BLOCK */
 #define CMD25	(0x40+25)	/* WRITE_MULTIPLE_BLOCK */
+#define CMD32	(0x40+32)	/* ERASE_ER_BLK_START */
+#define CMD33	(0x40+33)	/* ERASE_ER_BLK_END */
+#define CMD38	(0x40+38)	/* ERASE */
 #define CMD55	(0x40+55)	/* APP_CMD */
 #define CMD58	(0x40+58)	/* READ_OCR */
 
 
 /* Port Controls  (Platform dependent) */
-//#define CS_LOW()        { GPIO_WriteBit( GPIO1, GPIO_Pin_10, Bit_RESET ); DelayUs( 10 ); }
-//#define	CS_HIGH()       { GPIO_WriteBit( GPIO1, GPIO_Pin_10, Bit_SET ); DelayUs( 10 ); }
-
 #define CS_LOW()        { GPIO_WriteBit( GPIO1, GPIO_Pin_10, Bit_RESET ); }
 #define	CS_HIGH()       { GPIO_WriteBit( GPIO1, GPIO_Pin_10, Bit_SET ); }
 
@@ -43,9 +42,7 @@
 #define	FCLK_FAST()					/* Set fast clock (depends on the CSD) */
 
 /*--------------------------------------------------------------------------
-
    Module Private Functions
-
 ---------------------------------------------------------------------------*/
 
 static volatile
@@ -62,16 +59,12 @@ BYTE CardType;			/* Card type flags */
 /* Transmit a byte to MMC via SPI  (Platform dependent)                  */
 /*-----------------------------------------------------------------------*/
 
-//#define xmit_spi(dat) 	SPDR=(dat); loop_until_bit_is_set(SPSR,SPIF)
-//#define xmit_spi(dat)       { SSP_SendData( SSP0, dat ); while( SSP_GetFlagStatus( SSP0, SSP_FLAG_RxFifoNotEmpty ) == RESET ); }
-
 BYTE xmit_spi ( BYTE dat )
 {
     SSP_SendData( SSP0, dat );
     while( SSP_GetFlagStatus( SSP0, SSP_FLAG_RxFifoNotEmpty ) == RESET );
     return SSP_ReceiveData(SSP0);
 }
-
 
 
 /*-----------------------------------------------------------------------*/
@@ -209,7 +202,7 @@ BOOL rcvr_datablock (
 /* Send a data packet to MMC                                             */
 /*-----------------------------------------------------------------------*/
 
-#if _READONLY == 0
+#if _USE_WRITE
 static
 BOOL xmit_datablock (
 	const BYTE *buff,	/* 512 byte data block to be transmitted */
@@ -237,7 +230,7 @@ BOOL xmit_datablock (
 
 	return TRUE;
 }
-#endif /* _READONLY */
+#endif
 
 
 
@@ -260,9 +253,11 @@ BYTE send_cmd (
 		if (res > 1) return res;
 	}
 
-	/* Select the card and wait for ready */
-	deselect();
-	if (!select()) return 0xFF;
+	/* Select the card and wait for ready except to stop multiple block read */
+	if (cmd != CMD12) {
+		deselect();
+		if (!select()) return 0xFF;
+	}
 
 	/* Send command packet */
 	xmit_spi(cmd);						/* Start + Command index */
@@ -405,7 +400,7 @@ DRESULT disk_read (
 /* Write Sector(s)                                                       */
 /*-----------------------------------------------------------------------*/
 
-#if _READONLY == 0
+#if _USE_WRITE
 DRESULT disk_write (
 	BYTE drv,			/* Physical drive nmuber (0) */
 	const BYTE *buff,	/* Pointer to the data to be written */
@@ -456,7 +451,7 @@ DRESULT disk_ioctl (
 {
 	DRESULT res;
 	BYTE n, csd[16], *ptr = buff;
-	WORD csize;
+	DWORD *dp, st, ed, csize;
 
 
 	if (drv) return RES_PARERR;
@@ -533,6 +528,26 @@ DRESULT disk_ioctl (
 				}
 			}
 			break;
+
+		case CTRL_TRIM:		/* Erase a block of sectors (used when _USE_TRIM in ffconf.h is 1) */
+			if (!(CardType & CT_SDC)) break;				/* Check if the card is SDC */
+			if (disk_ioctl(drv, MMC_GET_CSD, csd)) break;	    /* Get CSD */
+			if (!(csd[0] >> 6) && !(csd[10] & 0x40)) break;	/* Check if sector erase can be applied to the card */
+			dp = buff; st = dp[0]; ed = dp[1];				/* Load sector block */
+			if (!(CardType & CT_BLOCK)) {
+				st *= 512; ed *= 512;
+			}
+			if (send_cmd(CMD32, st) == 0 && send_cmd(CMD33, ed) == 0 && send_cmd(CMD38, 0) == 0) {	/* Erase sector block */
+				for (n = 0; n < 60; n++) {
+					if (wait_ready()) {
+						res = RES_OK;	/* FatFs does not check result of this command */
+						break;
+					}
+				}
+			}
+			break;
+
+		/* Following commands are never used by FatFs module */
 
 		case MMC_GET_TYPE :		/* Get card type flags (1 byte) */
 			*ptr = CardType;
@@ -613,4 +628,3 @@ void disk_timerproc (void)
 		Stat = s;
 	}
 }
-
