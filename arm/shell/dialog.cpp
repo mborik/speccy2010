@@ -6,7 +6,7 @@
 void Shell_Window(int x, int y, int w, int h, const char *title, byte attr)
 {
 	int titleSize = strlen(title);
-	int titlePos = (w - titleSize) / 2;
+	int titlePos = x + ((w - titleSize) / 2);
 
 	DrawFrame(x, y, w, h, attr, "\xC9\xCD\xBB\xBA\xC8\xCD\xBC");
 	WriteChar(titlePos - 1, y, ' ');
@@ -42,6 +42,7 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 	int x = (32 - w) / 2;
 	int y = (22 - h) / 2;
 
+	ScreenPush();
 	Shell_Window(x - 1, y - 1, w + 2, h + 2, title, attr);
 	x++;
 	y++;
@@ -77,6 +78,7 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 			result = !result;
 	}
 
+	ScreenPop();
 	return result;
 }
 //---------------------------------------------------------------------------------------
@@ -93,6 +95,7 @@ bool Shell_InputBox(const char *title, const char *str, CString &buff)
 	int x = (32 - w) / 2;
 	int y = (22 - h) / 2;
 
+	ScreenPush();
 	Shell_Window(x - 1, y - 1, w + 2, h + 2, title, 0050);
 
 	x++;
@@ -102,6 +105,7 @@ bool Shell_InputBox(const char *title, const char *str, CString &buff)
 	WriteStr(x, y++, str);
 	WriteAttr(x, y, 0150, w);
 
+	bool result = false;
 	int p = buff.Length();
 	int s = 0;
 
@@ -120,10 +124,12 @@ bool Shell_InputBox(const char *title, const char *str, CString &buff)
 
 		char key = GetKey();
 
-		if (key == K_RETURN)
-			return true;
+		if (key == K_RETURN) {
+			result = true;
+			break;
+		}
 		else if (key == K_ESC)
-			return false;
+			break;
 		else if (key == K_LEFT && p > 0)
 			p--;
 		else if (key == K_RIGHT && p < buff.Length())
@@ -139,5 +145,8 @@ bool Shell_InputBox(const char *title, const char *str, CString &buff)
 		else if ((byte) key >= 0x20)
 			buff.Insert(p++, key);
 	}
+
+	ScreenPop();
+	return result;
 }
 //---------------------------------------------------------------------------------------

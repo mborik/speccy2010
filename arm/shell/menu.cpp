@@ -227,13 +227,16 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 					else if (param->GetType() == PTYPE_STRING) {
 						menu[menuPos].UpdateState(2);
 
+						bool inROMCfg = (menu == romCfgMenu);
+
 						CString value = "";
 						param->GetValueText(value);
-						if (Shell_InputBox(title, "Enter the value:", value)) {
+						if (Shell_InputBox(title, inROMCfg ? "Filename:" : "Enter a value:", value)) {
 							param->SetValueText(value);
 							menu[menuPos].UpdateData();
 
-							hardReset = true;
+							if (inROMCfg)
+								hardReset = true;
 						}
 
 						menu[menuPos].UpdateState(1);

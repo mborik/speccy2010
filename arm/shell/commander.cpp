@@ -218,10 +218,8 @@ void init_screen()
 //---------------------------------------------------------------------------------------
 //- COMMANDER ACTION HANDLERS -----------------------------------------------------------
 //---------------------------------------------------------------------------------------
-bool Shell_CopyItem(const char *srcName, const char *dstName, bool move = false)
+bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *askForOverwrite = NULL, bool *overwrite = NULL)
 {
-	int res;
-
 	const char *sname = &dstName[strlen(dstName)];
 	while (sname != dstName && sname[-1] != '/')
 		sname--;
@@ -229,76 +227,101 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move = false)
 	char shortName[20];
 	make_short_name(shortName, sizeof(shortName), sname);
 
+	char progressBar[25];
+	for (int i = 0; i < 24; i++)
+		progressBar[i] = 0xB0;
+	progressBar[24] = 0;
+
 	show_table();
-	Shell_MessageBox("Processing", shortName, "", "", MB_NO, 050);
 
-	if (move) {
-		res = f_rename(srcName, dstName);
-	}
-	else {
-		FILINFO finfo;
-		char lfn[1];
-		finfo.lfname = lfn;
-		finfo.lfsize = 0;
+	int res;
 
-		FIL src, dst;
-		UINT size;
+	do {
+		if (FileExists(dstName)) {
+			if (askForOverwrite != NULL && overwrite != NULL) {
+				if (*askForOverwrite == true) {
+					*askForOverwrite = false;
+					*overwrite = Shell_MessageBox("Overwrite", "Overwrite all exist files?", NULL, NULL, MB_YESNO, 0050, 0115);
+				}
+				if (*overwrite == false)
+					return false;
+			}
+			else if (!Shell_MessageBox("Overwrite", "Do you want to overwrite", dstName, NULL, MB_YESNO, 0050, 0115))
+				return false;
 
-		byte buff[0x100];
-
-		res = f_open(&src, srcName, FA_READ | FA_OPEN_ALWAYS);
-		if (res != FR_OK)
-			goto copyExit1;
-
-		if (f_stat(dstName, &finfo) == FR_OK) {
-			res = FR_EXIST;
-			goto copyExit2;
-		}
-
-		res = f_open(&dst, dstName, FA_WRITE | FA_CREATE_ALWAYS);
-		if (res != FR_OK)
-			goto copyExit2;
-
-		size = src.fsize;
-		while (size > 0) {
-			UINT currentSize = min(size, sizeof(buff));
-			UINT r;
-
-			res = f_read(&src, buff, currentSize, &r);
-			if (res != FR_OK)
-				break;
-
-			res = f_write(&dst, buff, currentSize, &r);
-			if (res != FR_OK)
-				break;
-
-			size -= currentSize;
-			if ((src.fptr & 0x300) == 0)
-				CycleMark();
-
-			if (GetKey(false) == K_ESC) {
-				res = FR_DISK_ERR;
+			res = f_unlink(dstName);
+			if (res != FR_OK) {
+				res = FR_EXIST;
 				break;
 			}
 		}
 
-		f_close(&dst);
-		if (res != FR_OK)
-			f_unlink(dstName);
+		if (move) {
+			res = f_rename(srcName, dstName);
+		}
+		else {
+			FIL src, dst;
 
-copyExit2:
-		f_close(&src);
+			res = f_open(&src, srcName, FA_READ);
+			if (res != FR_OK) {
+				break;
+			}
 
-copyExit1:;
-	}
+			res = f_open(&dst, dstName, FA_WRITE | FA_CREATE_ALWAYS);
+			if (res != FR_OK) {
+				f_close(&src);
+				break;
+			}
+
+			Shell_MessageBox("Processing", shortName, "", progressBar, MB_NO, 0070);
+
+			byte buff[0x100];
+			UINT size = src.fsize;
+			while (size > 0) {
+				UINT currentSize = min(size, sizeof(buff));
+				UINT r;
+
+				res = f_read(&src, buff, currentSize, &r);
+				if (res != FR_OK)
+					break;
+
+				res = f_write(&dst, buff, currentSize, &r);
+				if (res != FR_OK)
+					break;
+
+				size -= currentSize;
+				if ((src.fptr & 0x300) == 0) {
+					float progress = src.fsize - size;
+					progress /= src.fsize;
+					byte prog = (progress * 24);
+
+					if (prog > 0)
+						WriteStrAttr(4, 11, progressBar, 0062, prog);
+					WDT_Kick();
+				}
+
+				if (GetKey(false) == K_ESC) {
+					res = FR_DISK_ERR;
+					break;
+				}
+			}
+
+			ScreenPop();
+
+			f_close(&dst);
+			if (res != FR_OK)
+				f_unlink(dstName);
+
+			f_close(&src);
+		}
+	} while (false);
 
 	if (res == FR_OK)
 		return true;
-
-	if (move) {
+	else {
 		Shell_MessageBox("Error",
 			(move ? "Cannot move/rename to" : "Cannot copy to"),
-			shortName, fatErrorMsg[res]);
+				shortName, fatErrorMsg[res]);
 	}
 
 	show_table();
@@ -344,6 +367,8 @@ bool Shell_Copy(const char *_name, bool move)
 	}
 	else {
 		FRECORD fr;
+		bool overwrite = true;
+		bool askForOverwrite = true;
 
 		for (int i = 0; i < files_size; i++) {
 			Read(&fr, table_buffer, i);
@@ -352,7 +377,7 @@ bool Shell_Copy(const char *_name, bool move)
 				sniprintf(pname, sizeof(pname), "%s%s", get_current_dir(), fr.name);
 				sniprintf(pnameNew, sizeof(pnameNew), "%s%s", name.String() + 1, fr.name);
 
-				if (!Shell_CopyItem(pname, pnameNew, move))
+				if (!Shell_CopyItem(pname, pnameNew, move, &askForOverwrite, &overwrite))
 					break;
 
 				fr.sel = false;
@@ -426,7 +451,7 @@ bool Shell_Delete(const char *name)
 
 	strcat(sname, "?");
 
-	if (!Shell_MessageBox("Delete", "Do you wish to delete", sname, "", MB_YESNO, 0050, 0151))
+	if (!Shell_MessageBox("Delete", "Do you wish to delete", sname, "", MB_YESNO))
 		return false;
 
 	if (files_sel_number == 0) {
@@ -488,7 +513,7 @@ bool Shell_EmptyTrd(const char *_name)
 		make_short_name(name, 21, _name);
 		strcat(name, "?");
 
-		if (!Shell_MessageBox("Format", "Do you wish to format", name, "", MB_YESNO, 0050, 0151))
+		if (!Shell_MessageBox("Format", "Do you wish to format", name, "", MB_YESNO, 0050, 0115))
 			return false;
 		show_table();
 
@@ -517,7 +542,7 @@ bool Shell_EmptyTrd(const char *_name)
 	FIL dst;
 
 	{
-		res = f_open(&dst, pname, FA_WRITE | FA_OPEN_ALWAYS);
+		res = f_open(&dst, pname, FA_WRITE | FA_OPEN_EXISTING);
 		if (res != FR_OK)
 			goto formatExit1;
 

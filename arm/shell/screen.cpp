@@ -9,6 +9,24 @@
 #include "../specConfig.h"
 
 //---------------------------------------------------------------------------------------
+void ScreenPush()
+{
+	word data;
+	for (int i = 0; i < 0x1b00; i++) {
+		data = SystemBus_Read(VIDEO_PAGE_PTR + i);
+		SystemBus_Write(VIDEO_PAGE_PTR + 0x2000 + i, data);
+	}
+}
+//---------------------------------------------------------------------------------------
+void ScreenPop()
+{
+	word data;
+	for (int i = 0; i < 0x1b00; i++) {
+		data = SystemBus_Read(VIDEO_PAGE_PTR + 0x2000 + i);
+		SystemBus_Write(VIDEO_PAGE_PTR + i, data);
+	}
+}
+//---------------------------------------------------------------------------------------
 void ResetScreen(bool active)
 {
 	if (active) {
