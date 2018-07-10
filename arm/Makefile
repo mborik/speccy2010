@@ -119,6 +119,7 @@ CXX_SRCS = \
 	$(SRCDIR)/specConfig.cpp \
 	$(SRCDIR)/specKeyboard.cpp \
 	$(SRCDIR)/specKeyMap.cpp \
+	$(SRCDIR)/specMB02.cpp \
 	$(SRCDIR)/specRtc.cpp \
 	$(SRCDIR)/specSnapshot.cpp \
 	$(SRCDIR)/specTape.cpp \
