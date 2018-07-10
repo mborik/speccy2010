@@ -4,8 +4,6 @@
 #include "system.h"
 #include "settings.h"
 
-#define ADVANCED_BETADISK 1
-
 enum SpecCfg_Group { PGRP_GENERAL = 0, PGRP_TRDOS, PGRP_ROMS };
 
 enum SpecRom_Type { SpecRom_Classic48, SpecRom_Classic128, SpecRom_Pentagon128, SpecRom_Pentagon1024, SpecRom_Scorpion };
@@ -34,7 +32,6 @@ struct CSpecConfig {
 	int specTurboSound;
 	int specCovox;
 	int specAyYm;
-	int specBdiMode;
 	int specJoyModeEmulation;
 	int specJoyMode1;
 	int specJoyMode2;
@@ -42,7 +39,8 @@ struct CSpecConfig {
 	int specMouseSwap;
 	int specFont;
 
-	CDiskImage specImages[4];
+	int specBdiMode;
+	CDiskImage specBdiImages[4];
 
 	char specRomFile_Classic48[PATH_SIZE];
 	char specRomFile_Classic128[PATH_SIZE];

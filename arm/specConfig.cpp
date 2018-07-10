@@ -26,14 +26,14 @@ const CParameter iniParameters[] = {
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Font", "Speccy|Alt|Bold", &specConfig.specFont),
 
 	CParameter(PTYPE_LIST,   PGRP_TRDOS, "BDI mode", "Slow|Fast", &specConfig.specBdiMode),
-	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk A", (char *) sizeof(specConfig.specImages[0].name), specConfig.specImages[0].name),
-	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk A WP", "No|Yes", &specConfig.specImages[0].writeProtect),
-	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk B", (char *) sizeof(specConfig.specImages[1].name), specConfig.specImages[1].name),
-	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk B WP", "No|Yes", &specConfig.specImages[1].writeProtect),
-	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk C", (char *) sizeof(specConfig.specImages[2].name), specConfig.specImages[2].name),
-	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk C WP", "No|Yes", &specConfig.specImages[2].writeProtect),
-	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk D", (char *) sizeof(specConfig.specImages[3].name), specConfig.specImages[3].name),
-	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk D WP", "No|Yes", &specConfig.specImages[3].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk A", (char *) sizeof(specConfig.specBdiImages[0].name), specConfig.specBdiImages[0].name),
+	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk A WP", "No|Yes", &specConfig.specBdiImages[0].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk B", (char *) sizeof(specConfig.specBdiImages[1].name), specConfig.specBdiImages[1].name),
+	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk B WP", "No|Yes", &specConfig.specBdiImages[1].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk C", (char *) sizeof(specConfig.specBdiImages[2].name), specConfig.specBdiImages[2].name),
+	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk C WP", "No|Yes", &specConfig.specBdiImages[2].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk D", (char *) sizeof(specConfig.specBdiImages[3].name), specConfig.specBdiImages[3].name),
+	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk D WP", "No|Yes", &specConfig.specBdiImages[3].writeProtect),
 
 	CParameter(PTYPE_STRING, PGRP_ROMS, "48", (char *) sizeof(specConfig.specRomFile_Classic48), specConfig.specRomFile_Classic48),
 	CParameter(PTYPE_STRING, PGRP_ROMS, "128", (char *) sizeof(specConfig.specRomFile_Classic128), specConfig.specRomFile_Classic128),
@@ -108,8 +108,8 @@ void RestoreConfig()
 	strcpy(specConfig.snaName, "");
 
 	for (int i = 0; i < 4; i++) {
-		strcpy(specConfig.specImages[i].name, "");
-		specConfig.specImages[i].writeProtect = false;
+		strcpy(specConfig.specBdiImages[i].name, "");
+		specConfig.specBdiImages[i].writeProtect = false;
 	}
 
 	CSettingsFile file("speccy2010.ini");

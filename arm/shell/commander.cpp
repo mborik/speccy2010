@@ -6,7 +6,8 @@
 #include "../system/sdram.h"
 #include "../utils/cstring.h"
 #include "../utils/dirent.h"
-#include "../specBetadisk.h"
+#include "../betadisk/fdc.h"
+#include "../betadisk/floppy.h"
 #include "../specConfig.h"
 #include "../specKeyboard.h"
 #include "../specSnapshot.h"
@@ -737,9 +738,9 @@ void Shell_Commander()
 					int i = key - '1';
 
 					if (fdc_open_image(i, fullName)) {
-						floppy_disk_wp(i, &specConfig.specImages[i].writeProtect);
+						floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
 
-						strcpy(specConfig.specImages[key - '1'].name, fullName);
+						strcpy(specConfig.specBdiImages[key - '1'].name, fullName);
 						SaveConfig();
 					}
 				}
@@ -865,9 +866,9 @@ void Shell_Commander()
 					if (specConfig.specDiskIf == SpecDiskIf_Betadisk && fdc_open_image(0, fullName)) {
 						sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s.00.sna", fullName);
 
-						floppy_disk_wp(0, &specConfig.specImages[0].writeProtect);
+						floppy_disk_wp(0, &specConfig.specBdiImages[0].writeProtect);
 
-						strcpy(specConfig.specImages[0].name, fullName);
+						strcpy(specConfig.specBdiImages[0].name, fullName);
 						SaveConfig();
 
 						CPU_Start();

@@ -116,7 +116,6 @@ CXX_SRCS = \
 	$(SRCDIR)/main.cpp \
 	$(SRCDIR)/ramFile.cpp \
 	$(SRCDIR)/settings.cpp \
-	$(SRCDIR)/specBetadisk.cpp \
 	$(SRCDIR)/specConfig.cpp \
 	$(SRCDIR)/specKeyboard.cpp \
 	$(SRCDIR)/specKeyMap.cpp \

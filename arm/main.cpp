@@ -5,7 +5,8 @@
 #include <string.h>
 
 #include "system.h"
-#include "specBetadisk.h"
+#include "betadisk/fdc.h"
+#include "betadisk/floppy.h"
 #include "specConfig.h"
 #include "specKeyboard.h"
 #include "specRtc.h"
@@ -110,10 +111,9 @@ void Spectrum_CleanupSDRAM()
 
 	// 256kB of DivMMC SRAM pages  (32 x #2000)
 	// 128kB of ZX-Spectrum RAM     (8 x #4000)
-	//  64kB of all switchable ROMs (4 x #4000)
-	dword addr, bases[3] = { 0x840000, 0x800000, 0xA00000 };
+	dword addr, bases[2] = { 0x840000, 0x800000 };
 
-	for (int i, j = 0, amount = 0x40000; j < 3; j++) {
+	for (int i, j = 0, amount = 0x40000; j < 2; j++) {
 		for (addr = bases[j], i = 0; i < amount; i += 2) {
 			SystemBus_Write(addr, 0);
 
@@ -329,8 +329,8 @@ void Spectrum_UpdateDisks()
 		return;
 
 	for (int i = 0; i < 4; i++) {
-		fdc_open_image(i, specConfig.specImages[i].name);
-		floppy_disk_wp(i, &specConfig.specImages[i].writeProtect);
+		fdc_open_image(i, specConfig.specBdiImages[i].name);
+		floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
 	}
 }
 
