@@ -56,3 +56,48 @@ bool WriteLine(FIL *file, const char *str)
 
 	return true;
 }
+
+//---------------------------------------------------------------------------------------
+
+byte read_file(FIL *f, byte *dst, byte sz)
+{
+	UINT nr;
+	if (f_read(f, dst, sz, &nr) != FR_OK || nr != sz) {
+		return 0;
+	}
+	return (byte)nr;
+}
+
+byte write_file(FIL *f, byte *dst, byte sz)
+{
+	UINT nw;
+	if (f_write(f, dst, sz, &nw) != FR_OK || nw != sz) {
+		return 0;
+	}
+	return (byte)nw;
+}
+
+byte read_le_byte(FIL *f, byte *dst)
+{
+	return read_file(f, dst, 1);
+}
+
+byte read_le_word(FIL *f, word *dst)
+{
+	byte w[2];
+	if (!read_file(f, w, 2)) {
+		return 0;
+	}
+	*dst = (((word)w[1]) << 8) | ((word)w[0]);
+	return 2;
+}
+
+byte read_le_dword(FIL *f, dword *dst)
+{
+	byte dw[4];
+	if (!read_file(f, dw, 4)) {
+		return 0;
+	}
+	*dst = (((dword)dw[3]) << 24) | (((dword)dw[2]) << 16) | (((dword)dw[1]) << 8) | ((dword)dw[0]);
+	return 4;
+}

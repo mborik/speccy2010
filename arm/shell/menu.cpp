@@ -24,7 +24,7 @@ CMenuItem mainMenu[] = {
 	CMenuItem( 1,  9, "AY Chip: ", GetParam(iniParameters, "AY Chip", PGRP_GENERAL)),
 	CMenuItem(14,  9, "Turbo Sound: ", GetParam(iniParameters, "Turbo Sound", PGRP_GENERAL)),
 	CMenuItem( 1, 10, "AY mode: ", GetParam(iniParameters, "AY mode", PGRP_GENERAL)),
-	CMenuItem(14, 10, "Covox: ", GetParam(iniParameters, "Covox", PGRP_GENERAL)),
+	CMenuItem(14, 10, "Covox:", GetParam(iniParameters, "Covox", PGRP_GENERAL)),
 	CMenuItem( 1, 11, "Audio DAC mode: ", GetParam(iniParameters, "Audio DAC mode", PGRP_GENERAL)),
 
 	CMenuItem( 1, 12, "Joystick emulation: ", GetParam(iniParameters, "Joystick emulation", PGRP_GENERAL)),
@@ -39,7 +39,7 @@ CMenuItem mainMenu[] = {
 	CMenuItem(20, 19, "Font: ", GetParam(iniParameters, "Font", PGRP_GENERAL))
 };
 //---------------------------------------------------------------------------------------
-CMenuItem disksMenu[] = {
+CMenuItem trdosDisksMenu[] = {
 	CMenuItem(1,  3, "A: ", GetParam(iniParameters, "Disk A", PGRP_TRDOS)),
 	CMenuItem(1,  4, "A  Write protect: ", GetParam(iniParameters, "Disk A WP", PGRP_TRDOS)),
 	CMenuItem(1,  6, "B: ", GetParam(iniParameters, "Disk B", PGRP_TRDOS)),
@@ -50,14 +50,26 @@ CMenuItem disksMenu[] = {
 	CMenuItem(1, 13, "D  Write protect: ", GetParam(iniParameters, "Disk D WP", PGRP_TRDOS))
 };
 //---------------------------------------------------------------------------------------
+CMenuItem mb02DisksMenu[] = {
+	CMenuItem(1,  3, "A: ", GetParam(iniParameters, "Disk A", PGRP_MB02)),
+	CMenuItem(1,  4, "A  Write protect: ", GetParam(iniParameters, "Disk A WP", PGRP_MB02)),
+	CMenuItem(1,  6, "B: ", GetParam(iniParameters, "Disk B", PGRP_MB02)),
+	CMenuItem(1,  7, "B  Write protect: ", GetParam(iniParameters, "Disk B WP", PGRP_MB02)),
+	CMenuItem(1,  9, "C: ", GetParam(iniParameters, "Disk C", PGRP_MB02)),
+	CMenuItem(1, 10, "C  Write protect: ", GetParam(iniParameters, "Disk C WP", PGRP_MB02)),
+	CMenuItem(1, 12, "D: ", GetParam(iniParameters, "Disk D", PGRP_MB02)),
+	CMenuItem(1, 13, "D  Write protect: ", GetParam(iniParameters, "Disk D WP", PGRP_MB02))
+};
+//---------------------------------------------------------------------------------------
 CMenuItem romCfgMenu[] = {
-	CMenuItem(1,  3, "ROM: ZX-Spectrum 48\n> ", GetParam(iniParameters, "48", PGRP_ROMS)),
-	CMenuItem(1,  5, "ROM: ZX-Spectrum 128\n> ", GetParam(iniParameters, "128", PGRP_ROMS)),
-	CMenuItem(1,  7, "ROM: Pentagon 128/1024\n> ", GetParam(iniParameters, "Pentagon", PGRP_ROMS)),
-	CMenuItem(1,  9, "ROM: Scorpion 256\n> ", GetParam(iniParameters, "Scorpion", PGRP_ROMS)),
-	CMenuItem(1, 12, "ROM: Gluk/EVO Reset Service\n> ", GetParam(iniParameters, "EVO Reset Service", PGRP_ROMS)),
-	CMenuItem(1, 15, "Firmware: TR-DOS\n> ", GetParam(iniParameters, "TR-DOS", PGRP_ROMS)),
-	CMenuItem(1, 17, "Firmware: DivMMC\n> ", GetParam(iniParameters, "DivMMC Firmware", PGRP_ROMS))
+	CMenuItem(1,  3, "ROM: ZX 48    > ", GetParam(iniParameters, "48", PGRP_ROMS)),
+	CMenuItem(1,  4, "ROM: ZX 128   > ", GetParam(iniParameters, "128", PGRP_ROMS)),
+	CMenuItem(1,  5, "ROM: Pentagon > ", GetParam(iniParameters, "Pentagon", PGRP_ROMS)),
+	CMenuItem(1,  6, "ROM: Scorpion > ", GetParam(iniParameters, "Scorpion", PGRP_ROMS)),
+	CMenuItem(1,  8, "ROM: Reset Service\n> ", GetParam(iniParameters, "EVO Reset Service", PGRP_ROMS)),
+	CMenuItem(1, 11, "Firmware: TR-DOS\n> ", GetParam(iniParameters, "TR-DOS", PGRP_ROMS)),
+	CMenuItem(1, 13, "Firmware: DivMMC\n> ", GetParam(iniParameters, "DivMMC Firmware", PGRP_ROMS)),
+	CMenuItem(1, 15, "Firmware: BS-DOS\n> ", GetParam(iniParameters, "BS-DOS", PGRP_ROMS))
 };
 //---------------------------------------------------------------------------------------
 void Shell_SettingsMenu()
@@ -67,6 +79,14 @@ void Shell_SettingsMenu()
 //---------------------------------------------------------------------------------------
 void Shell_DisksMenu()
 {
+	CMenuItem *disksMenu;
+
+	if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
+		disksMenu = trdosDisksMenu;
+	else if (specConfig.specDiskIf == SpecDiskIf_MB02)
+		disksMenu = mb02DisksMenu;
+	else return;
+
 	Shell_Menu("Disk Mount", disksMenu, sizeof(disksMenu) / sizeof(CMenuItem));
 	Spectrum_UpdateDisks();
 }
@@ -116,13 +136,17 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 		menu[i].Redraw();
 	}
 
-	int menuPos = 0;
-	if (menu == mainMenu)
-		menuPos = 6;
-
-	menu[menuPos].UpdateState(1);
 	bool editMode = false;
 	bool hardReset = false;
+	int mmLastMachineCfg = -1;
+
+	int menuPos = 0;
+	if (menu == mainMenu) {
+		menuPos = 6;
+		mmLastMachineCfg = specConfig.specMachine | (specConfig.specDiskIf << 8);
+	}
+
+	menu[menuPos].UpdateState(1);
 
 	while (true) {
 		byte key = GetKey(false);
@@ -286,6 +310,10 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 			tickCounter = Timer_GetTickCounter();
 		}
 	}
+
+	int mmNewMachineCfg = specConfig.specMachine | (specConfig.specDiskIf << 8);
+	if (menu == mainMenu && mmLastMachineCfg != mmNewMachineCfg)
+		hardReset = true;
 
 	SaveConfig();
 

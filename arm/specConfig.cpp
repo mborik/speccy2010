@@ -35,6 +35,15 @@ const CParameter iniParameters[] = {
 	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk D", (char *) sizeof(specConfig.specBdiImages[3].name), specConfig.specBdiImages[3].name),
 	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk D WP", "No|Yes", &specConfig.specBdiImages[3].writeProtect),
 
+	CParameter(PTYPE_STRING, PGRP_MB02, "Disk A", (char *) sizeof(specConfig.specMB2Images[0].name), specConfig.specMB2Images[0].name),
+	CParameter(PTYPE_LIST,   PGRP_MB02, "Disk A WP", "No|Yes", &specConfig.specMB2Images[0].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_MB02, "Disk B", (char *) sizeof(specConfig.specMB2Images[1].name), specConfig.specMB2Images[1].name),
+	CParameter(PTYPE_LIST,   PGRP_MB02, "Disk B WP", "No|Yes", &specConfig.specMB2Images[1].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_MB02, "Disk C", (char *) sizeof(specConfig.specMB2Images[2].name), specConfig.specMB2Images[2].name),
+	CParameter(PTYPE_LIST,   PGRP_MB02, "Disk C WP", "No|Yes", &specConfig.specMB2Images[2].writeProtect),
+	CParameter(PTYPE_STRING, PGRP_MB02, "Disk D", (char *) sizeof(specConfig.specMB2Images[3].name), specConfig.specMB2Images[3].name),
+	CParameter(PTYPE_LIST,   PGRP_MB02, "Disk D WP", "No|Yes", &specConfig.specMB2Images[3].writeProtect),
+
 	CParameter(PTYPE_STRING, PGRP_ROMS, "48", (char *) sizeof(specConfig.specRomFile_Classic48), specConfig.specRomFile_Classic48),
 	CParameter(PTYPE_STRING, PGRP_ROMS, "128", (char *) sizeof(specConfig.specRomFile_Classic128), specConfig.specRomFile_Classic128),
 	CParameter(PTYPE_STRING, PGRP_ROMS, "Pentagon", (char *) sizeof(specConfig.specRomFile_Pentagon), specConfig.specRomFile_Pentagon),
@@ -42,6 +51,7 @@ const CParameter iniParameters[] = {
 	CParameter(PTYPE_STRING, PGRP_ROMS, "TR-DOS", (char *) sizeof(specConfig.specRomFile_TRD_ROM), specConfig.specRomFile_TRD_ROM),
 	CParameter(PTYPE_STRING, PGRP_ROMS, "EVO Reset Service", (char *) sizeof(specConfig.specRomFile_TRD_Service), specConfig.specRomFile_TRD_Service),
 	CParameter(PTYPE_STRING, PGRP_ROMS, "DivMMC Firmware", (char *) sizeof(specConfig.specRomFile_DivMMC_FW), specConfig.specRomFile_DivMMC_FW),
+	CParameter(PTYPE_STRING, PGRP_ROMS, "BS-DOS", (char *) sizeof(specConfig.specRomFile_MB02_BSDOS), specConfig.specRomFile_MB02_BSDOS),
 
 	CParameter(PTYPE_END)
 };
@@ -53,6 +63,8 @@ int GroupFromName(CString name)
 		group = PGRP_GENERAL;
 	else if (name == "TR-DOS")
 		group = PGRP_TRDOS;
+	else if (name == "MB-02")
+		group = PGRP_MB02;
 	else if (name == "ROM")
 		group = PGRP_ROMS;
 
@@ -67,6 +79,8 @@ CString GetGroupName(int group)
 			return "General";
 		case PGRP_TRDOS:
 			return "TR-DOS";
+		case PGRP_MB02:
+			return "MB-02";
 		case PGRP_ROMS:
 			return "ROM";
 	}
@@ -104,12 +118,15 @@ void RestoreConfig()
 	strcpy(specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
 	strcpy(specConfig.specRomFile_TRD_Service, "roms/system.rom");
 	strcpy(specConfig.specRomFile_DivMMC_FW, "");
+	strcpy(specConfig.specRomFile_MB02_BSDOS, "");
 
 	strcpy(specConfig.snaName, "");
 
 	for (int i = 0; i < 4; i++) {
 		strcpy(specConfig.specBdiImages[i].name, "");
 		specConfig.specBdiImages[i].writeProtect = false;
+		strcpy(specConfig.specMB2Images[i].name, "");
+		specConfig.specMB2Images[i].writeProtect = false;
 	}
 
 	CSettingsFile file("speccy2010.ini");

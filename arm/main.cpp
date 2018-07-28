@@ -9,6 +9,7 @@
 #include "betadisk/floppy.h"
 #include "specConfig.h"
 #include "specKeyboard.h"
+#include "specMB02.h"
 #include "specRtc.h"
 #include "specTape.h"
 #include "shell/screen.h"
@@ -102,7 +103,11 @@ void SD_Init()
 //---------------------------------------------------------------------------------------
 void Spectrum_CleanupSDRAM()
 {
+	CPU_Reset(false);
+	DelayMs(10);
+	CPU_Reset(true);
 	CPU_Stop();
+
 	ResetScreen(true);
 
 	__TRACE("Cleanup of SD-RAM...\n");
@@ -325,12 +330,17 @@ void Spectrum_UpdateConfig(bool hardReset)
 
 void Spectrum_UpdateDisks()
 {
-	if (specConfig.specDiskIf != SpecDiskIf_Betadisk)
-		return;
-
-	for (int i = 0; i < 4; i++) {
-		fdc_open_image(i, specConfig.specBdiImages[i].name);
-		floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
+	if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
+		for (int i = 0; i < 4; i++) {
+			fdc_open_image(i, specConfig.specBdiImages[i].name);
+			floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
+		}
+	}
+	else if (specConfig.specDiskIf == SpecDiskIf_MB02) {
+		for (int i = 0; i < 4; i++) {
+			mb02_open_image(i, specConfig.specMB2Images[i].name);
+			mb02_set_disk_wp(i, specConfig.specMB2Images[i].writeProtect);
+		}
 	}
 }
 
@@ -1004,7 +1014,7 @@ int main()
 
 	InitStack();
 
-	__TRACE("\nSpeccy2010, v" VERSION "\n");
+	__TRACE("\n%s\n", "Speccy2010: v" VERSION);
 
 	if (!pllStatusOK)
 		__TRACE("PLL initialization error !\n");

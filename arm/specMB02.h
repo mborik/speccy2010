@@ -16,7 +16,7 @@ byte mb02_cur_drv();
 int  mb02_leds();
 
 byte mb02_is_disk_wp(byte drv);
-void mb02_set_disk_wp(byte drv, byte wp);
+void mb02_set_disk_wp(byte drv, bool wp);
 
 byte mb02_is_disk_loaded(byte drv);
 

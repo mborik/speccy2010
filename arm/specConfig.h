@@ -4,10 +4,10 @@
 #include "system.h"
 #include "settings.h"
 
-enum SpecCfg_Group { PGRP_GENERAL = 0, PGRP_TRDOS, PGRP_ROMS };
+enum SpecCfg_Group { PGRP_GENERAL = 0, PGRP_TRDOS, PGRP_MB02, PGRP_ROMS };
 
 enum SpecRom_Type { SpecRom_Classic48, SpecRom_Classic128, SpecRom_Pentagon128, SpecRom_Pentagon1024, SpecRom_Scorpion };
-enum SpecDiskIf_Type { SpecDiskIf_Betadisk, SpecDiskIf_DivMMC };
+enum SpecDiskIf_Type { SpecDiskIf_Betadisk, SpecDiskIf_DivMMC, SpecDiskIf_MB02 };
 enum SpecTurbo_Type { SpecTurbo_None, SpecTurbo_x2, SpecTurbo_x4, SpecTurbo_None_x8 };
 enum SpecJoy_Type { SpecJoy_Kempston, SpecJoy_Sinclair1, SpecJoy_Sinclair2, SpecJoy_Cursor, SpecJoy_Qaopm };
 
@@ -32,6 +32,7 @@ struct CSpecConfig {
 	int specTurboSound;
 	int specCovox;
 	int specAyYm;
+	int specBdiMode;
 	int specJoyModeEmulation;
 	int specJoyMode1;
 	int specJoyMode2;
@@ -39,8 +40,8 @@ struct CSpecConfig {
 	int specMouseSwap;
 	int specFont;
 
-	int specBdiMode;
 	CDiskImage specBdiImages[4];
+	CDiskImage specMB2Images[4];
 
 	char specRomFile_Classic48[PATH_SIZE];
 	char specRomFile_Classic128[PATH_SIZE];
@@ -49,6 +50,7 @@ struct CSpecConfig {
 	char specRomFile_TRD_ROM[PATH_SIZE];
 	char specRomFile_TRD_Service[PATH_SIZE];
 	char specRomFile_DivMMC_FW[PATH_SIZE];
+	char specRomFile_MB02_BSDOS[PATH_SIZE];
 
 	char snaName[PATH_SIZE];
 };

@@ -201,15 +201,20 @@ void DecodeKeySpec(word keyCode, word keyFlags)
 void DecodeKey(word keyCode, word keyFlags)
 {
 	bool flagKeyRelease = (keyFlags & fKeyRelease) != 0;
+	int videoMode = 0;
 	if (!flagKeyRelease) {
 		if ((keyFlags & fKeyAlt) != 0) {
 			switch (keyCode) {
-				case KEY_1:
-				case KEY_2:
-				case KEY_3:
-				case KEY_4:
 				case KEY_5:
-					specConfig.specVideoMode = keyCode - KEY_1;
+					videoMode++;
+				case KEY_4:
+					videoMode++;
+				case KEY_3:
+					videoMode++;
+				case KEY_2:
+					videoMode++;
+				case KEY_1:
+					specConfig.specVideoMode = videoMode;
 					Spectrum_UpdateConfig();
 					SaveConfig();
 					break;
