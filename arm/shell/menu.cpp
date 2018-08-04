@@ -62,14 +62,14 @@ CMenuItem mb02DisksMenu[] = {
 };
 //---------------------------------------------------------------------------------------
 CMenuItem romCfgMenu[] = {
-	CMenuItem(1,  3, "ROM: ZX 48    > ", GetParam(iniParameters, "48", PGRP_ROMS)),
-	CMenuItem(1,  4, "ROM: ZX 128   > ", GetParam(iniParameters, "128", PGRP_ROMS)),
-	CMenuItem(1,  5, "ROM: Pentagon > ", GetParam(iniParameters, "Pentagon", PGRP_ROMS)),
-	CMenuItem(1,  6, "ROM: Scorpion > ", GetParam(iniParameters, "Scorpion", PGRP_ROMS)),
-	CMenuItem(1,  8, "ROM: Reset Service\n> ", GetParam(iniParameters, "EVO Reset Service", PGRP_ROMS)),
-	CMenuItem(1, 11, "Firmware: TR-DOS\n> ", GetParam(iniParameters, "TR-DOS", PGRP_ROMS)),
-	CMenuItem(1, 13, "Firmware: DivMMC\n> ", GetParam(iniParameters, "DivMMC Firmware", PGRP_ROMS)),
-	CMenuItem(1, 15, "Firmware: BS-DOS\n> ", GetParam(iniParameters, "BS-DOS", PGRP_ROMS))
+	CMenuItem(1,  3, "ZX 48   : ", GetParam(iniParameters, "48", PGRP_ROMS)),
+	CMenuItem(1,  4, "ZX 128  : ", GetParam(iniParameters, "128", PGRP_ROMS)),
+	CMenuItem(1,  5, "Pentagon: ", GetParam(iniParameters, "Pentagon", PGRP_ROMS)),
+	CMenuItem(1,  6, "Scorpion: ", GetParam(iniParameters, "Scorpion", PGRP_ROMS)),
+	CMenuItem(1,  8, "Gluk/EVO Reset Service\n> ", GetParam(iniParameters, "EVO Reset Service", PGRP_ROMS)),
+	CMenuItem(1, 11, "TR-DOS Firmware  (16k)\n> ", GetParam(iniParameters, "TR-DOS", PGRP_ROMS)),
+	CMenuItem(1, 13, "DivMMC Firmware   (8k)\n> ", GetParam(iniParameters, "DivMMC Firmware", PGRP_ROMS)),
+	CMenuItem(1, 15, "MB-02 Firmware   (32k)\n> ", GetParam(iniParameters, "BS-DOS", PGRP_ROMS))
 };
 //---------------------------------------------------------------------------------------
 void Shell_SettingsMenu()
@@ -87,7 +87,7 @@ void Shell_DisksMenu()
 		disksMenu = mb02DisksMenu;
 	else return;
 
-	Shell_Menu("Disk Mount", disksMenu, sizeof(disksMenu) / sizeof(CMenuItem));
+	Shell_Menu("Disk Mount", disksMenu, sizeof(trdosDisksMenu) / sizeof(CMenuItem));
 	Spectrum_UpdateDisks();
 }
 //---------------------------------------------------------------------------------------
