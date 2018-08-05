@@ -20,7 +20,7 @@ bool LOG_WAIT = false;
 dword tickCounter = 0;
 
 word lastCpuConfig = 0;
-int divmmcWasActive = 0;
+int diskIfWasActive = 0;
 
 int mouseInited = 0;
 const int MOUSE_OK = 4;
@@ -103,9 +103,7 @@ void SD_Init()
 //---------------------------------------------------------------------------------------
 void Spectrum_CleanupSDRAM()
 {
-	CPU_Reset(false);
-	DelayMs(10);
-	CPU_Reset(true);
+	CPU_Reset_Seq();
 	CPU_Stop();
 
 	ResetScreen(true);
@@ -242,6 +240,12 @@ void Spectrum_InitRom()
 		if (!Spectrum_LoadRomPage(3, specConfig.specRomFile_DivMMC_FW))
 			__TRACE("DivMMC firmware missing!\n");
 	}
+	else if (specConfig.specDiskIf == SpecDiskIf_MB02) {
+		// MB-02 banks [00-1F] are mapped in RAM section of memspace [0x080000-0x100000]
+		// 48k ROM overwritten and DOS at 2rd place of ROM memspace  [0x404000-0x40BFFF]
+		if (!Spectrum_LoadRomPage(1, specConfig.specRomFile_DivMMC_FW))
+			__TRACE("BS-ROM + BS-DOS for MB-02 missing!\n");
+	}
 
 	__TRACE("ROM configuration finished...\n");
 
@@ -291,6 +295,9 @@ void Spectrum_UpdateConfig(bool hardReset)
 		case SpecDiskIf_DivMMC:
 			fpgaDiskIfCfg = hardReset ? 0x8002 : 2;
 			break;
+		case SpecDiskIf_MB02:
+			fpgaDiskIfCfg = 4;
+			break;
 	}
 
 	// machine, RAM, ROM and Turbo configuration...
@@ -305,6 +312,7 @@ void Spectrum_UpdateConfig(bool hardReset)
 
 	// disk interface configuration...
 	SystemBus_Write(0xc00042, fpgaDiskIfCfg);
+	diskIfWasActive = 0;
 
 	// audio configuration (AY, YM, TurboSound)...
 	SystemBus_Write(0xc00045, specConfig.specTurboSound |
@@ -338,8 +346,10 @@ void Spectrum_UpdateDisks()
 	}
 	else if (specConfig.specDiskIf == SpecDiskIf_MB02) {
 		for (int i = 0; i < 4; i++) {
-			mb02_open_image(i, specConfig.specMB2Images[i].name);
-			mb02_set_disk_wp(i, specConfig.specMB2Images[i].writeProtect);
+			if (mb02_open_image(i, specConfig.specMB2Images[i].name) > 0)
+				mb02_close_image(i);
+			else
+				mb02_set_disk_wp(i, specConfig.specMB2Images[i].writeProtect);
 		}
 	}
 }
@@ -505,8 +515,8 @@ void SpectrumTimer_Routine()
 
 		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
 			activity ^= floppy_leds();
-		else if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
-			activity ^= (divmmcWasActive > 0);
+		else
+			activity ^= (diskIfWasActive > 0);
 
 		byte leds = ((ReadKeyFlags() & fKeyPCEmu) ? 1 : 0) | 2 | (activity ? 4 : 0);
 
@@ -578,6 +588,8 @@ void DiskIF_Routine()
 		BDI_Routine();
 	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
 		DivMMC_Routine();
+	else if (specConfig.specDiskIf == SpecDiskIf_MB02)
+		MB02_Routine();
 }
 
 void BDI_ResetWrite()
@@ -698,7 +710,7 @@ void DivMMC_Routine()
 	word divmmcStatus = SystemBus_Read(0xc00019);
 	bool isActiveNow = (divmmcStatus & 1) != 0;
 
-	if (isActiveNow && divmmcWasActive == 0) {
+	if (isActiveNow && diskIfWasActive == 0) {
 		SystemBus_Write(0xc00040, lastCpuConfig | 0x80); // full speed
 		GPIO_WriteBit(GPIO1, GPIO_Pin_10, Bit_RESET);
 	}
@@ -725,17 +737,65 @@ void DivMMC_Routine()
 	}
 
 	if (isActiveNow) {
-		if (divmmcWasActive == 0) {
-			divmmcWasActive = 1023;
+		if (diskIfWasActive == 0) {
+			diskIfWasActive = 1023;
 		}
-		else if (divmmcWasActive < 1024)
-			divmmcWasActive++;
+		else if (diskIfWasActive < 1024)
+			diskIfWasActive++;
 	}
 	else {
-		if (divmmcWasActive > 0)
-			divmmcWasActive--;
+		if (diskIfWasActive > 0)
+			diskIfWasActive--;
 		else
 			SystemBus_Write(0xc00040, lastCpuConfig);
+	}
+}
+
+void MB02_Routine()
+{
+	int ioCounter = 0x40;
+
+	word mb02Status = SystemBus_Read(0xc00019);
+	bool isActiveNow = (mb02Status & 1) != 0;
+
+	if (isActiveNow && diskIfWasActive == 0) {
+		// TODO
+	}
+
+	while ((mb02Status & 1) != 0) {
+		bool divmmcWr = (mb02Status & 0x02) != 0;
+
+		if (divmmcWr) {
+			byte data = SystemBus_Read(0xc0001b);
+			mb02_received(data);
+		}
+		else {
+			byte data = mb02_transmit();
+			SystemBus_Write(0xc0001b, data);
+		}
+
+		SystemBus_Write(0xc00019, 0);
+
+		if (--ioCounter == 0)
+			break;
+
+		WDT_Kick();
+		mb02Status = SystemBus_Read(0xc00019);
+	}
+
+	if (isActiveNow) {
+		if (diskIfWasActive == 0) {
+			diskIfWasActive = 1023;
+		}
+		else if (diskIfWasActive < 1024)
+			diskIfWasActive++;
+	}
+	else {
+		if (diskIfWasActive > 0)
+			diskIfWasActive--;
+		else {
+			// TODO
+		}
 	}
 }
 
@@ -1021,6 +1081,7 @@ int main()
 	DelayMs(100);
 
 	fdc_init();
+	mb02_init();
 	RTC_Init();
 
 	while (true) {

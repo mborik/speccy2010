@@ -224,10 +224,7 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_F5:
-					CPU_Reset(true);
-					DelayMs(10);
-					CPU_Reset(false);
-					DelayMs(100);
+					CPU_Reset_Seq();
 					break;
 
 				case KEY_F7:
@@ -330,10 +327,7 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_POWER:
-					CPU_Reset(true);
-					DelayMs(10);
-					CPU_Reset(false);
-					DelayMs(100);
+					CPU_Reset_Seq();
 					break;
 			}
 		}

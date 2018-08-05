@@ -1494,7 +1494,7 @@ begin
 							ARM_AD <= std_logic_vector( counterMem( 31 downto 16 ) );
 
 						elsif addressReg( 7 downto 0 ) = x"f0" then
-							ARM_AD <= x"f003"; -- for firmware version >= 1.2.3
+							ARM_AD <= x"f003"; -- for firmware version >= 1.2.2
 
 						else
 							ARM_AD <= x"ffff";

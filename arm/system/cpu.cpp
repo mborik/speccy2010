@@ -71,6 +71,14 @@ void CPU_Reset(bool res)
 	fdc_reset();
 }
 //---------------------------------------------------------------------------------------
+void CPU_Reset_Seq()
+{
+	CPU_Reset(true);
+	DelayMs(10);
+	CPU_Reset(false);
+	DelayMs(100);
+}
+//---------------------------------------------------------------------------------------
 void CPU_ModifyPC(word pc, byte istate)
 {
 	CPU_Stop();

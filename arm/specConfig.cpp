@@ -8,7 +8,7 @@ const CParameter iniParameters[] = {
 
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Machine", "ZX Spectrum 48|ZX Spectrum 128|Pentagon 128|Pentagon 1024|Scorpion 256", &specConfig.specMachine),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Timings", "ZX Spectrum 48|ZX Spectrum 128|Pentagon|Scorpion", &specConfig.specSync),
-	CParameter(PTYPE_LIST, PGRP_GENERAL, "Disk Interface", "Betadisk|DivMMC", &specConfig.specDiskIf),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Disk Interface", "Betadisk|DivMMC|MB-02", &specConfig.specDiskIf),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Turbo", "None|x2|x4|x8", &specConfig.specTurbo),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "AY mode", "None|ABC|ACB|Mono", &specConfig.specAyMode),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Turbo Sound", "Off|On", &specConfig.specTurboSound),

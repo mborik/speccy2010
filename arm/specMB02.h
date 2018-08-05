@@ -8,12 +8,8 @@ void mb02_init();
 int  mb02_open_image(byte drv_id, const char *filename);
 void mb02_close_image(byte drv_id);
 
-void mb02_write_port(byte port, byte data);
-byte mb02_read_port(byte port);
-
-byte mb02_get_state();
-byte mb02_cur_drv();
-int  mb02_leds();
+void mb02_received(byte value);
+byte mb02_transmit();
 
 byte mb02_is_disk_wp(byte drv);
 void mb02_set_disk_wp(byte drv, bool wp);
