@@ -51,7 +51,7 @@ const CParameter iniParameters[] = {
 	CParameter(PTYPE_STRING, PGRP_ROMS, "TR-DOS", (char *) sizeof(specConfig.specRomFile_TRD_ROM), specConfig.specRomFile_TRD_ROM),
 	CParameter(PTYPE_STRING, PGRP_ROMS, "EVO Reset Service", (char *) sizeof(specConfig.specRomFile_TRD_Service), specConfig.specRomFile_TRD_Service),
 	CParameter(PTYPE_STRING, PGRP_ROMS, "DivMMC Firmware", (char *) sizeof(specConfig.specRomFile_DivMMC_FW), specConfig.specRomFile_DivMMC_FW),
-	CParameter(PTYPE_STRING, PGRP_ROMS, "BS-DOS", (char *) sizeof(specConfig.specRomFile_MB02_BSDOS), specConfig.specRomFile_MB02_BSDOS),
+	CParameter(PTYPE_STRING, PGRP_ROMS, "BS-DOS", (char *) sizeof(specConfig.specRomFile_BSROM_BSDOS), specConfig.specRomFile_BSROM_BSDOS),
 
 	CParameter(PTYPE_END)
 };
@@ -118,7 +118,7 @@ void RestoreConfig()
 	strcpy(specConfig.specRomFile_TRD_ROM, "roms/trdos.rom");
 	strcpy(specConfig.specRomFile_TRD_Service, "roms/system.rom");
 	strcpy(specConfig.specRomFile_DivMMC_FW, "");
-	strcpy(specConfig.specRomFile_MB02_BSDOS, "");
+	strcpy(specConfig.specRomFile_BSROM_BSDOS, "");
 
 	strcpy(specConfig.snaName, "");
 

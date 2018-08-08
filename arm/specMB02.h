@@ -4,6 +4,7 @@
 #include "types.h"
 
 void mb02_init();
+void mb02_fill_eprom();
 
 int  mb02_open_image(byte drv_id, const char *filename);
 void mb02_close_image(byte drv_id);

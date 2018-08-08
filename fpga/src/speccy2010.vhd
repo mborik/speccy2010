@@ -871,8 +871,8 @@ begin
 	mb02MemAddr <=
 		-- 0000-3FFF > MB-02 SRAM bank #00-#1F (controlled by port #17)
 		"000001" & mb02SramPage & cpuA( 13 downto 1 ) when mb02MemSram = '1' else
-		-- 0000-3FFF > MB-02 EPROM with BS-DOS (in ROM2 position)
-		"00100000010" & cpuA( 13 downto 1 ) when mb02MemEprom = '1' else
+		-- 0000-3FFF > MB-02 dummy EPROM (in ROM3 position)
+		"00100000011" & cpuA( 13 downto 1 ) when mb02MemEprom = '1' else
 		-- 0000-3FFF > ZX ROM otherwise
 		"0010000000" & specPort7ffd(4) & cpuA( 13 downto 1 );
 
@@ -938,7 +938,7 @@ begin
 
 				mb02SramPage <= (others => '0');
 				mb02MemSram <= '0';
-				mb02MemEprom <= '0';
+				mb02MemEprom <= '1'; -- set after reset!
 				mb02MemWriteRom <= '0';
 			end if;
 
@@ -1086,8 +1086,10 @@ begin
 						memReq <= '1';
 						cpuMemoryWait <= '1';
 
-					-- memory write into ROM segment of MB-02 ROM/EPROM/SRAM paged
-					elsif mb02Enabled = '1' and cpuA( 15 downto 14 ) = "00" and mb02MemWriteRom = '1' then
+					-- memory write into ROM segment when MB-02 SRAM paged
+					elsif mb02Enabled = '1' and cpuA( 15 downto 14 ) = "00"
+						and mb02MemWriteRom = '1' and mb02MemSram = '1' then
+
 						memAddress <= mb02MemAddr;
 						memDataIn <= cpuDout & cpuDout;
 						memDataMask(0) <= not cpuA(0);
@@ -1126,10 +1128,15 @@ begin
 					-- MB-02 control or data-transfer ports
 					elsif mb02Enabled = '1' then
 						if cpuA ( 7 downto 0 ) = x"17" then		-- #17
-							mb02SramPage <= cpuDout( 4 downto 0 );
-							mb02MemWriteRom <= cpuDout(5);
-							mb02MemSram <= cpuDout(6);
-							mb02MemEprom <= cpuDout(7);
+							-- SRAM+EPROM bits set connected to reset signal
+							if cpuDout( 7 downto 6 ) = "11" then
+								cpuReset <= '1';
+							else
+								mb02SramPage <= cpuDout( 4 downto 0 );
+								mb02MemWriteRom <= cpuDout(5);
+								mb02MemSram <= cpuDout(6);
+								mb02MemEprom <= cpuDout(7);
+							end if;
 						elsif cpuA ( 7 downto 0 ) = x"53" then	-- #53
 							specDiskIfWait <= '1';
 							specDiskIfWr <= '1';

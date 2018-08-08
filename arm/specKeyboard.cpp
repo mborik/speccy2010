@@ -296,7 +296,7 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_F6:
-					if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
+					if (specConfig.specDiskIf != SpecDiskIf_DivMMC)
 						Shell_DisksMenu();
 					break;
 

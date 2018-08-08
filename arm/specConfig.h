@@ -50,7 +50,7 @@ struct CSpecConfig {
 	char specRomFile_TRD_ROM[PATH_SIZE];
 	char specRomFile_TRD_Service[PATH_SIZE];
 	char specRomFile_DivMMC_FW[PATH_SIZE];
-	char specRomFile_MB02_BSDOS[PATH_SIZE];
+	char specRomFile_BSROM_BSDOS[PATH_SIZE];
 
 	char snaName[PATH_SIZE];
 };

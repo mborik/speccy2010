@@ -242,9 +242,12 @@ void Spectrum_InitRom()
 	}
 	else if (specConfig.specDiskIf == SpecDiskIf_MB02) {
 		// MB-02 banks [00-1F] are mapped in RAM section of memspace [0x080000-0x100000]
-		// 48k ROM overwritten and DOS at 2rd place of ROM memspace  [0x404000-0x40BFFF]
-		if (!Spectrum_LoadRomPage(1, specConfig.specRomFile_DivMMC_FW))
+		// BS-ROM (16k) and BS-DOS (16k) loaded at first 2 SRAM banks...
+		if (!Spectrum_LoadRomPage(-0xE0, specConfig.specRomFile_BSROM_BSDOS))
 			__TRACE("BS-ROM + BS-DOS for MB-02 missing!\n");
+
+		// and MB-02 fixed EPROM mapped on 3rd place of ROM memspace [0x40C000-0x40C7FF]
+		mb02_fill_eprom();
 	}
 
 	__TRACE("ROM configuration finished...\n");
