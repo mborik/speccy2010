@@ -5,15 +5,16 @@
 #include "specMB02.h"
 #include "specConfig.h"
 
+#define TRACE(x)
 
 #define MB02_DRIVES_COUNT  4
 
 #define STAT_NOTRDY        0x82  // drive not ready
 #define STAT_WP            0x40  // disk write protected
 #define STAT_BREAK         0x20  // break
-#define STAT_SEEKERR       0x10  // record not found
+#define STAT_SEEKERR       0x10  // seek error
 #define STAT_NOTFOUND      0x10  // record not found
-#define STAT_RDCRC         0x08
+#define STAT_RDCRC         0x08  // CRC error
 #define STAT_HEAD_CYL_0    0x04  // head on cyl 0
 #define STAT_LOST          0x04  // data underrun
 #define STAT_TIMEOUT       0x01  // operation in progress
@@ -21,16 +22,15 @@
 
 
 // content of EPROM: simple bootstrapper which switch to BS-DOS and initialize...
-const unsigned char epromBootstrap[57] = {
-	0xF3, 0xAF, 0xED, 0x47, 0xD3, 0xFE, 0x21, 0x00,
-	0x40, 0x11, 0x01, 0x40, 0x01, 0xFF, 0x1A, 0x77,
-	0xED, 0xB0, 0x01, 0xFD, 0x7F, 0xED, 0x79, 0x31,
-	0x20, 0x5B, 0x21, 0x24, 0x00, 0x01, 0x15, 0x00,
-	0xD5, 0xED, 0xB0, 0xC9, 0x3E, 0x41, 0xD3, 0x17,
-//	0xAF, 0xDB, 0xFE, 0xF6, 0xE0, 0x3C, 0x3E, 0x30,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x30,
-	0xCC, 0x20, 0x00, 0xEF, 0x78, 0x39, 0xC7, 0xF3,
-	0x76
+const unsigned char epromBootstrap[64] = {
+	0xF3, 0xAF, 0xED, 0x47, 0xD3, 0xFE, 0x01, 0xFD,
+	0x7F, 0xED, 0x79, 0x31, 0x30, 0x5B, 0x21, 0x1B,
+	0x00, 0x11, 0x00, 0x5B, 0x01, 0x23, 0x00, 0xD5,
+	0xED, 0xB0, 0xC9, 0x3E, 0x41, 0xD3, 0x17, 0xAF,
+	0xDB, 0xFE, 0xF6, 0xE0, 0x3C, 0x3E, 0x30, 0xCC,
+	0x20, 0x00, 0x3E, 0x40, 0xD3, 0x17, 0x3A, 0x06,
+	0x00, 0xFE, 0x31, 0xCA, 0x06, 0x39, 0xFE, 0x66,
+	0xCA, 0x78, 0x39, 0xC7, 0xF3, 0x76, 0x00, 0x00
 };
 
 enum {
@@ -160,12 +160,12 @@ bool mb02_lookup_track()
 	if (!(mb02_drv && mb02_drv->pr))
 		return false;
 
-	__TRACE("lookup_track: cur_cyl=%u, cyl_cnt=%u, cur_side=%u\n", mb02_drv->cur_cyl, mb02_drv->cyl_cnt, mb02_drv->cur_side);
+	TRACE(("lookup_track: cur_cyl=%u, cyl_cnt=%u, cur_side=%u\n", mb02_drv->cur_cyl, mb02_drv->cyl_cnt, mb02_drv->cur_side));
 	if (mb02_drv->cur_cyl >= mb02_drv->cyl_cnt)
 		return false;
 
 	mb02_drv->img_trkoff = ((dword) mb02_drv->cur_cyl) * ((dword) mb02_drv->sec_cnt) * ((dword) mb02_drv->sec_size) * ((dword) mb02_drv->side_cnt);
-	__TRACE("lookup_track: img_trkoff=%x\n", mb02_drv->img_trkoff);
+	TRACE(("lookup_track: img_trkoff=%x\n", mb02_drv->img_trkoff));
 
 	return true;
 }
@@ -175,7 +175,7 @@ bool mb02_lookup_sector()
 	if (!(mb02_drv && mb02_drv->pr))
 		return false;
 
-	__TRACE("lookup_sector: cur_sec=%u, cur_cyl=%u, cur_side=%u\n", mb02_drv->cur_sec, mb02_drv->cur_cyl, mb02_drv->cur_side);
+	TRACE(("lookup_sector: cur_sec=%u, cur_cyl=%u, cur_side=%u\n", mb02_drv->cur_sec, mb02_drv->cur_cyl, mb02_drv->cur_side));
 	if (mb02_drv->cur_sec > mb02_drv->sec_cnt || mb02_drv->cur_sec == 0)
 		return false;
 
@@ -183,7 +183,7 @@ bool mb02_lookup_sector()
 		return false;
 
 	mb02_drv->sec_off = (((word) mb02_drv->cur_side) * ((word) mb02_drv->sec_cnt) + mb02_drv->cur_sec - 1) * ((word) mb02_drv->sec_size);
-	__TRACE("lookup_sector: sec_off=%x\n", mb02_drv->sec_off);
+	TRACE(("lookup_sector: sec_off=%x\n", mb02_drv->sec_off));
 
 	f_lseek(&mb02_drv->fd, mb02_drv->img_trkoff + (dword) mb02_drv->sec_off);
 	return true;
@@ -215,20 +215,25 @@ void mb02_received(byte value)
 
 		case MB02_RDSEC: {
 			__TRACE("--o(%u)=%02x", mb02_state.ptr, value);
-			if (!(mb02_drv && mb02_drv->pr))
-				break;
-
 			if (mb02_state.ptr == 0) {
-				mb02_drv->cur_sec = value & 0x7f;
-				mb02_drv->cur_side = value >> 7;
+				if (mb02_drv && mb02_drv->pr) {
+					mb02_drv->cur_sec = value & 0x7f;
+					mb02_drv->cur_side = value >> 7;
+				}
 				mb02_state.ptr++;
 			}
 			else if (mb02_state.ptr == 1) {
-				mb02_drv->cur_cyl = value;
-				mb02_state.state = mb02_lookup_sector() ? STAT_OK : STAT_SEEKERR;
+				if (mb02_drv && mb02_drv->pr) {
+					mb02_drv->cur_cyl = value;
+					mb02_state.state = mb02_lookup_sector() ? STAT_OK : STAT_SEEKERR;
+				}
+				else
+					mb02_state.state = STAT_NOTRDY;
+
 				mb02_state.ptr++;
 			}
 			else if (value == 0 || value == 0xff) {
+				__TRACE("--o(%u)=%02x", mb02_state.ptr, value);
 				mb02_reset_state();
 			}
 
@@ -236,29 +241,35 @@ void mb02_received(byte value)
 		}
 
 		case MB02_WRSEC: {
-			if (!(mb02_drv && mb02_drv->pr))
-				break;
-
 			if (mb02_state.ptr == 0) {
 				__TRACE("--o(%u)=%02x", mb02_state.ptr, value);
-				mb02_drv->cur_sec = value & 0x7f;
-				mb02_drv->cur_side = value >> 7;
+				if (mb02_drv && mb02_drv->pr) {
+					mb02_drv->cur_sec = value & 0x7f;
+					mb02_drv->cur_side = value >> 7;
+				}
 				mb02_state.ptr++;
 			}
 			else if (mb02_state.ptr == 1) {
 				__TRACE("--o(%u)=%02x", mb02_state.ptr, value);
-				mb02_drv->cur_cyl = value;
-				mb02_state.state = mb02_lookup_sector() ? STAT_OK : STAT_SEEKERR;
-				if (mb02_drv->wp)
-					mb02_state.state |= STAT_WP;
+				if (mb02_drv && mb02_drv->pr) {
+					mb02_drv->cur_cyl = value;
+					mb02_state.state = mb02_lookup_sector() ? STAT_OK : STAT_SEEKERR;
+
+					if (mb02_drv->wp)
+						mb02_state.state |= STAT_WP;
+				}
+				else
+					mb02_state.state = STAT_NOTRDY;
+
 				mb02_state.ptr++;
 			}
 			else if (mb02_state.state != STAT_OK) {
 				mb02_reset_state();
 			}
-			else if (mb02_state.ptr > 2) {
+			else if (mb02_state.ptr > 2 && mb02_drv && mb02_drv->pr) {
 				f_write(&mb02_drv->fd, &value, 1, &res);
 
+				mb02_state.ptr++;
 				if (!(mb02_state.ptr & 63))
 					__TRACE(".");
 
@@ -266,8 +277,6 @@ void mb02_received(byte value)
 					__TRACE("!");
 					mb02_reset_state();
 				}
-				else
-					mb02_state.ptr++;
 			}
 
 			break;
@@ -297,6 +306,7 @@ void mb02_received(byte value)
 		}
 
 		default:
+			__TRACE("\n!!o(%X)=%02x", mb02_state.cmd_reg, value);
 			mb02_state.cmd_reg = MB02_IDLE;
 			break;
 	}
@@ -309,12 +319,9 @@ byte mb02_transmit()
 
 	switch (mb02_state.cmd_reg) {
 		case MB02_RDSEC: {
-			if (!(mb02_drv && mb02_drv->pr))
-				break;
-
 			if (mb02_state.ptr == 2) {
 				result = mb02_state.state;
-				__TRACE("--i(2)=%02x", mb02_state.state);
+				__TRACE("--i(2)=%02x", result);
 
 				if (mb02_state.state != STAT_OK)
 					mb02_reset_state();
@@ -324,18 +331,17 @@ byte mb02_transmit()
 			else if (mb02_state.state != STAT_OK || mb02_state.ptr < 2) {
 				mb02_reset_state();
 			}
-			else {
+			else if (mb02_drv && mb02_drv->pr) {
 				f_read(&mb02_drv->fd, &result, 1, &res);
 
 				if (!(mb02_state.ptr & 63))
 					__TRACE(".");
 
+				mb02_state.ptr++;
 				if (mb02_state.ptr == mb02_drv->sec_size + 3) {
 					__TRACE("!");
 					mb02_reset_state();
 				}
-				else
-					mb02_state.ptr++;
 			}
 
 			break;
@@ -343,9 +349,6 @@ byte mb02_transmit()
 
 		case MB02_WRSEC: {
 			__TRACE("--i(%u)=%02x", mb02_state.ptr, mb02_state.state);
-			if (!(mb02_drv && mb02_drv->pr))
-				break;
-
 			if (mb02_state.ptr == 2) {
 				result = mb02_state.state;
 
@@ -370,6 +373,7 @@ byte mb02_transmit()
 		}
 
 		default:
+			__TRACE("\n!!i(%X)=%02x", mb02_state.cmd_reg, result);
 			mb02_reset_state();
 		case MB02_IDLE:
 			break;

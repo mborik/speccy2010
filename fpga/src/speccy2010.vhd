@@ -929,17 +929,21 @@ begin
 				specDiskIfWait <= '0';
 				specDiskIfWr <= '0';
 
-				divmmcSramPage <= (others => '0');
-				divmmcMapram <= divmmcMapram or '0';
-				divmmcConmem <= '0';
-				divmmcCardSelect <= '0';
-				divmmcAmapRq <= '0';
-				divmmcAmap <= '0';
+				if divmmcEnabled = '1' then
+					divmmcSramPage <= (others => '0');
+					divmmcMapram <= divmmcMapram or '0';
+					divmmcConmem <= '0';
+					divmmcCardSelect <= '0';
+					divmmcAmapRq <= '0';
+					divmmcAmap <= '0';
+				end if;
 
-				mb02SramPage <= (others => '0');
-				mb02MemSram <= '0';
-				mb02MemEprom <= '1'; -- set after reset!
-				mb02MemWriteRom <= '0';
+				if mb02Enabled = '1' then
+					mb02SramPage <= (others => '0');
+					mb02MemSram <= '0';
+					mb02MemEprom <= '1'; -- set after reset!
+					mb02MemWriteRom <= '0';
+				end if;
 			end if;
 
 			if specTrdosTglFlag = '1' then
@@ -1032,6 +1036,14 @@ begin
 				if cpuM1 = '1' then
 					divmmcAmap <= divmmcAmapRq;
 				end if;
+			end if;
+
+			-- invoke of NMI in MB-02 switch to the 0th SRAM bank (BS-ROM)
+			if mb02Enabled = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' then
+				mb02SramPage <= (others => '0');
+				mb02MemSram <= '1';
+				mb02MemEprom <= '0';
+				mb02MemWriteRom <= '0';
 			end if;
 
 ----------------------------------------------------------------------------------
@@ -1767,7 +1779,7 @@ begin
 			if cpuCLK = '1' then
 
 				if cpuMREQ = '0' and cpuM1 = '0' then
-					if accessRom = '0' or (divmmcEnabled = '1' and divmmcAmap = '0') then
+					if accessRom = '0' or (divmmcEnabled = '1' and divmmcAmap = '0') or mb02Enabled = '1' then
 						cpuNMI <= not cpuInvokeNMI;
 					elsif accessRom = '1' then
 						cpuNMI <= '1';
