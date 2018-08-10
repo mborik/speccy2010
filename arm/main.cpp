@@ -296,7 +296,7 @@ void Spectrum_UpdateConfig(bool hardReset)
 			fpgaDiskIfCfg = 1;
 			break;
 		case SpecDiskIf_DivMMC:
-			fpgaDiskIfCfg = hardReset ? 0x8002 : 2;
+			fpgaDiskIfCfg = 2;
 			break;
 		case SpecDiskIf_MB02:
 			fpgaDiskIfCfg = 4;
@@ -315,7 +315,6 @@ void Spectrum_UpdateConfig(bool hardReset)
 
 	// disk interface configuration...
 	SystemBus_Write(0xc00042, fpgaDiskIfCfg);
-	diskIfWasActive = 0;
 
 	// audio configuration (AY, YM, TurboSound)...
 	SystemBus_Write(0xc00045, specConfig.specTurboSound |
@@ -325,7 +324,7 @@ void Spectrum_UpdateConfig(bool hardReset)
 	SystemBus_Write(0xc00046, specConfig.specCovox | (specConfig.specDacMode << 3));
 
 	// ROMs initialization...
-	dword newMachineConfig = specConfig.specMachine | ((fpgaDiskIfCfg & 0x0F) << 4);
+	dword newMachineConfig = specConfig.specMachine | (fpgaDiskIfCfg << 4);
 	if (prevMachineConfig != newMachineConfig || hardReset) {
 		if (hardReset)
 			Spectrum_CleanupSDRAM();
@@ -335,6 +334,10 @@ void Spectrum_UpdateConfig(bool hardReset)
 
 		prevMachineConfig = newMachineConfig;
 	}
+
+	if (hardReset)
+		SystemBus_Write(0xc00042, fpgaDiskIfCfg | 0x8000);
+	diskIfWasActive = 0;
 
 	floppy_set_fast_mode(specConfig.specBdiMode);
 }

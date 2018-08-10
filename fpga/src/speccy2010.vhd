@@ -871,8 +871,8 @@ begin
 	mb02MemAddr <=
 		-- 0000-3FFF > MB-02 SRAM bank #00-#1F (controlled by port #17)
 		"000001" & mb02SramPage & cpuA( 13 downto 1 ) when mb02MemSram = '1' else
-		-- 0000-3FFF > MB-02 dummy EPROM (in ROM3 position)
-		"00100000011" & cpuA( 13 downto 1 ) when mb02MemEprom = '1' else
+		-- 0000-3FFF > MB-02 dummy 2kB EPROM (in ROM3 position)
+		"00100000011000" & cpuA( 10 downto 1 ) when mb02MemEprom = '1' else
 		-- 0000-3FFF > ZX ROM otherwise
 		"0010000000" & specPort7ffd(4) & cpuA( 13 downto 1 );
 
@@ -936,13 +936,6 @@ begin
 					divmmcCardSelect <= '0';
 					divmmcAmapRq <= '0';
 					divmmcAmap <= '0';
-				end if;
-
-				if mb02Enabled = '1' then
-					mb02SramPage <= (others => '0');
-					mb02MemSram <= '0';
-					mb02MemEprom <= '1'; -- set after reset!
-					mb02MemWriteRom <= '0';
 				end if;
 			end if;
 
@@ -1038,10 +1031,10 @@ begin
 				end if;
 			end if;
 
-			-- invoke of NMI in MB-02 switch to the 0th SRAM bank (BS-ROM)
-			if mb02Enabled = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' then
+			-- reset or NMI signals in MB-02 switch to the 0th SRAM bank (BS-ROM)
+			if mb02Enabled = '1' and ( ( cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' ) or cpuReset = '1' ) then
 				mb02SramPage <= (others => '0');
-				mb02MemSram <= '1';
+				mb02MemSram <= '1'; -- set after reset or NMI
 				mb02MemEprom <= '0';
 				mb02MemWriteRom <= '0';
 			end if;
@@ -1140,7 +1133,7 @@ begin
 					-- MB-02 control or data-transfer ports
 					elsif mb02Enabled = '1' then
 						if cpuA ( 7 downto 0 ) = x"17" then		-- #17
-							-- SRAM+EPROM bits set connected to reset signal
+							-- SRAM+EPROM bits connected to reset signal
 							if cpuDout( 7 downto 6 ) = "11" then
 								cpuReset <= '1';
 							else
@@ -1402,14 +1395,23 @@ begin
 							divmmcEnabled    <= ARM_AD(1);
 							mb02Enabled      <= ARM_AD(2);
 
-							if ARM_AD = x"8002" then
-								-- hard reset of DivMMC
-								divmmcSramPage <= (others => '0');
-								divmmcMapram <= '0';
-								divmmcConmem <= '0';
-								divmmcCardSelect <= '0';
-								divmmcAmapRq <= '0';
-								divmmcAmap <= '0';
+							if ARM_AD(15) = '1' then
+								if divmmcEnabled = '1' then
+									-- hard reset of DivMMC
+									divmmcSramPage <= (others => '0');
+									divmmcMapram <= '0';
+									divmmcConmem <= '0';
+									divmmcCardSelect <= '0';
+									divmmcAmapRq <= '0';
+									divmmcAmap <= '0';
+
+								elsif mb02Enabled = '1' then
+									-- startup init from EPROM after hard reset
+									mb02SramPage <= (others => '0');
+									mb02MemSram <= '0';
+									mb02MemEprom <= '1';
+									mb02MemWriteRom <= '0';
+								end if;
 							end if;
 						elsif addressReg( 7 downto 0 ) = x"45" then
 							turboSound <= ARM_AD(0);

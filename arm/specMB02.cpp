@@ -5,7 +5,7 @@
 #include "specMB02.h"
 #include "specConfig.h"
 
-#define TRACE(x)
+#define TRACE(...)
 
 #define MB02_DRIVES_COUNT  4
 
@@ -22,15 +22,17 @@
 
 
 // content of EPROM: simple bootstrapper which switch to BS-DOS and initialize...
-const unsigned char epromBootstrap[64] = {
-	0xF3, 0xAF, 0xED, 0x47, 0xD3, 0xFE, 0x01, 0xFD,
-	0x7F, 0xED, 0x79, 0x31, 0x30, 0x5B, 0x21, 0x1B,
-	0x00, 0x11, 0x00, 0x5B, 0x01, 0x23, 0x00, 0xD5,
-	0xED, 0xB0, 0xC9, 0x3E, 0x41, 0xD3, 0x17, 0xAF,
-	0xDB, 0xFE, 0xF6, 0xE0, 0x3C, 0x3E, 0x30, 0xCC,
-	0x20, 0x00, 0x3E, 0x40, 0xD3, 0x17, 0x3A, 0x06,
-	0x00, 0xFE, 0x31, 0xCA, 0x06, 0x39, 0xFE, 0x66,
-	0xCA, 0x78, 0x39, 0xC7, 0xF3, 0x76, 0x00, 0x00
+const unsigned char epromBootstrap[74] = {
+	0xF3, 0x31, 0x00, 0x60, 0xAF, 0xED, 0x47, 0xD3,
+	0xFE, 0x01, 0xFD, 0x7F, 0xED, 0x79, 0x21, 0x1B,
+	0x00, 0x11, 0x00, 0x60, 0x01, 0x2F, 0x00, 0xD5,
+	0xED, 0xB0, 0xC9, 0x3E, 0x60, 0xD3, 0x17, 0x3E,
+	0x38, 0x32, 0x66, 0x12, 0x32, 0x8E, 0x12, 0x3E,
+	0x61, 0xD3, 0x17, 0xAF, 0xDB, 0xFE, 0xF6, 0xE0,
+	0x3C, 0x3E, 0x30, 0xCC, 0x20, 0x00, 0x3E, 0x40,
+	0xD3, 0x17, 0x3A, 0x06, 0x00, 0xFE, 0x31, 0xCA,
+	0x06, 0x39, 0xFE, 0x66, 0xCA, 0x78, 0x39, 0xC7,
+	0xF3, 0x76
 };
 
 enum {
@@ -56,9 +58,6 @@ struct mb02_drive {
 	byte cyl_cnt;
 	byte side_cnt;
 	word sec_size;
-
-	dword img_trkoff; // offset of the track from file begin
-	word sec_off; // offset from begin of track
 };
 
 struct mb02_drive mb02_drives[MB02_DRIVES_COUNT];
@@ -106,8 +105,12 @@ int mb02_open_image(byte drv_id, const char *filename)
 	if (f_stat(filename, &fi) != FR_OK)
 		return 2;
 
-	if (f_open(&f, filename, FA_OPEN_EXISTING | FA_WRITE | FA_READ) != FR_OK) {
-		__TRACE("file open failed\n");
+	byte f_flags = FA_OPEN_EXISTING | FA_WRITE | FA_READ;
+	if ((fi.fattrib & AM_RDO) != 0)
+		f_flags &= ~FA_WRITE;
+
+	if (f_open(&f, filename, f_flags) != FR_OK) {
+		__TRACE("MB-02 disk open failed\n");
 		return 2;
 	}
 
@@ -135,14 +138,17 @@ int mb02_open_image(byte drv_id, const char *filename)
 	mb02_drives[drv_id].cyl_cnt = bootsec[4];
 	mb02_drives[drv_id].sec_cnt = bootsec[6];
 	mb02_drives[drv_id].side_cnt = bootsec[8];
-
 	mb02_drives[drv_id].sec_size = 1024;
 	mb02_drives[drv_id].cur_sec = 1;
 	mb02_drives[drv_id].cur_cyl = 0;
-	mb02_drives[drv_id].sec_off = 0;
-	mb02_drives[drv_id].img_trkoff = 0;
 
-	__TRACE("MB-02 disk @%u:'%s' loaded...\n", drv_id, filename);
+	__TRACE("MB-02 disk @%u:'%s' loaded (wp:%u, cyls:%u, secs:%u, sides:%u...\n",
+		drv_id + 1, filename,
+		mb02_drives[drv_id].wp,
+		mb02_drives[drv_id].cyl_cnt,
+		mb02_drives[drv_id].sec_cnt,
+		mb02_drives[drv_id].side_cnt);
+
 	return 0;
 }
 
@@ -155,37 +161,30 @@ void mb02_close_image(byte drv_id)
 }
 
 //---------------------------------------------------------------------------------------
-bool mb02_lookup_track()
-{
-	if (!(mb02_drv && mb02_drv->pr))
-		return false;
-
-	TRACE(("lookup_track: cur_cyl=%u, cyl_cnt=%u, cur_side=%u\n", mb02_drv->cur_cyl, mb02_drv->cyl_cnt, mb02_drv->cur_side));
-	if (mb02_drv->cur_cyl >= mb02_drv->cyl_cnt)
-		return false;
-
-	mb02_drv->img_trkoff = ((dword) mb02_drv->cur_cyl) * ((dword) mb02_drv->sec_cnt) * ((dword) mb02_drv->sec_size) * ((dword) mb02_drv->side_cnt);
-	TRACE(("lookup_track: img_trkoff=%x\n", mb02_drv->img_trkoff));
-
-	return true;
-}
-
 bool mb02_lookup_sector()
 {
 	if (!(mb02_drv && mb02_drv->pr))
 		return false;
 
-	TRACE(("lookup_sector: cur_sec=%u, cur_cyl=%u, cur_side=%u\n", mb02_drv->cur_sec, mb02_drv->cur_cyl, mb02_drv->cur_side));
-	if (mb02_drv->cur_sec > mb02_drv->sec_cnt || mb02_drv->cur_sec == 0)
+	if (mb02_drv->cur_sec > mb02_drv->sec_cnt || mb02_drv->cur_sec == 0) {
+		TRACE("--seek(!error sec=%u)", mb02_drv->cur_sec);
 		return false;
+	}
 
-	if (!mb02_lookup_track())
+	if (mb02_drv->cur_cyl >= mb02_drv->cyl_cnt) {
+		TRACE("--seek(!error cyl=%u)", mb02_drv->cyl_cnt);
 		return false;
+	}
 
-	mb02_drv->sec_off = (((word) mb02_drv->cur_side) * ((word) mb02_drv->sec_cnt) + mb02_drv->cur_sec - 1) * ((word) mb02_drv->sec_size);
-	TRACE(("lookup_sector: sec_off=%x\n", mb02_drv->sec_off));
+	word l_sec_number = (
+		((word) mb02_drv->cur_cyl) *
+		((word) mb02_drv->side_cnt) +
+		((word) mb02_drv->cur_side)
+	) * ((word) mb02_drv->sec_cnt) +
+		((word) mb02_drv->cur_sec - 1);
 
-	f_lseek(&mb02_drv->fd, mb02_drv->img_trkoff + (dword) mb02_drv->sec_off);
+	TRACE("--seek(%04u)", l_sec_number);
+	f_lseek(&mb02_drv->fd, l_sec_number * ((dword) mb02_drv->sec_size));
 	return true;
 }
 
@@ -201,20 +200,20 @@ void mb02_received(byte value)
 	UINT res;
 	switch (mb02_state.cmd_reg) {
 		case MB02_IDLE:
-			__TRACE("\n@> %X", value);
+			TRACE("\n@> CMD:%X", value);
 			mb02_state.cmd_reg = value;
 			mb02_state.state = 0;
 			mb02_state.ptr = 0;
 
 			if (value == MB02_PASIVE) {
-				__TRACE("!");
+				TRACE("!");
 				mb02_drv = NULL;
 				mb02_state.cmd_reg = MB02_IDLE;
 			}
 			break;
 
 		case MB02_RDSEC: {
-			__TRACE("--o(%u)=%02x", mb02_state.ptr, value);
+			TRACE("--out(%02x)", value);
 			if (mb02_state.ptr == 0) {
 				if (mb02_drv && mb02_drv->pr) {
 					mb02_drv->cur_sec = value & 0x7f;
@@ -233,7 +232,7 @@ void mb02_received(byte value)
 				mb02_state.ptr++;
 			}
 			else if (value == 0 || value == 0xff) {
-				__TRACE("--o(%u)=%02x", mb02_state.ptr, value);
+				TRACE("--out(%02x)", value);
 				mb02_reset_state();
 			}
 
@@ -242,7 +241,7 @@ void mb02_received(byte value)
 
 		case MB02_WRSEC: {
 			if (mb02_state.ptr == 0) {
-				__TRACE("--o(%u)=%02x", mb02_state.ptr, value);
+				TRACE("--out(%02x)", value);
 				if (mb02_drv && mb02_drv->pr) {
 					mb02_drv->cur_sec = value & 0x7f;
 					mb02_drv->cur_side = value >> 7;
@@ -250,7 +249,7 @@ void mb02_received(byte value)
 				mb02_state.ptr++;
 			}
 			else if (mb02_state.ptr == 1) {
-				__TRACE("--o(%u)=%02x", mb02_state.ptr, value);
+				TRACE("--out(%02x)", value);
 				if (mb02_drv && mb02_drv->pr) {
 					mb02_drv->cur_cyl = value;
 					mb02_state.state = mb02_lookup_sector() ? STAT_OK : STAT_SEEKERR;
@@ -271,10 +270,10 @@ void mb02_received(byte value)
 
 				mb02_state.ptr++;
 				if (!(mb02_state.ptr & 63))
-					__TRACE(".");
+					TRACE(".");
 
 				if (mb02_state.ptr == mb02_drv->sec_size + 3) {
-					__TRACE("!");
+					TRACE("!");
 					mb02_reset_state();
 				}
 			}
@@ -283,7 +282,7 @@ void mb02_received(byte value)
 		}
 
 		case MB02_ACTIVE: {
-			__TRACE("--o(%u)=%02x", mb02_state.ptr, value);
+			TRACE("--out(%02x)", value);
 			if (mb02_state.ptr == 0) {
 				if (value >= MB02_DRIVES_COUNT)
 					mb02_state.state = 0; // unknown disk
@@ -306,7 +305,7 @@ void mb02_received(byte value)
 		}
 
 		default:
-			__TRACE("\n!!o(%X)=%02x", mb02_state.cmd_reg, value);
+			TRACE("\n@> !error out(%02x) while CMD:%X", value, mb02_state.cmd_reg);
 			mb02_state.cmd_reg = MB02_IDLE;
 			break;
 	}
@@ -321,7 +320,7 @@ byte mb02_transmit()
 		case MB02_RDSEC: {
 			if (mb02_state.ptr == 2) {
 				result = mb02_state.state;
-				__TRACE("--i(2)=%02x", result);
+				TRACE("--in(%02x)", result);
 
 				if (mb02_state.state != STAT_OK)
 					mb02_reset_state();
@@ -335,11 +334,11 @@ byte mb02_transmit()
 				f_read(&mb02_drv->fd, &result, 1, &res);
 
 				if (!(mb02_state.ptr & 63))
-					__TRACE(".");
+					TRACE(".");
 
 				mb02_state.ptr++;
 				if (mb02_state.ptr == mb02_drv->sec_size + 3) {
-					__TRACE("!");
+					TRACE("!");
 					mb02_reset_state();
 				}
 			}
@@ -348,7 +347,7 @@ byte mb02_transmit()
 		}
 
 		case MB02_WRSEC: {
-			__TRACE("--i(%u)=%02x", mb02_state.ptr, mb02_state.state);
+			TRACE("--in(%02x)", mb02_state.ptr, mb02_state.state);
 			if (mb02_state.ptr == 2) {
 				result = mb02_state.state;
 
@@ -364,7 +363,7 @@ byte mb02_transmit()
 		}
 
 		case MB02_ACTIVE: {
-			__TRACE("--i(%u)=%02x", mb02_state.ptr, mb02_state.state);
+			TRACE("--in(%02x)", mb02_state.ptr, mb02_state.state);
 			if (mb02_state.ptr == 1)
 				result = mb02_state.state;
 
@@ -373,7 +372,7 @@ byte mb02_transmit()
 		}
 
 		default:
-			__TRACE("\n!!i(%X)=%02x", mb02_state.cmd_reg, result);
+			TRACE("\n@> !error in(%02x) while CMD:%X", result, mb02_state.cmd_reg);
 			mb02_reset_state();
 		case MB02_IDLE:
 			break;
@@ -390,12 +389,10 @@ void mb02_clear_drive(byte drv_id)
 	mb02_drives[drv_id].activated = 0;
 	mb02_drives[drv_id].cur_sec = 1;
 	mb02_drives[drv_id].cur_cyl = 0;
-	mb02_drives[drv_id].sec_off = 0;
-	mb02_drives[drv_id].img_trkoff = 0;
-	mb02_drives[drv_id].sec_size = 1024;
 	mb02_drives[drv_id].sec_cnt = 0;
 	mb02_drives[drv_id].cyl_cnt = 0;
 	mb02_drives[drv_id].side_cnt = 0;
+	mb02_drives[drv_id].sec_size = 1024;
 }
 
 void mb02_init()
