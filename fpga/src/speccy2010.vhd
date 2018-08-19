@@ -891,15 +891,13 @@ begin
 		variable ArmAle	: std_logic_vector(1 downto 0);
 
 		variable armReq : std_logic := '0';
-		variable rtcRamReq : std_logic := '0';
-
 		variable portFfReq : std_logic := '0';
 
 		variable kbdTmp : std_logic_vector(4 downto 0);
 		variable cpuReq : std_logic;
 
-		type rtcRamType is array ( 0 to 63 ) of std_logic_vector( 7 downto 0 );
-		variable rtcRam : rtcRamType;
+		type rtcRamType is array ( integer range <> ) of std_logic_vector( 7 downto 0 );
+		variable rtcRam : rtcRamType( 0 to 63 );
 
 		variable rtcRamAddressRd : unsigned(7 downto 0) := x"00";
 		variable rtcRamDataRd : std_logic_vector(7 downto 0) := x"00";
@@ -936,6 +934,11 @@ begin
 					divmmcCardSelect <= '0';
 					divmmcAmapRq <= '0';
 					divmmcAmap <= '0';
+				elsif mb02Enabled = '1' then
+					mb02SramPage <= (others => '0');
+					mb02MemSram <= '0';
+					mb02MemEprom <= '1'; -- set after reset
+					mb02MemWriteRom <= '0';
 				end if;
 			end if;
 
@@ -1031,10 +1034,10 @@ begin
 				end if;
 			end if;
 
-			-- reset or NMI signals in MB-02 switch to the 0th SRAM bank (BS-ROM)
-			if mb02Enabled = '1' and ( ( cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' ) or cpuReset = '1' ) then
+			-- NMI signal in MB-02 switching the 0th SRAM bank (BS-ROM)
+			if mb02Enabled = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' then
 				mb02SramPage <= (others => '0');
-				mb02MemSram <= '1'; -- set after reset or NMI
+				mb02MemSram <= '1'; -- set after NMI
 				mb02MemEprom <= '0';
 				mb02MemWriteRom <= '0';
 			end if;
@@ -1117,6 +1120,10 @@ begin
 							specDiskIfWr <= '1';
 						end if;
 
+					-- DivMMC or MB-02 real time clock at #0n03 ports
+					elsif ( divmmcEnabled = '1' or mb02Enabled = '1' ) and cpuA( 15 downto 12 ) & cpuA( 7 downto 0 ) = x"003" then
+						rtcRam( to_integer(unsigned(cpuA( 11 downto 8 ))) + 32 ) := "0000" & cpuDout( 3 downto 0 );
+
 					-- DivMMC control or data-transfer ports
 					elsif divmmcEnabled = '1' and cpuA( 7 downto 4 ) & cpuA( 1 downto 0 ) = "111011" then
 						if cpuA ( 3 downto 2 ) = "00" then		-- #E3
@@ -1131,7 +1138,7 @@ begin
 						end if;
 
 					-- MB-02 control or data-transfer ports
-					elsif mb02Enabled = '1' then
+					elsif mb02Enabled = '1' and ( cpuA(7) & cpuA( 5 downto 3 ) & cpuA( 1 downto 0 ) ) = "001011" then
 						if cpuA ( 7 downto 0 ) = x"17" then		-- #17
 							-- SRAM+EPROM bits connected to reset signal
 							if cpuDout( 7 downto 6 ) = "11" then
@@ -1142,6 +1149,7 @@ begin
 								mb02MemSram <= cpuDout(6);
 								mb02MemEprom <= cpuDout(7);
 							end if;
+
 						elsif cpuA ( 7 downto 0 ) = x"53" then	-- #53
 							specDiskIfWait <= '1';
 							specDiskIfWr <= '1';
@@ -1153,10 +1161,7 @@ begin
 						elsif cpuA = x"eff7" then
 							specPortEff7 <= cpuDout;
 						elsif cpuA = x"dff7" and specPortEff7(7) = '1' then
-							--specPortDff7 <= cpuDout;
 							rtcRamAddressRd := unsigned(cpuDout);
-						--elsif cpuA = x"bff7" and specPortEff7(7) = '1' then
-							--rtcRam( to_integer( unsigned( specPortDff7 ) ) ) := cpuDout;
 						elsif ayMode /= AY_MODE_NONE and cpuA( 15 downto 14 ) = "11" and cpuA(1 downto 0) = "01" then
 							ayADDR <= '1';
 
@@ -1176,15 +1181,15 @@ begin
 						elsif specMode = 3 then
 							if cpuA( 15 downto 12 ) = "0001" and cpuA(1) = '0' then
 							--if cpuA( 15 downto 0 ) = x"1ffd" then
-									specPort1ffd <= cpuDout;
+								specPort1ffd <= cpuDout;
 							elsif cpuA( 15 downto 14 ) = "01" and cpuA(5) = '1' and cpuA( 1 downto 0 ) = "01" and specPort7ffd(5) = '0' then
-									specPort7ffd <= cpuDout;
+								specPort7ffd <= cpuDout;
 							end if;
 						elsif cpuA( 15 ) = '0' and cpuA( 7 downto 0 ) = x"FD" and ( specMode = 2 or specPort7ffd(5) = '0' ) then
 							specPort7ffd <= cpuDout;
 						end if;
 
-						if(cpuA(15) ='1' or cpuA(14) = '1') then
+						if ( cpuA(15) = '1' or cpuA(14) = '1' ) then
 							covoxWR   <= '1';
 							covoxAddr <= cpuA;
 						end if;
@@ -1238,8 +1243,7 @@ begin
 						cpuDin <= mouseY;
 					--elsif cpuA = x"7ffd" then
 						--cpuDin <= specPort7ffd;
-					elsif cpuA = x"bff7" and specPortEff7(7) = '1' then
-						--cpuDin <= rtcRam( to_integer( unsigned( specPortDff7( 5 downto 0 ) ) ) );
+					elsif specTrdosEnabled = '1' and cpuA = x"bff7" and specPortEff7(7) = '1' then
 						cpuDin <= rtcRamDataRd;
 
 					elsif specTrdosEnabled = '1' and ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
@@ -1253,11 +1257,16 @@ begin
 							specDiskIfWr <= '0';
 						end if;
 
+					-- DivMMC or MB-02 real time clock at #0n03 ports
+					elsif ( divmmcEnabled = '1' or mb02Enabled = '1' ) and cpuA( 15 downto 12 ) & cpuA( 7 downto 0 ) = x"003" then
+						cpuDin <= rtcRam( to_integer(unsigned(cpuA( 11 downto 8 ))) + 32 );
+
+					-- DivMMC or MB-02 control and data-transfer ports
 					elsif ( divmmcEnabled = '1' and cpuA( 7 downto 0 ) = x"EB" ) or
 							( mb02Enabled = '1' and cpuA( 7 downto 0 ) = x"53" ) then
-
 						specDiskIfWait <= '1';
 						specDiskIfWr <= '0';
+
 					else
 
 						if cpuA( 7 downto 0 ) = x"1F" then
@@ -1404,13 +1413,6 @@ begin
 									divmmcCardSelect <= '0';
 									divmmcAmapRq <= '0';
 									divmmcAmap <= '0';
-
-								elsif mb02Enabled = '1' then
-									-- startup init from EPROM after hard reset
-									mb02SramPage <= (others => '0');
-									mb02MemSram <= '0';
-									mb02MemEprom <= '1';
-									mb02MemWriteRom <= '0';
 								end if;
 							end if;
 						elsif addressReg( 7 downto 0 ) = x"45" then
@@ -1524,9 +1526,8 @@ begin
 						ARM_WAIT <= '1';
 
 					elsif addressReg( 23 downto 8 ) = x"c001" then
-
-						--ARM_AD <= x"00" & rtcRam( to_integer( addressReg( 5 downto 0 ) ) );
-						--rtcRamReq := '1';
+						ARM_AD <= x"00" & rtcRam( to_integer( addressReg( 5 downto 0 ) ) );
+						ARM_WAIT <= '1';
 
 					else
 

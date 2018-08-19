@@ -743,9 +743,8 @@ void DivMMC_Routine()
 	}
 
 	if (isActiveNow) {
-		if (diskIfWasActive == 0) {
+		if (diskIfWasActive == 0)
 			diskIfWasActive = 1023;
-		}
 		else if (diskIfWasActive < 1024)
 			diskIfWasActive++;
 	}
@@ -764,44 +763,37 @@ void MB02_Routine()
 	word mb02Status = SystemBus_Read(0xc00019);
 	bool isActiveNow = (mb02Status & 1) != 0;
 
-	if (isActiveNow && diskIfWasActive == 0) {
-		// TODO
-	}
+	if (isActiveNow && diskIfWasActive == 0)
+		SystemBus_Write(0xc00040, lastCpuConfig | 0x80); // full speed
 
 	while ((mb02Status & 1) != 0) {
 		bool divmmcWr = (mb02Status & 0x02) != 0;
 
-		if (divmmcWr) {
-			byte data = SystemBus_Read(0xc0001b);
-			mb02_received(data);
-		}
-		else {
-			byte data = mb02_transmit();
-			SystemBus_Write(0xc0001b, data);
-		}
+		if (divmmcWr)
+			mb02_received(SystemBus_Read(0xc0001b));
+		else
+			SystemBus_Write(0xc0001b, mb02_transmit());
 
 		SystemBus_Write(0xc00019, 0);
 
 		if (--ioCounter == 0)
 			break;
 
-		WDT_Kick();
+		DelayUs(1);
 		mb02Status = SystemBus_Read(0xc00019);
 	}
 
 	if (isActiveNow) {
-		if (diskIfWasActive == 0) {
+		if (diskIfWasActive == 0)
 			diskIfWasActive = 1023;
-		}
 		else if (diskIfWasActive < 1024)
 			diskIfWasActive++;
 	}
 	else {
 		if (diskIfWasActive > 0)
 			diskIfWasActive--;
-		else {
-			// TODO
-		}
+		else
+			SystemBus_Write(0xc00040, lastCpuConfig);
 	}
 }
 
