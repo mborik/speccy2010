@@ -112,11 +112,11 @@ void Spectrum_CleanupSDRAM()
 
 	SystemBus_Write(0xc00020, 0); // use bank 0
 
-	// 256kB of DivMMC SRAM pages  (32 x #2000)
+	// 512kB of DiskIF SRAM pages  (32 x #4000)
 	// 128kB of ZX-Spectrum RAM     (8 x #4000)
 	dword addr, bases[2] = { 0x840000, 0x800000 };
 
-	for (int i, j = 0, amount = 0x40000; j < 2; j++) {
+	for (int i, j = 0, amount = 0x80000; j < 2; j++) {
 		for (addr = bases[j], i = 0; i < amount; i += 2) {
 			SystemBus_Write(addr, 0);
 
@@ -127,7 +127,7 @@ void Spectrum_CleanupSDRAM()
 				__TRACE(".");
 		}
 
-		amount >>= 1;
+		amount >>= 2;
 	}
 
 	__TRACE("\nCleanup done...\n");

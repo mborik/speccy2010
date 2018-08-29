@@ -142,7 +142,7 @@ int mb02_open_image(byte drv_id, const char *filename)
 	mb02_drives[drv_id].cur_sec = 1;
 	mb02_drives[drv_id].cur_cyl = 0;
 
-	__TRACE("MB-02 disk @%u:'%s' loaded (wp:%u, cyls:%u, secs:%u, sides:%u...\n",
+	__TRACE("MB-02 disk @%u:'%s' loaded (wp:%u, cyls:%u, secs:%u, sides:%u)...\n",
 		drv_id + 1, filename,
 		mb02_drives[drv_id].wp,
 		mb02_drives[drv_id].cyl_cnt,

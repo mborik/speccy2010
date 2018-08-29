@@ -5,13 +5,54 @@
 //---------------------------------------------------------------------------------------
 void Shell_Window(int x, int y, int w, int h, const char *title, byte attr)
 {
-	int titleSize = strlen(title);
-	int titlePos = x + ((w - titleSize) / 2);
-
 	DrawFrame(x, y, w, h, attr, "\xC9\xCD\xBB\xBA\xC8\xCD\xBC");
-	WriteChar(titlePos - 1, y, ' ');
-	WriteStrAttr(titlePos, y, title, attr);
-	WriteChar(titlePos + titleSize, y, ' ');
+
+	if (title != NULL && title[0] != 0) {
+		int titleSize = strlen(title);
+		int titlePos = x + ((w - titleSize) / 2);
+
+		WriteChar(titlePos - 1, y, ' ');
+		WriteStrAttr(titlePos, y, title, attr);
+		WriteChar(titlePos + titleSize, y, ' ');
+	}
+}
+//---------------------------------------------------------------------------------------
+void Shell_Toast(const char *str, const char *str2, byte attr, int timeout)
+{
+	int w = 12;
+	int h = 3;
+
+	if (w < (int) strlen(str) + 4)
+		w = strlen(str) + 4;
+
+	if (str2 != NULL && str2[0] != 0) {
+		if (w < (int) strlen(str2) + 2)
+			w = strlen(str2) + 2;
+		h++;
+	}
+
+	int x = (32 - w) / 2;
+	int y = ((22 - h) / 2) + 5;
+
+	ScreenPush();
+	Shell_Window(x, y++, w, h, NULL, attr);
+
+	WriteStr(x + ((w - strlen(str)) / 2), y++, str);
+	if (str2 != NULL && str2[0] != 0)
+		WriteStr(x + ((w - strlen(str2)) / 2), y, str2);
+
+	DelayMs(500);
+	timeout -= 500;
+
+	while (timeout > 0) {
+		if (ReadKeySimple(true))
+			break;
+
+		DelayMs(10);
+		timeout -= 10;
+	}
+
+	ScreenPop();
 }
 //---------------------------------------------------------------------------------------
 bool Shell_MessageBox(const char *title, const char *str, const char *str2, const char *str3, int type, byte attr, byte attrSel)
@@ -36,7 +77,7 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 		}
 	}
 
-	if (type != MB_NO)
+	if (type != MB_PROGRESS)
 		h++;
 
 	int x = (32 - w) / 2;
@@ -55,12 +96,16 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 	}
 
 	bool result = true;
-	if (type == MB_NO)
+	if (type == MB_PROGRESS)
 		return true;
 
 	while (true) {
 		if (type == MB_OK) {
 			WriteStrAttr(16 - 2, y, " OK ", attrSel);
+		}
+		else if (type == MB_DISK) {
+			WriteStrAttr(16 - 5, y, " MBD ", result ? attrSel : attr);
+			WriteStrAttr(16, y, " TRD ", result ? attr : attrSel);
 		}
 		else {
 			WriteStrAttr(16 - 5, y, " Yes ", result ? attrSel : attr);
@@ -74,7 +119,7 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 		if (key == K_ESC || key == K_RETURN)
 			break;
 
-		if (type == MB_YESNO)
+		if (type > MB_OK)
 			result = !result;
 	}
 

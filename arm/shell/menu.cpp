@@ -131,9 +131,8 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 	InitScreen(title);
 
 	for (int i = 0; i < menuSize; i++) {
-		menu[i].UpdateData();
+		menu[i].UpdateData(true);
 		menu[i].UpdateState(0);
-		menu[i].Redraw();
 	}
 
 	bool editMode = false;
@@ -223,14 +222,13 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 						if (param == GetParam(iniParameters, "Font", PGRP_GENERAL)) {
 							InitScreen(title);
 							for (int i = 0; i < menuSize; i++)
-								menu[i].Redraw();
+								menu[i].UpdateData(true);
 						}
 						else {
 							const CParameter *machine = GetParam(iniParameters, "Machine", PGRP_GENERAL);
 							if (param == machine && machine->GetValue() >= SpecRom_Pentagon128) {
 								menu[8].GetParam()->SetValue(SpecDiskIf_Betadisk);
 								menu[8].UpdateData();
-								menu[8].Redraw();
 							}
 							else if (param == GetParam(iniParameters, "Disk Interface", PGRP_GENERAL)) {
 								if (machine->GetValue() >= SpecRom_Pentagon128)
@@ -255,7 +253,10 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 
 						CString value = "";
 						param->GetValueText(value);
-						if (Shell_InputBox(title, inROMCfg ? "Filename:" : "Enter a value:", value)) {
+						if (Shell_InputBox(title, "Filename:", value)) {
+							if (!FileExists(value.String()))
+								Shell_MessageBox(title, "Invalid path or", "file not exists");
+
 							param->SetValueText(value);
 							menu[menuPos].UpdateData();
 
@@ -267,7 +268,7 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 
 						InitScreen(title);
 						for (int i = 0; i < menuSize; i++)
-							menu[i].Redraw();
+							menu[i].UpdateData();
 					}
 				}
 			}
@@ -277,9 +278,15 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 			if (param != NULL) {
 				if (param->GetType() == PTYPE_STRING) {
 					param->SetValueText("");
+					menu[menuPos].UpdateState(0);
 					menu[menuPos].UpdateData();
+					menu[menuPos].UpdateState(1);
 				}
 			}
+		}
+		else if (menu == mainMenu && key == K_F11) {
+			static byte testVideo = 0;
+			SystemBus_Write(0xc00049, (++testVideo) & 0x07);
 		}
 		else if (menu == mainMenu && key == K_F5) {
 			hardReset = true;

@@ -7,7 +7,7 @@
 
 const int VIEWER_LINES = 21;
 //---------------------------------------------------------------------------------------
-void Shell_Viewer(const char *fullName)
+void Shell_TextViewer(const char *fullName)
 {
 	CTextReader reader(fullName, 32);
 	if (reader.GetLines() < 0) {

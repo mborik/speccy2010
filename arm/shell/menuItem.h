@@ -5,7 +5,8 @@
 #include "../utils/cstring.h"
 
 class CMenuItem {
-	int x, y, state, size, origY;
+private:
+	int x, y, state, size, origY, maxLen;
 	const char *origName;
 	byte colors[4];
 
@@ -13,13 +14,13 @@ class CMenuItem {
 	const CParameter *param;
 
 	void Init(int _x, int _y, const char *_name, const CParameter *_param);
+	void Redraw(bool justInit = false);
 
 public:
 	CMenuItem(int _x, int _y, const char *_name, const CParameter *_param);
 	CMenuItem(int _x, int _y, const char *_name, const char *_data);
 
-	void Redraw();
-	void UpdateData();
+	void UpdateData(bool force = false);
 	void UpdateData(const char *_data);
 	void UpdateState(int _state);
 

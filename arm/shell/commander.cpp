@@ -8,6 +8,7 @@
 #include "../utils/dirent.h"
 #include "../betadisk/fdc.h"
 #include "../betadisk/floppy.h"
+#include "../specMB02.h"
 #include "../specConfig.h"
 #include "../specKeyboard.h"
 #include "../specSnapshot.h"
@@ -48,13 +49,13 @@ byte get_sel_attr(FRECORD &fr)
 		while (ext > fr.name && *ext != '.')
 			ext--;
 
-		if (strcmp(ext, ".trd") == 0 || strcmp(ext, ".fdi") == 0 || strcmp(ext, ".scl") == 0)
+		if (strstr(".trd.fdi.scl.mbd", ext))
 			result = 0115;
-		else if (strcmp(ext, ".tap") == 0 || strcmp(ext, ".tzx") == 0)
+		else if (strstr(".tap.tzx", ext))
 			result = 0114;
-		else if (strcmp(ext, ".sna") == 0)
+		else if (strstr(".sna.scr.rom", ext))
 			result = 0113;
-		else if (strcmp(ext, ".scr") == 0 || strcmp(ext, ".rom") == 0)
+		else if (strstr(".txt.hlp.ini.cfg.lst.nfo", ext))
 			result = 0112;
 		else
 			result = 0110;
@@ -208,9 +209,9 @@ void init_screen()
 	DrawFrame(16, 1, 16, 18, 0117, "\xD1\xCD\xD1\xB3\xC1\xC4\xB4");
 
 	WriteStrAttr(0, 0, " Speccy2010 v" VERSION " File Manager ", 0114, 32);
-	WriteStrAttr(0, 23, "1hlp2cd3vw4trd5cp6mv7mkd8del9fmt", 0050, 32);
+	WriteStrAttr(0, 23, "1hlp2cwd3vw4ed5cp6mv7mkd8del9img", 0050, 32);
 
-	const byte fnKeys[9] = { 0, 4, 7, 10, 14, 17, 20, 24, 28 };
+	const byte fnKeys[9] = { 0, 4, 8, 11, 14, 17, 20, 24, 28 };
 	for (int i = 0; i < 9; i++)
 		WriteAttr(fnKeys[i], 23, 0107);
 
@@ -274,7 +275,7 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 				break;
 			}
 
-			Shell_MessageBox("Processing", shortName, "", progressBar, MB_NO, 0070);
+			Shell_MessageBox("Processing", shortName, progressBar, "", MB_PROGRESS, 0070);
 
 			byte buff[0x100];
 			UINT size = src.fsize;
@@ -476,33 +477,14 @@ bool Shell_Delete(const char *name)
 	return true;
 }
 //---------------------------------------------------------------------------------------
-bool Shell_EmptyTrd(const char *_name)
+bool Shell_EmptyTrd(const char *_name, bool format = true)
 {
-	char name[PATH_SIZE];
 	bool result = false;
 
-	if (strlen(_name) == 0) {
-		CString newName = "empty.trd";
-		if (!Shell_InputBox("Format", "Enter name :", newName))
-			return false;
+	char name[PATH_SIZE];
+	sniprintf(name, sizeof(name), "%s", _name);
 
-		show_table();
-		sniprintf(name, sizeof(name), "%s", newName.String());
-		result = true;
-
-		char *ext = name + strlen(name);
-		while (ext > name && *ext != '.')
-			ext--;
-		strlwr(ext);
-
-		if (strcmp(ext, ".trd") != 0)
-			sniprintf(name, sizeof(name), "%s.trd", newName.String());
-		else
-			sniprintf(name, sizeof(name), "%s", newName.String());
-	}
-	else {
-		sniprintf(name, sizeof(name), "%s", _name);
-
+	if (format) {
 		char *ext = name + strlen(name);
 		while (ext > name && *ext != '.')
 			ext--;
@@ -516,12 +498,11 @@ bool Shell_EmptyTrd(const char *_name)
 
 		if (!Shell_MessageBox("Format", "Do you wish to format", name, "", MB_YESNO, 0050, 0115))
 			return false;
-		show_table();
 
-		sniprintf(name, sizeof(name), "%s", _name);
+		show_table();
 	}
 
-	CString label = name;
+	CString label = _name;
 	label.TrimRight(4);
 	if (label.Length() > 8)
 		label.TrimRight(label.Length() - 8);
@@ -531,7 +512,7 @@ bool Shell_EmptyTrd(const char *_name)
 	show_table();
 
 	char pname[PATH_SIZE];
-	sniprintf(pname, sizeof(pname), "%s%s", get_current_dir(), name);
+	sniprintf(pname, sizeof(pname), "%s%s", get_current_dir(), _name);
 
 	const byte zero[0x10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	const byte sysArea[] = { 0x00, 0x00, 0x01, 0x16, 0x00, 0xf0, 0x09, 0x10 };
@@ -592,6 +573,37 @@ bool Shell_EmptyTrd(const char *_name)
 	return result;
 }
 //---------------------------------------------------------------------------------------
+bool Shell_CreateDiskImage()
+{
+	bool mbd = Shell_MessageBox("Create disk image",
+		"Which type of virtual disk",
+		"image you wish to create?", "", MB_DISK, 0050, 0115);
+
+	const char *baseExt = &".mbd\0.trd"[mbd ? 0 : 5];
+
+	CString newName = "empty";
+	newName += baseExt;
+
+	if (!Shell_InputBox("Format", "Enter name :", newName))
+		return false;
+
+	show_table();
+
+	char *ext = ((char *) newName.String()) + newName.Length();
+	while (ext > newName.String() && *ext != '.')
+		ext--;
+
+	if (strcasecmp(ext, baseExt) != 0)
+		newName += baseExt;
+
+	if (mbd) {
+		Shell_Toast("MBD image functions", "not yet implemented");
+		return true;
+	}
+	else
+		return Shell_EmptyTrd(newName.String(), false);
+}
+//---------------------------------------------------------------------------------------
 void Shell_ScreenBrowser(char *fullName)
 {
 	while (true) {
@@ -614,6 +626,10 @@ void Shell_ScreenBrowser(char *fullName)
 			}
 
 			f_close(&image);
+
+			// missing attributes filled with base color...
+			for (; pos < 0x1b00; pos++)
+				SystemBus_Write(addr++, 0070);
 		}
 		else
 			break;
@@ -643,6 +659,34 @@ void Shell_ScreenBrowser(char *fullName)
 
 			if (--i == 0)
 				return;
+		}
+	}
+}
+//---------------------------------------------------------------------------------------
+void Shell_Viewer(char *fullName)
+{
+	FIL file;
+	if (f_open(&file, fullName, FA_READ) == FR_OK) {
+		byte data;
+		UINT res, total, ascii;
+
+		for (total = 0, ascii = 0; total < 1024; total++) {
+			if (f_read(&file, &data, 1, &res) != FR_OK)
+				break;
+			if (res == 0)
+				break;
+
+			if ((data > 7 && data <= 13) || (data >= 32 && data < 127))
+				ascii++;
+		}
+
+		f_close(&file);
+
+		if ((100.0f / ((float) total / ascii)) > 80.0f)
+			Shell_TextViewer(fullName);
+		else {
+			Shell_MessageBox("Binary file",
+				"Hex view of binary file", "not yet implemented", "", MB_OK, 0137);
 		}
 	}
 }
@@ -724,25 +768,67 @@ void Shell_Commander()
 			show_sel(true);
 		}
 		else if (key >= '1' && key <= '4') {
-			if (specConfig.specDiskIf == SpecDiskIf_Betadisk && (fr.attr & AM_DIR) == 0) {
+			if (specConfig.specDiskIf != SpecDiskIf_DivMMC && (fr.attr & AM_DIR) == 0) {
 				char fullName[PATH_SIZE];
 				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
-
-				strlwr(fr.name);
 
 				char *ext = fr.name + strlen(fr.name);
 				while (ext > fr.name && *ext != '.')
 					ext--;
 
-				if (strcmp(ext, ".trd") == 0 || strcmp(ext, ".fdi") == 0 || strcmp(ext, ".scl") == 0) {
-					int i = key - '1';
+				int i = key - '1';
+				const char *mountPoint;
+				bool extMatch = false, difValid = false, imgValid = false;
 
-					if (fdc_open_image(i, fullName)) {
-						floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
+				if (strcasestr(".trd.fdi.scl", ext)) {
+					extMatch = true;
 
-						strcpy(specConfig.specBdiImages[key - '1'].name, fullName);
-						SaveConfig();
+					if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
+						difValid = true;
+
+						if (fdc_open_image(i, fullName)) {
+							floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
+
+							strcpy(specConfig.specBdiImages[i].name, fullName);
+							SaveConfig();
+
+							mountPoint = &"A:\0B:\0C:\0D:"[i * 3]; // TR-DOS drive letter
+							imgValid = true;
+						}
 					}
+				}
+				else if (strcasestr(".mbd.mb2", ext)) {
+					extMatch = true;
+
+					if (specConfig.specDiskIf == SpecDiskIf_MB02) {
+						difValid = true;
+
+						if (mb02_open_image(i, fullName) == 0) {
+							specConfig.specMB2Images[i].writeProtect |= mb02_is_disk_wp(i);
+							mb02_set_disk_wp(i, (specConfig.specMB2Images[i].writeProtect != 0));
+
+							strcpy(specConfig.specMB2Images[i].name, fullName);
+							SaveConfig();
+
+							mountPoint = &"@1\0@2\0@3\0@4"[i * 3]; // BS-DOS drive number
+							imgValid = true;
+						}
+					}
+				}
+
+				if (extMatch) {
+					if (imgValid) {
+						char successMsg[2][26];
+
+						make_short_name(successMsg[0], 26, fr.name);
+						sniprintf(successMsg[1], 26, "mounted into %s drive...", mountPoint);
+
+						Shell_Toast(successMsg[0], successMsg[1]);
+					}
+					else if (difValid)
+						Shell_MessageBox("Mount disk error", "Invalid disk image");
+					else
+						Shell_MessageBox("Mount disk error", "Cannot mount disk image", "to the current Disk IF");
 				}
 			}
 		}
@@ -753,7 +839,7 @@ void Shell_Commander()
 			show_sel();
 		}
 		else if (key == K_F1) {
-			Shell_Viewer("speccy2010.hlp");
+			Shell_TextViewer("speccy2010.hlp");
 
 			init_screen();
 			show_table();
@@ -761,18 +847,23 @@ void Shell_Commander()
 		}
 		else if (key == K_F2) {
 			sniprintf(destinationPath, sizeof(destinationPath), "/%s", get_current_dir());
+
+			char sname[28];
+			make_short_name(sname, sizeof(sname), destinationPath);
+
+			Shell_Toast("Current working directory:", sname, 0070);
 		}
 		else if (key == K_F3) {
 			if ((fr.attr & AM_DIR) == 0) {
 				char fullName[PATH_SIZE];
 				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
-				strlwr(fr.name);
 
 				char *ext = fr.name + strlen(fr.name);
 				while (ext > fr.name && *ext != '.')
 					ext--;
 
-				if (strcmp(ext, ".scr") == 0) {
+				strlwr(ext);
+				if (strcmp(ext, ".scr") == 0 || fr.size == 6912 || fr.size == 6144) {
 					Shell_ScreenBrowser(fullName);
 				}
 				else {
@@ -785,10 +876,8 @@ void Shell_Commander()
 			}
 		}
 		else if (key == K_F4) {
-			hide_sel();
-			if (Shell_EmptyTrd(""))
-				read_dir();
-			show_sel(true);
+			if ((fr.attr & AM_DIR) != 0)
+				Shell_Toast("Hex editor", "not yet implemented");
 		}
 		else if (key == K_F5) {
 			hide_sel();
@@ -821,18 +910,34 @@ void Shell_Commander()
 		}
 		else if (key == K_F9) {
 			hide_sel();
-			if (Shell_EmptyTrd(fr.name))
+			bool createNew = ((fr.attr & AM_DIR) != 0), success = false;
+
+			if (!createNew) {
+				char *ext = fr.name + strlen(fr.name);
+				while (ext > fr.name && *ext != '.')
+					ext--;
+				strlwr(ext);
+
+				if (strcmp(ext, ".trd") == 0) {
+					if (Shell_EmptyTrd(fr.name))
+						success = true;
+				}
+				else if (strstr(".mbd.mb2", ext)) {
+					Shell_Toast("MBD image functions", "not yet implemented");
+				}
+				else
+					createNew = true;
+			}
+
+			if (createNew)
+				success = Shell_CreateDiskImage();
+			if (success)
 				read_dir();
 
 			show_sel(true);
 		}
 		else if (key == K_ESC || key == K_F10 || key == K_F12) {
 			break;
-		}
-		else if (key == K_F11) {
-			static byte testVideo = 0;
-			SystemBus_Write(0xc00049, ++testVideo);
-			testVideo &= 7;
 		}
 		else if (key == K_RETURN) {
 			if ((fr.attr & AM_DIR) != 0) {
@@ -851,21 +956,21 @@ void Shell_Commander()
 				while (ext > fr.name && *ext != '.')
 					ext--;
 
-				if (strcmp(ext, ".tap") == 0 || strcmp(ext, ".tzx") == 0) {
+				if (strstr(".tap.tzx", ext)) {
 					Tape_SelectFile(fullName);
 					break;
 				}
 				else if (strcmp(ext, ".sna") == 0) {
 					sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s", fullName);
 
-					if (LoadSnapshot(fullName)) {
+					if (LoadSnapshot(fullName))
 						break;
-					}
 				}
-				else if (strcmp(ext, ".trd") == 0 || strcmp(ext, ".fdi") == 0 || strcmp(ext, ".scl") == 0) {
-					if (specConfig.specDiskIf == SpecDiskIf_Betadisk && fdc_open_image(0, fullName)) {
-						sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s.00.sna", fullName);
+				else if (strstr(".trd.fdi.scl", ext)) {
+					if (specConfig.specDiskIf != SpecDiskIf_Betadisk)
+						Shell_MessageBox("Mount disk error", "Cannot mount disk image", "to the current Disk IF");
 
+					else if (fdc_open_image(0, fullName)) {
 						floppy_disk_wp(0, &specConfig.specBdiImages[0].writeProtect);
 
 						strcpy(specConfig.specBdiImages[0].name, fullName);
@@ -878,15 +983,29 @@ void Shell_Commander()
 
 						CPU_ModifyPC(0, 0);
 
-						if (specConfig.specMachine == SpecRom_Classic48)
-							SystemBus_Write(0xc00017, (1 << 4) | (1 << 5));
-						else
-							SystemBus_Write(0xc00017, (1 << 4));
+						SystemBus_Write(0xc00017, (1 << 4) |
+							(specConfig.specMachine == SpecRom_Classic48 ? (1 << 5) : 0));
 
 						SystemBus_Write(0xc00018, 0x0001);
-
 						break;
 					}
+					else
+						Shell_MessageBox("Mount disk error", "Invalid disk image");
+				}
+				else if (strstr(".mbd.mb2", ext)) {
+					if (specConfig.specDiskIf != SpecDiskIf_MB02)
+						Shell_MessageBox("Mount disk error", "Cannot mount disk image", "to the current Disk IF");
+
+					else if (mb02_open_image(0, fullName) == 0) {
+						specConfig.specMB2Images[0].writeProtect |= mb02_is_disk_wp(0);
+						mb02_set_disk_wp(0, (specConfig.specMB2Images[0].writeProtect != 0));
+
+						strcpy(specConfig.specMB2Images[0].name, fullName);
+						SaveConfig();
+						break;
+					}
+					else
+						Shell_MessageBox("Mount disk error", "Invalid disk image");
 				}
 				else if (strcmp(ext, ".scr") == 0) {
 					Shell_ScreenBrowser(fullName);

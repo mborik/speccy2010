@@ -59,22 +59,26 @@ bool WriteLine(FIL *file, const char *str)
 
 //---------------------------------------------------------------------------------------
 
-byte read_file(FIL *f, byte *dst, byte sz)
+int read_file(FIL *f, byte *dst, int sz)
 {
 	UINT nr;
-	if (f_read(f, dst, sz, &nr) != FR_OK || nr != sz) {
+	if (f_read(f, (char *) dst, sz, &nr) != FR_OK || (int) nr != sz) {
 		return 0;
 	}
-	return (byte)nr;
+	return (word) nr;
 }
 
-byte write_file(FIL *f, byte *dst, byte sz)
+int write_file(FIL *f, byte *dst, int sz)
 {
+#if !_FS_READONLY
 	UINT nw;
-	if (f_write(f, dst, sz, &nw) != FR_OK || nw != sz) {
+	if (f_write(f, (const char *) dst, sz, &nw) != FR_OK || (int) nw != sz) {
 		return 0;
 	}
-	return (byte)nw;
+	return (word) nw;
+#else
+	return 0;
+#endif
 }
 
 byte read_le_byte(FIL *f, byte *dst)
@@ -84,20 +88,30 @@ byte read_le_byte(FIL *f, byte *dst)
 
 byte read_le_word(FIL *f, word *dst)
 {
+#if defined(AVR_CTRL)
 	byte w[2];
 	if (!read_file(f, w, 2)) {
 		return 0;
 	}
-	*dst = (((word)w[1]) << 8) | ((word)w[0]);
+
+	*dst = (((word) w[1]) << 8) | ((word) w[0]);
 	return 2;
+#else
+	return read_file(f, (byte *) dst, sizeof(*dst));
+#endif
 }
 
 byte read_le_dword(FIL *f, dword *dst)
 {
+#if defined(AVR_CTRL)
 	byte dw[4];
 	if (!read_file(f, dw, 4)) {
 		return 0;
 	}
-	*dst = (((dword)dw[3]) << 24) | (((dword)dw[2]) << 16) | (((dword)dw[1]) << 8) | ((dword)dw[0]);
+
+	*dst = (((dword) dw[3]) << 24) | (((dword) dw[2]) << 16) | (((dword) dw[1]) << 8) | ((dword) dw[0]);
 	return 4;
+#else
+	return read_file(f, (byte *) dst, sizeof(*dst));
+#endif
 }
