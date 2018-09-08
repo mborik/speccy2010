@@ -17,4 +17,7 @@ void mb02_set_disk_wp(byte drv, bool wp);
 
 byte mb02_is_disk_loaded(byte drv);
 
+bool mb02_checkfmt(const char *file_name, int *numtrk, int *numsec);
+bool mb02_formatdisk(const char *file_name, int numtrk, int numsec, const char *disk_name);
+
 #endif

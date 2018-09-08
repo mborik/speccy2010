@@ -49,13 +49,13 @@ byte get_sel_attr(FRECORD &fr)
 		while (ext > fr.name && *ext != '.')
 			ext--;
 
-		if (strstr(".trd.fdi.scl.mbd", ext))
+		if (strstr(".trd.fdi.scl.mbd.mb2", ext))
 			result = 0115;
 		else if (strstr(".tap.tzx", ext))
 			result = 0114;
 		else if (strstr(".sna.scr.rom", ext))
 			result = 0113;
-		else if (strstr(".txt.hlp.ini.cfg.lst.nfo", ext))
+		else if (strstr(".txt.hlp.ini.cfg.lst.nfo.asm.a80.inc", ext))
 			result = 0112;
 		else
 			result = 0110;
@@ -226,29 +226,23 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 	while (sname != dstName && sname[-1] != '/')
 		sname--;
 
+	int res;
 	char shortName[20];
 	make_short_name(shortName, sizeof(shortName), sname);
 
-	char progressBar[25];
-	for (int i = 0; i < 24; i++)
-		progressBar[i] = 0xB0;
-	progressBar[24] = 0;
-
 	show_table();
-
-	int res;
 
 	do {
 		if (FileExists(dstName)) {
 			if (askForOverwrite != NULL && overwrite != NULL) {
 				if (*askForOverwrite == true) {
 					*askForOverwrite = false;
-					*overwrite = Shell_MessageBox("Overwrite", "Overwrite all exist files?", NULL, NULL, MB_YESNO, 0050, 0115);
+					*overwrite = Shell_MessageBox("Overwrite", "Overwrite all exist files?", "", "", MB_YESNO, 0050, 0115);
 				}
 				if (*overwrite == false)
 					return false;
 			}
-			else if (!Shell_MessageBox("Overwrite", "Do you want to overwrite", dstName, NULL, MB_YESNO, 0050, 0115))
+			else if (!Shell_MessageBox("Overwrite", "Do you want to overwrite", shortName, "", MB_YESNO, 0050, 0115))
 				return false;
 
 			res = f_unlink(dstName);
@@ -275,7 +269,7 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 				break;
 			}
 
-			Shell_MessageBox("Processing", shortName, progressBar, "", MB_PROGRESS, 0070);
+			Shell_ProgressBar("Processing", shortName);
 
 			byte buff[0x100];
 			UINT size = src.fsize;
@@ -295,11 +289,7 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 				if ((src.fptr & 0x300) == 0) {
 					float progress = src.fsize - size;
 					progress /= src.fsize;
-					byte prog = (progress * 24);
-
-					if (prog > 0)
-						WriteStrAttr(4, 11, progressBar, 0062, prog);
-					WDT_Kick();
+					Shell_UpdateProgress(progress);
 				}
 
 				if (GetKey(false) == K_ESC) {
@@ -498,8 +488,6 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 
 		if (!Shell_MessageBox("Format", "Do you wish to format", name, "", MB_YESNO, 0050, 0115))
 			return false;
-
-		show_table();
 	}
 
 	CString label = _name;
@@ -507,12 +495,10 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 	if (label.Length() > 8)
 		label.TrimRight(label.Length() - 8);
 
-	if (!Shell_InputBox("Format", "Enter disk label :", label))
+	if (!Shell_InputBox("Format", "Enter disk label:", label))
 		return false;
-	show_table();
 
-	char pname[PATH_SIZE];
-	sniprintf(pname, sizeof(pname), "%s%s", get_current_dir(), _name);
+	sniprintf(name, sizeof(name), "%s%s", get_current_dir(), _name);
 
 	const byte zero[0x10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	const byte sysArea[] = { 0x00, 0x00, 0x01, 0x16, 0x00, 0xf0, 0x09, 0x10 };
@@ -522,9 +508,15 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 	int res;
 	UINT r;
 	FIL dst;
+	BYTE flags = FA_WRITE;
+
+	if (format)
+		flags |= FA_OPEN_EXISTING;
+	else
+		flags |= FA_CREATE_ALWAYS;
 
 	{
-		res = f_open(&dst, pname, FA_WRITE | FA_OPEN_EXISTING);
+		res = f_open(&dst, name, flags);
 		if (res != FR_OK)
 			goto formatExit1;
 
@@ -566,16 +558,91 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 	formatExit1:;
 	}
 
-	if (res != FR_OK) {
+	if (res != FR_OK)
 		Shell_MessageBox("Error", "Cannot format", name, fatErrorMsg[res]);
+
+	return result;
+}
+//---------------------------------------------------------------------------------------
+bool Shell_EmptyMbd(const char *_name, bool format = true)
+{
+	const char *title = "MBD Disk Image";
+
+	int disk_size;
+	int numtrk = 0;
+	int numsec = 0;
+	bool askForGeometry = true;
+
+	char name[PATH_SIZE], shortName[29];
+	sniprintf(name, sizeof(name), "%s%s", get_current_dir(), _name);
+
+	if (format) {
+		make_short_name(shortName, 21, _name);
+
+		if (mb02_checkfmt(name, &numtrk, &numsec)) {
+			strcat(shortName, "?");
+			if (!Shell_MessageBox(title, "Do you wish to format", shortName, "", MB_YESNO, 0050, 0115))
+				return false;
+			askForGeometry = false;
+		}
+		else {
+			strcat(shortName, ".");
+			if (!Shell_MessageBox(title, "Invalid image format of", shortName, "Recreate image anyway?", MB_YESNO))
+				return false;
+		}
 	}
+
+	if (askForGeometry) {
+		numtrk = 82; numsec = 11;
+		CString value = "82/11";
+
+		while (true) {
+			if (!Shell_InputBox(title, "Tracks/Sectors:", value))
+				return false;
+
+			sscanf(value.String(), "%d/%d", &numtrk, &numsec);
+
+			if (numtrk < 1 || numtrk > 255) {
+				Shell_MessageBox(title, "Invalid number of tracks", "(must be 1..255)");
+				continue;
+			}
+
+			if (numsec < 1 || numsec > 127) {
+				Shell_MessageBox(title, "Invalid number of sectors", "(must be 1..127)");
+				continue;
+			}
+
+			disk_size = (numtrk * numsec) << 1;
+			sniprintf(shortName, sizeof(shortName), "Invalid disk size %u kB", disk_size);
+
+			if (disk_size < 5 || disk_size >= 2047) {
+				Shell_MessageBox(title, shortName, "(must be 6..2046 kB)");
+				continue;
+			}
+
+			break;
+		}
+	}
+
+	CString label = _name;
+	label.TrimRight(4);
+	if (label.Length() > 8)
+		label.TrimRight(label.Length() - 8);
+	if (!Shell_InputBox(title, "Enter disk label:", label))
+		return false;
+
+	Shell_ProgressBar(title, "Formatting...");
+	bool result = mb02_formatdisk(name, numtrk, numsec, label.String());
+	ScreenPop();
 
 	return result;
 }
 //---------------------------------------------------------------------------------------
 bool Shell_CreateDiskImage()
 {
-	bool mbd = Shell_MessageBox("Create disk image",
+	const char *title = "Create disk image";
+
+	bool mbd = Shell_MessageBox(title,
 		"Which type of virtual disk",
 		"image you wish to create?", "", MB_DISK, 0050, 0115);
 
@@ -584,10 +651,8 @@ bool Shell_CreateDiskImage()
 	CString newName = "empty";
 	newName += baseExt;
 
-	if (!Shell_InputBox("Format", "Enter name :", newName))
+	if (!Shell_InputBox(title, "Enter image name:", newName))
 		return false;
-
-	show_table();
 
 	char *ext = ((char *) newName.String()) + newName.Length();
 	while (ext > newName.String() && *ext != '.')
@@ -596,12 +661,9 @@ bool Shell_CreateDiskImage()
 	if (strcasecmp(ext, baseExt) != 0)
 		newName += baseExt;
 
-	if (mbd) {
-		Shell_Toast("MBD image functions", "not yet implemented");
-		return true;
-	}
-	else
-		return Shell_EmptyTrd(newName.String(), false);
+	return mbd ?
+		Shell_EmptyMbd(newName.String(), false) :
+		Shell_EmptyTrd(newName.String(), false);
 }
 //---------------------------------------------------------------------------------------
 void Shell_ScreenBrowser(char *fullName)
@@ -635,7 +697,7 @@ void Shell_ScreenBrowser(char *fullName)
 			break;
 
 		char key = GetKey();
-		if (key != ' ')
+		if (key != ' ' && key != K_RETURN)
 			break;
 
 		int i = files_size;
@@ -652,7 +714,7 @@ void Shell_ScreenBrowser(char *fullName)
 			while (ext > fr.name && *ext != '.')
 				ext--;
 
-			if (strcmp(ext, ".scr") == 0) {
+			if (strcmp(ext, ".scr") == 0 || fr.size == 6912 || fr.size == 6144) {
 				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
 				break;
 			}
@@ -876,7 +938,7 @@ void Shell_Commander()
 			}
 		}
 		else if (key == K_F4) {
-			if ((fr.attr & AM_DIR) != 0)
+			if ((fr.attr & AM_DIR) == 0)
 				Shell_Toast("Hex editor", "not yet implemented");
 		}
 		else if (key == K_F5) {
@@ -923,7 +985,8 @@ void Shell_Commander()
 						success = true;
 				}
 				else if (strstr(".mbd.mb2", ext)) {
-					Shell_Toast("MBD image functions", "not yet implemented");
+					if (Shell_EmptyMbd(fr.name))
+						success = true;
 				}
 				else
 					createNew = true;
@@ -934,6 +997,7 @@ void Shell_Commander()
 			if (success)
 				read_dir();
 
+			show_table();
 			show_sel(true);
 		}
 		else if (key == K_ESC || key == K_F10 || key == K_F12) {

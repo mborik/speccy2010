@@ -2,6 +2,8 @@
 #include "screen.h"
 #include "../specKeyboard.h"
 
+#define PROGRESSBAR_SIZE 24
+char progressBarBuffer[PROGRESSBAR_SIZE + 1];
 //---------------------------------------------------------------------------------------
 void Shell_Window(int x, int y, int w, int h, const char *title, byte attr)
 {
@@ -89,16 +91,16 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 	y++;
 
 	WriteStr(x, y++, str);
-	if (str2[0] != 0) {
+	if (str2 && str2[0] != 0) {
 		WriteStr(x, y++, str2);
-		if (str3[0] != 0)
+		if (str3 && str3[0] != 0)
 			WriteStr(x, y++, str3);
 	}
 
-	bool result = true;
 	if (type == MB_PROGRESS)
 		return true;
 
+	bool result = true;
 	while (true) {
 		if (type == MB_OK) {
 			WriteStrAttr(16 - 2, y, " OK ", attrSel);
@@ -193,5 +195,27 @@ bool Shell_InputBox(const char *title, const char *str, CString &buff)
 
 	ScreenPop();
 	return result;
+}
+//---------------------------------------------------------------------------------------
+void Shell_ProgressBar(const char *title, const char *str, byte attr)
+{
+	int i;
+	for (i = 0; i < 24; i++)
+		progressBarBuffer[i] = 0xB0; // shade block
+	progressBarBuffer[24] = 0;
+
+	Shell_MessageBox(title, str, progressBarBuffer, "", MB_PROGRESS, attr);
+
+	for (i = 0; i < 24; i++)
+		progressBarBuffer[i]++;
+}
+//---------------------------------------------------------------------------------------
+void Shell_UpdateProgress(float progress, byte attr)
+{
+	byte prog = (progress * 24);
+	if (prog > 0)
+		WriteStrAttr(4, 11, progressBarBuffer, attr, prog);
+
+	WDT_Kick();
 }
 //---------------------------------------------------------------------------------------
