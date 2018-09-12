@@ -15,6 +15,7 @@
 extern "C" {
 #endif
 	#include "libstr/inc/75x_lib.h"
+	#include "specSerial.h"
 
 	#include "fatfs/diskio.h"
 	#include "fatfs/ff.h"
@@ -48,7 +49,7 @@ extern "C" {
 	#define CNTR_INTERVAL 1
 	dword get_ticks();
 
-	void __TRACE(const char *str, ...);
+	void TestStack();
 	void portENTER_CRITICAL();
 	void portEXIT_CRITICAL();
 

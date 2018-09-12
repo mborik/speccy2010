@@ -121,6 +121,7 @@ CXX_SRCS = \
 	$(SRCDIR)/specKeyMap.cpp \
 	$(SRCDIR)/specMB02.cpp \
 	$(SRCDIR)/specRtc.cpp \
+	$(SRCDIR)/specSerial.cpp \
 	$(SRCDIR)/specSnapshot.cpp \
 	$(SRCDIR)/specTape.cpp \
 	$(SRCDIR)/shell/screen.cpp \

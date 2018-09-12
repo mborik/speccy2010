@@ -38,6 +38,16 @@ const char *fatErrorMsg[] = {
 //---------------------------------------------------------------------------------------
 char destinationPath[PATH_SIZE] = "/";
 //---------------------------------------------------------------------------------------
+void dynamic_bytes_text(dword size, char *buffer)
+{
+	if (size < 9999)
+		sprintf(buffer, "%10u B", size);
+	else if (size < 0x100000)
+		sprintf(buffer, "%6u.%.2u kB", size >> 10, ((size & 0x3ff) * 100) >> 10);
+	else
+		sprintf(buffer, "%6u.%.2u MB", size >> 20, ((size & 0xfffff) * 100) >> 20);
+}
+//---------------------------------------------------------------------------------------
 byte get_sel_attr(FRECORD &fr)
 {
 	byte result = 0117;
@@ -187,13 +197,9 @@ void show_sel(bool redraw = false)
 		}
 
 		if ((fr.attr & AM_DIR) != 0)
-			sniprintf(sname, sizeof(sname), "       <DIR>");
-		else if (fr.size < 9999)
-			sniprintf(sname, sizeof(sname), "%10u B", fr.size);
-		else if (fr.size < 0x100000)
-			sniprintf(sname, sizeof(sname), "%6u.%.2u kB", fr.size >> 10, ((fr.size & 0x3ff) * 100) >> 10);
+			sprintf(sname, "       <DIR>");
 		else
-			sniprintf(sname, sizeof(sname), "%6u.%.2u MB", fr.size >> 20, ((fr.size & 0xfffff) * 100) >> 20);
+			dynamic_bytes_text(fr.size, sname);
 
 		WriteStr(19, 20, sname, 12);
 	}
@@ -331,7 +337,7 @@ bool Shell_Copy(const char *_name, bool move)
 		name = destinationPath;
 
 	const char *title = move ? "Move/Rename" : "Copy";
-	if (!Shell_InputBox(title, "Enter new name/path :", name))
+	if (!Shell_InputBox(title, "Enter new name/path:", name))
 		return false;
 
 	bool newPath = false;
@@ -389,7 +395,7 @@ bool Shell_Copy(const char *_name, bool move)
 bool Shell_CreateFolder()
 {
 	CString name = "";
-	if (!Shell_InputBox("Create folder", "Enter name :", name))
+	if (!Shell_InputBox("Create folder", "Enter name:", name))
 		return false;
 
 	char pname[PATH_SIZE];
@@ -629,7 +635,9 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 	if (label.Length() > 8)
 		label.TrimRight(label.Length() - 8);
 	if (!Shell_InputBox(title, "Enter disk label:", label))
-		return false;
+		label = _name;
+	if (label.Length() > 26)
+		label.TrimRight(label.Length() - 26);
 
 	Shell_ProgressBar(title, "Formatting...");
 	bool result = mb02_formatdisk(name, numtrk, numsec, label.String());
@@ -751,6 +759,53 @@ void Shell_Viewer(char *fullName)
 				"Hex view of binary file", "not yet implemented", "", MB_OK, 0137);
 		}
 	}
+}
+//---------------------------------------------------------------------------------------
+bool Shell_Receiver()
+{
+	const char *title = "UART File Transfer";
+	CString name = "";
+	if (!Shell_InputBox(title, "Enter output name:", name))
+		return false;
+
+	char pname[PATH_SIZE];
+	sniprintf(pname, sizeof(pname), "%s%lo", get_current_dir(), get_fattime());
+
+	char ptrbuffer[24];
+	strcpy(ptrbuffer, "%-23s", "transfered");
+
+	FIL file;
+	if (f_open(&file, pname, FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
+		Shell_MessageBox(title, "Receiving transmission...", ptrbuffer, NULL, MB_RECEIVE, 0070);
+
+		Serial_InitReceiver(&file);
+
+		bool result = true;
+		byte counter = 0;
+		dword total = 0;
+
+		while (true) {
+			total = Serial_ReceiveBytes(&file);
+
+			if (!(++counter & 15)) {
+				byte key = GetKey(false);
+
+				if (key == K_ESC)
+					result = false;
+				if (key == K_ESC || key == K_RETURN)
+					break;
+
+				dynamic_bytes_text(total, ptrbuffer);
+				WriteStr(3, 10, ptrbuffer);
+			}
+		}
+
+		Serial_CloseReceiver(&file);
+		ScreenPop();
+	}
+
+	show_table();
+	return true;
 }
 //---------------------------------------------------------------------------------------
 // COMMANDER CORE -----------------------------------------------------------------------
@@ -998,6 +1053,17 @@ void Shell_Commander()
 				read_dir();
 
 			show_table();
+			show_sel(true);
+		}
+		else if (key == K_F11) {
+			hide_sel();
+
+			if (Shell_Receiver()) {
+				int last_files_sel = files_sel;
+				read_dir();
+				files_sel = last_files_sel;
+			}
+
 			show_sel(true);
 		}
 		else if (key == K_ESC || key == K_F10 || key == K_F12) {

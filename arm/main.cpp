@@ -14,8 +14,6 @@
 #include "specTape.h"
 #include "shell/screen.h"
 
-bool LOG_BDI_PORTS = false;
-bool LOG_WAIT = false;
 
 dword tickCounter = 0;
 
@@ -636,59 +634,10 @@ void BDI_Routine()
 		if (trdosWr) {
 			byte trdosData = SystemBus_Read(0xc0001b);
 			fdc_write(trdosAddr, trdosData);
-
-			if (LOG_BDI_PORTS) {
-				if (trdosAddr == 0x7f) {
-					if (counter == 0)
-						__TRACE("Data write : ");
-
-					__TRACE("%.2x.", trdosData);
-
-					counter++;
-					if (counter == 16) {
-						counter = 0;
-						__TRACE("\n");
-					}
-				}
-				else //if( trdosAddr != 0xff )
-				{
-					if (counter != 0) {
-						counter = 0;
-						__TRACE("\n");
-					}
-
-					word specPc = SystemBus_Read(0xc00001);
-					__TRACE("0x%.4x WR : 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData);
-				}
-			}
 		}
 		else {
 			byte trdosData = fdc_read(trdosAddr);
 			SystemBus_Write(0xc0001b, trdosData);
-
-			if (LOG_BDI_PORTS) {
-				if (trdosAddr == 0x7f) {
-					if (counter == 0)
-						__TRACE("Data read : ");
-
-					__TRACE("%.2x.", trdosData);
-
-					counter++;
-					if (counter == 16) {
-						counter = 0;
-						__TRACE("\n");
-					}
-				}
-				else if (trdosAddr != 0xff) {
-					if (counter != 0) {
-						counter = 0;
-						__TRACE("\n");
-					}
-
-					word specPc = SystemBus_Read(0xc00001);
-					__TRACE("0x%.4x RD : 0x%.2x, 0x%.2x\n", specPc, trdosAddr, trdosData);
-				}
-			}
 		}
 
 		SystemBus_Write(0xc0001d, fdc_read(0xff));
@@ -839,91 +788,6 @@ void TestStack()
 	__TRACE("heap max - 0x%.8x\n", (dword)current_heap_end);
 }
 
-const int MAX_CMD_SIZE = 0x20;
-static char cmd[MAX_CMD_SIZE + 1];
-static int cmdSize = 0;
-static bool traceNewLine = false;
-
-void Serial_Routine()
-{
-	while (uart0.GetRxCntr() > 0) {
-		char temp = uart0.ReadByte();
-
-		if (temp == 0x0a) {
-			cmd[cmdSize] = 0;
-			cmdSize = 0;
-
-			if (strcmp(cmd, "stack") == 0)
-				TestStack();
-			else if (strcmp(cmd, "log") == 0)
-				LOG_BDI_PORTS = !LOG_BDI_PORTS;
-			else if (strcmp(cmd, "update rom") == 0)
-				Spectrum_UpdateConfig(true);
-			else if (strcmp(cmd, "reset") == 0)
-				while (true); // dihalt
-			else if (strncmp(cmd, "video ", 6) == 0 && cmd[6] >= '1' && cmd[6] <= '5') {
-				specConfig.specVideoMode = cmd[6] - '1';
-				Spectrum_UpdateConfig();
-			}
-			else
-				__TRACE("cmd: %s\n", cmd);
-		}
-		else if (temp == 0x08) {
-			if (cmdSize > 0) {
-				cmdSize--;
-
-				const char delStr[2] = { 0x20, 0x08 };
-				uart0.WriteFile((byte *)delStr, 2);
-			}
-		}
-		else if (temp != 0x0d && cmdSize < MAX_CMD_SIZE) {
-			cmd[cmdSize++] = temp;
-		}
-	}
-}
-
-void __TRACE(const char *str, ...)
-{
-	static char fullStr[0x80];
-
-	va_list ap;
-	va_start(ap, str);
-	vsniprintf(fullStr, sizeof(fullStr), str, ap);
-	va_end(ap);
-
-	if (traceNewLine) {
-		Serial_Routine();
-		const char delChar = 0x08;
-		for (int i = 0; i <= cmdSize; i++)
-			uart0.WriteFile((byte *) &delChar, 1);
-	}
-
-	char lastChar = 0;
-	char *strPos = fullStr;
-
-	while (*strPos != 0) {
-		lastChar = *strPos++;
-
-		if (lastChar == '\n')
-			uart0.WriteFile((byte *) "\r\n", 2);
-		else
-			uart0.WriteFile((byte *) &lastChar, 1);
-
-		WDT_Kick();
-	}
-
-	traceNewLine = (lastChar == '\n');
-
-	if (traceNewLine) {
-		uart0.WriteFile((byte *) ">", 1);
-
-		WDT_Kick();
-		Serial_Routine();
-
-		if (cmdSize > 0)
-			uart0.WriteFile((byte *)cmd, cmdSize);
-	}
-}
 
 volatile dword delayTimer = 0;
 volatile dword tapeTimer = 0;
