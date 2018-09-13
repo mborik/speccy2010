@@ -7,9 +7,221 @@ char cmd[MAX_CMD_SIZE + 1];
 int cmdSize = 0;
 bool traceNewLine = false;
 
-bool receivingFile = false;
-dword receivedBytes = 0;
+#define X_NACK 21
+#define X_ACK  6
+#define X_SOH  1
+#define X_EOT  4
+#define X_CAN  0x18
 
+// delay when receive bytes in frame
+#define X_RECEIVEDELAY 7000
+// retry limit when receiving
+#define X_RCVRETRYLIMIT  10
+
+XModem::XModem(FIL *file)
+{
+	data = -1;
+	dest = file;
+
+	f_lseek(dest, 0);
+}
+int XModem::recvChar(int msDelay)
+{
+	int cnt = 0;
+	while (cnt < msDelay) {
+		if (uart0.GetRxCntr() > 0)
+			return uart0.ReadByte();
+
+		DelayMs(1);
+		cnt++;
+	}
+	return -1;
+}
+bool XModem::dataAvail(int delay)
+{
+	if (data != -1)
+		return true;
+	return ((data = recvChar(delay)) != -1);
+}
+int XModem::dataRead(int delay)
+{
+	int b;
+	if (data != -1) {
+		b = data;
+		data = -1;
+		return b;
+	}
+	return recvChar(delay);
+}
+void XModem::dataWrite(byte symbol)
+{
+	uart0.WriteFile((byte *) &symbol, 1);
+}
+bool XModem::receiveFrameNo()
+{
+	byte num = (byte) dataRead(X_RECEIVEDELAY);
+	byte invnum = (byte) dataRead(X_RECEIVEDELAY);
+
+	repeatedBlock = false;
+	// check for repeated block
+	if (invnum == (255 - num) && num == blockNo - 1) {
+		repeatedBlock = true;
+		return true;
+	}
+
+	return (num == blockNo && invnum == (255 - num));
+}
+bool XModem::receiveData()
+{
+	for (int i = 0; i < X_BLK_SIZE; i++) {
+		int byte = dataRead(X_RECEIVEDELAY);
+		if (byte != -1)
+			buffer[i] = byte;
+		else
+			return false;
+	}
+	return true;
+}
+bool XModem::checkCrc()
+{
+	word frame_crc = ((byte) dataRead(X_RECEIVEDELAY)) << 8;
+
+	frame_crc |= (byte) dataRead(X_RECEIVEDELAY);
+	// now calculate crc on data
+	word crc = crc16_ccitt(buffer, X_BLK_SIZE);
+
+	return (frame_crc == crc);
+}
+bool XModem::checkChkSum()
+{
+	byte frame_chksum = (byte) dataRead(X_RECEIVEDELAY);
+
+	// calculate chksum
+	byte chksum = 0;
+	for (int i = 0; i < X_BLK_SIZE; i++) {
+		chksum += buffer[i];
+	}
+	return (frame_chksum == chksum);
+}
+bool XModem::sendNack()
+{
+	dataWrite(X_NACK);
+	retries++;
+	return (retries < X_RCVRETRYLIMIT);
+}
+bool XModem::receiveFrames(bool crc)
+{
+	UINT r;
+
+	blockNo = 1;
+	retries = 0;
+
+	while (true) {
+		char cmd = dataRead(100);
+		switch (cmd) {
+			case X_SOH:
+				if (!receiveFrameNo()) {
+					if (sendNack())
+						break;
+					else
+						return false;
+				}
+				if (!receiveData()) {
+					if (sendNack())
+						break;
+					else
+						return false;
+				};
+				if (crc) {
+					if (!checkCrc()) {
+						if (sendNack())
+							break;
+						else
+							return false;
+					}
+				}
+				else {
+					if (!checkChkSum()) {
+						if (sendNack())
+							break;
+						else
+							return false;
+					}
+				}
+				//callback
+				if (!repeatedBlock)
+					f_write(dest, buffer, X_BLK_SIZE, &r);
+				//ack
+				dataWrite(X_ACK);
+				if (!repeatedBlock)
+					blockNo++;
+				break;
+
+			case X_EOT:
+				dataWrite(X_ACK);
+				return true;
+
+			case X_CAN:
+				// wait second CAN
+				if (dataRead(X_RECEIVEDELAY) == X_CAN) {
+					dataWrite(X_ACK);
+					//flushInput();
+					return false;
+				}
+				// something wrong
+				dataWrite(X_CAN);
+				dataWrite(X_CAN);
+				dataWrite(X_CAN);
+				return false;
+
+			default:
+				//something wrong
+				dataWrite(X_CAN);
+				dataWrite(X_CAN);
+				dataWrite(X_CAN);
+				return false;
+		}
+	}
+}
+long XModem::receive()
+{
+	for (int i = 0; i < 16; i++) {
+		dataWrite('C');
+		if (dataAvail(1000))
+			return receiveFrames(true) ? (blockNo * X_BLK_SIZE) : 0;
+	}
+	for (int i = 0; i < 16; i++) {
+		dataWrite(X_NACK);
+		if (dataAvail(1000))
+			return receiveFrames(false) ? (blockNo * X_BLK_SIZE) : 0;
+	}
+	return -1;
+}
+word XModem::crc16_ccitt(byte *buf, int size)
+{
+	word crc = 0;
+	while (--size >= 0) {
+		int i;
+		crc ^= (word) *buf++ << 8;
+		for (i = 0; i < 8; i++)
+			if (crc & 0x8000)
+				crc = crc << 1 ^ 0x1021;
+			else
+				crc <<= 1;
+	}
+	return crc;
+}
+byte XModem::generateChkSum(void)
+{
+	// calculate chksum
+	byte chksum = 0;
+	for (int i = 0; i < X_BLK_SIZE; i++) {
+		chksum += buffer[i];
+	}
+	return chksum;
+}
+
+//---------------------------------------------------------------------------------------
 void Serial_Routine()
 {
 	while (uart0.GetRxCntr() > 0) {
@@ -44,43 +256,6 @@ void Serial_Routine()
 			cmd[cmdSize++] = temp;
 		}
 	}
-}
-
-void Serial_InitReceiver(FIL *dest)
-{
-	receivingFile = true;
-	receivedBytes = 0;
-
-	f_lseek(dest, 0);
-}
-
-dword Serial_ReceiveBytes(FIL *dest, int msDelay)
-{
-	UINT r;
-	byte temp;
-
-	int cnt = 0;
-	while (cnt < msDelay) {
-		if (uart0.GetRxCntr() > 0) {
-			temp = uart0.ReadByte();
-			f_write(dest, &temp, 1, &r);
-			receivedBytes++;
-			break;
-		}
-
-		DelayUs(1);
-		cnt++;
-	}
-
-	return receivedBytes;
-}
-
-dword Serial_CloseReceiver(FIL *dest)
-{
-	receivingFile = false;
-	f_close(dest);
-
-	return receivedBytes;
 }
 
 void __TRACE(const char *str, ...)

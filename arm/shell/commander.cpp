@@ -37,6 +37,7 @@ const char *fatErrorMsg[] = {
 };
 //---------------------------------------------------------------------------------------
 char destinationPath[PATH_SIZE] = "/";
+char srcName[PATH_SIZE], dstName[PATH_SIZE], shortName[30];
 //---------------------------------------------------------------------------------------
 void dynamic_bytes_text(dword size, char *buffer)
 {
@@ -82,6 +83,7 @@ void show_table()
 	display_path(get_current_dir(), 0, 22, 32);
 
 	FRECORD fr;
+	char sname[15];
 
 	for (int i = 0; i < FILES_PER_ROW; i++) {
 		for (int j = 0; j < 2; j++) {
@@ -90,8 +92,6 @@ void show_table()
 			int pos = i + j * FILES_PER_ROW + files_table_start;
 
 			Read(&fr, table_buffer, pos);
-
-			char sname[15];
 			make_short_name(sname, 15, fr.name);
 
 			if (pos < files_size) {
@@ -233,8 +233,7 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 		sname--;
 
 	int res;
-	char shortName[20];
-	make_short_name(shortName, sizeof(shortName), sname);
+	make_short_name(shortName, 20, sname);
 
 	show_table();
 
@@ -342,9 +341,6 @@ bool Shell_Copy(const char *_name, bool move)
 
 	bool newPath = false;
 
-	char pname[PATH_SIZE];
-	char pnameNew[PATH_SIZE];
-
 	if (name.GetSymbol(0) == '/') {
 		if (name.GetSymbol(name.Length() - 1) != '/')
 			name += '/';
@@ -352,14 +348,14 @@ bool Shell_Copy(const char *_name, bool move)
 	}
 
 	if (files_sel_number == 0 || !newPath) {
-		sniprintf(pname, sizeof(pname), "%s%s", get_current_dir(), _name);
+		sniprintf(srcName, PATH_SIZE, "%s%s", get_current_dir(), _name);
 
 		if (newPath)
-			sniprintf(pnameNew, sizeof(pnameNew), "%s%s", name.String() + 1, _name);
+			sniprintf(dstName, PATH_SIZE, "%s%s", name.String() + 1, _name);
 		else
-			sniprintf(pnameNew, sizeof(pnameNew), "%s%s", get_current_dir(), name.String());
+			sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
 
-		if (Shell_CopyItem(pname, pnameNew, move) && !newPath && move) {
+		if (Shell_CopyItem(srcName, dstName, move) && !newPath && move) {
 			sniprintf(files_lastName, sizeof(files_lastName), "%s", name.String());
 		}
 	}
@@ -372,10 +368,10 @@ bool Shell_Copy(const char *_name, bool move)
 			Read(&fr, table_buffer, i);
 
 			if (fr.sel) {
-				sniprintf(pname, sizeof(pname), "%s%s", get_current_dir(), fr.name);
-				sniprintf(pnameNew, sizeof(pnameNew), "%s%s", name.String() + 1, fr.name);
+				sniprintf(srcName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
+				sniprintf(dstName, PATH_SIZE, "%s%s", name.String() + 1, fr.name);
 
-				if (!Shell_CopyItem(pname, pnameNew, move, &askForOverwrite, &overwrite))
+				if (!Shell_CopyItem(srcName, dstName, move, &askForOverwrite, &overwrite))
 					break;
 
 				fr.sel = false;
@@ -398,17 +394,15 @@ bool Shell_CreateFolder()
 	if (!Shell_InputBox("Create folder", "Enter name:", name))
 		return false;
 
-	char pname[PATH_SIZE];
-	sniprintf(pname, sizeof(pname), "%s%s", get_current_dir(), name.String());
+	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
 
-	int res = f_mkdir(pname);
+	int res = f_mkdir(dstName);
 	if (res == FR_OK) {
 		sniprintf(files_lastName, sizeof(files_lastName), "%s", name.String());
 		return true;
 	}
 
-	char shortName[20];
-	make_short_name(shortName, sizeof(shortName), name);
+	make_short_name(shortName, 20, name);
 
 	Shell_MessageBox("Error", "Cannot create the folder", shortName, fatErrorMsg[res]);
 	show_table();
@@ -426,8 +420,7 @@ bool Shell_DeleteItem(const char *name)
 	while (sname != name && sname[-1] != '/')
 		sname--;
 
-	char shortName[20];
-	make_short_name(shortName, sizeof(shortName), sname);
+	make_short_name(shortName, 20, sname);
 
 	Shell_MessageBox("Error", "Cannot delete the item", shortName, fatErrorMsg[res]);
 	show_table();
@@ -440,21 +433,18 @@ bool Shell_Delete(const char *name)
 	if (files_sel_number == 0 && strcmp(name, "..") == 0)
 		return false;
 
-	char sname[PATH_SIZE];
-
 	if (files_sel_number > 0)
-		sniprintf(sname, sizeof(sname), "selected %u item%s", files_sel_number, files_sel_number > 1 ? "s" : "");
+		sniprintf(shortName, 24, "selected %u item%s", files_sel_number, files_sel_number > 1 ? "s" : "");
 	else
-		make_short_name(sname, 21, name);
+		make_short_name(shortName, 24, name);
+	strcat(shortName, "?");
 
-	strcat(sname, "?");
-
-	if (!Shell_MessageBox("Delete", "Do you wish to delete", sname, "", MB_YESNO))
+	if (!Shell_MessageBox("Delete", "Do you wish to delete", shortName, "", MB_YESNO))
 		return false;
 
 	if (files_sel_number == 0) {
-		sniprintf(sname, sizeof(sname), "%s%s", get_current_dir(), name);
-		Shell_DeleteItem(sname);
+		sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), name);
+		Shell_DeleteItem(dstName);
 	}
 	else {
 		FRECORD fr;
@@ -463,8 +453,8 @@ bool Shell_Delete(const char *name)
 			Read(&fr, table_buffer, i);
 
 			if (fr.sel) {
-				sniprintf(sname, sizeof(sname), "%s%s", get_current_dir(), fr.name);
-				if (!Shell_DeleteItem(sname))
+				sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
+				if (!Shell_DeleteItem(dstName))
 					break;
 			}
 		}
@@ -476,23 +466,18 @@ bool Shell_Delete(const char *name)
 bool Shell_EmptyTrd(const char *_name, bool format = true)
 {
 	bool result = false;
-
-	char name[PATH_SIZE];
-	sniprintf(name, sizeof(name), "%s", _name);
+	make_short_name(shortName, 21, _name);
 
 	if (format) {
-		char *ext = name + strlen(name);
-		while (ext > name && *ext != '.')
+		char *ext = (char *) (_name + strlen(_name));
+		while (ext > _name && *ext != '.')
 			ext--;
-		strlwr(ext);
 
-		if (strcmp(ext, ".trd") != 0)
+		if (strcasecmp(ext, ".trd") != 0)
 			return false;
 
-		make_short_name(name, 21, _name);
-		strcat(name, "?");
-
-		if (!Shell_MessageBox("Format", "Do you wish to format", name, "", MB_YESNO, 0050, 0115))
+		strcat(shortName, "?");
+		if (!Shell_MessageBox("Format", "Do you wish to format", shortName, "", MB_YESNO, 0050, 0115))
 			return false;
 	}
 
@@ -504,7 +489,7 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 	if (!Shell_InputBox("Format", "Enter disk label:", label))
 		return false;
 
-	sniprintf(name, sizeof(name), "%s%s", get_current_dir(), _name);
+	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), _name);
 
 	const byte zero[0x10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	const byte sysArea[] = { 0x00, 0x00, 0x01, 0x16, 0x00, 0xf0, 0x09, 0x10 };
@@ -514,15 +499,10 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 	int res;
 	UINT r;
 	FIL dst;
-	BYTE flags = FA_WRITE;
-
-	if (format)
-		flags |= FA_OPEN_EXISTING;
-	else
-		flags |= FA_CREATE_ALWAYS;
+	BYTE flags = FA_WRITE | (format ? FA_OPEN_EXISTING : FA_CREATE_ALWAYS);
 
 	{
-		res = f_open(&dst, name, flags);
+		res = f_open(&dst, dstName, flags);
 		if (res != FR_OK)
 			goto formatExit1;
 
@@ -564,8 +544,10 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 	formatExit1:;
 	}
 
-	if (res != FR_OK)
-		Shell_MessageBox("Error", "Cannot format", name, fatErrorMsg[res]);
+	if (res != FR_OK) {
+		make_short_name(shortName, 21, _name);
+		Shell_MessageBox("Error", "Cannot format", shortName, fatErrorMsg[res]);
+	}
 
 	return result;
 }
@@ -579,13 +561,12 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 	int numsec = 0;
 	bool askForGeometry = true;
 
-	char name[PATH_SIZE], shortName[29];
-	sniprintf(name, sizeof(name), "%s%s", get_current_dir(), _name);
+	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), _name);
 
 	if (format) {
 		make_short_name(shortName, 21, _name);
 
-		if (mb02_checkfmt(name, &numtrk, &numsec)) {
+		if (mb02_checkfmt(dstName, &numtrk, &numsec)) {
 			strcat(shortName, "?");
 			if (!Shell_MessageBox(title, "Do you wish to format", shortName, "", MB_YESNO, 0050, 0115))
 				return false;
@@ -619,7 +600,7 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 			}
 
 			disk_size = (numtrk * numsec) << 1;
-			sniprintf(shortName, sizeof(shortName), "Invalid disk size %u kB", disk_size);
+			sniprintf(shortName, 30, "Invalid disk size %u kB", disk_size);
 
 			if (disk_size < 5 || disk_size >= 2047) {
 				Shell_MessageBox(title, shortName, "(must be 6..2046 kB)");
@@ -640,7 +621,7 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 		label.TrimRight(label.Length() - 26);
 
 	Shell_ProgressBar(title, "Formatting...");
-	bool result = mb02_formatdisk(name, numtrk, numsec, label.String());
+	bool result = mb02_formatdisk(dstName, numtrk, numsec, label.String());
 	ScreenPop();
 
 	return result;
@@ -761,47 +742,73 @@ void Shell_Viewer(char *fullName)
 	}
 }
 //---------------------------------------------------------------------------------------
-bool Shell_Receiver()
+bool Shell_Receiver(const char *inputName)
 {
-	const char *title = "UART File Transfer";
-	CString name = "";
+	const char *title = "XMODEM File Transfer";
+	CString name = inputName;
 	if (!Shell_InputBox(title, "Enter output name:", name))
 		return false;
 
-	char pname[PATH_SIZE];
-	sniprintf(pname, sizeof(pname), "%s%lo", get_current_dir(), get_fattime());
+	make_short_name(shortName, 20, name.String());
+	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
 
-	char ptrbuffer[24];
-	strcpy(ptrbuffer, "%-23s", "transfered");
+	if (FileExists(dstName) && !Shell_MessageBox("Overwrite", "Do you want to overwrite", shortName, "", MB_YESNO, 0050, 0115))
+		return false;
+
+	sniprintf(srcName, PATH_SIZE, "%s%lo.tmp", get_current_dir(), get_fattime());
 
 	FIL file;
-	if (f_open(&file, pname, FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
-		Shell_MessageBox(title, "Receiving transmission...", ptrbuffer, NULL, MB_RECEIVE, 0070);
+	if (f_open(&file, srcName, FA_READ | FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
+		Shell_MessageBox(title, "Receiving transmission...", "", "", MB_PROGRESS, 0070);
 
-		Serial_InitReceiver(&file);
-
-		bool result = true;
-		byte counter = 0;
-		dword total = 0;
+		long total = 0;
+		XModem modem(&file);
 
 		while (true) {
-			total = Serial_ReceiveBytes(&file);
-
-			if (!(++counter & 15)) {
-				byte key = GetKey(false);
-
-				if (key == K_ESC)
-					result = false;
-				if (key == K_ESC || key == K_RETURN)
+			total = modem.receive();
+			if (total < 0) {
+				if (GetKey(false) == K_ESC)
 					break;
-
-				dynamic_bytes_text(total, ptrbuffer);
-				WriteStr(3, 10, ptrbuffer);
 			}
+			else break;
 		}
 
-		Serial_CloseReceiver(&file);
 		ScreenPop();
+
+		if (total > 0) {
+			int dc;
+			byte c;
+			UINT r;
+
+			// find proper ending
+			for (dc = 1; dc < 255; dc++) {
+				f_lseek(&file, total - dc);
+				f_read(&file, &c, 1, &r);
+
+				if (c != 0x1A)
+					break;
+			}
+
+			total -= dc;
+
+			CString value;
+			value.Format("%d", total);
+			if (Shell_InputBox(title, "Confirm file size:", value))
+				sscanf(value.String(), "%ld", &total);
+
+			f_lseek(&file, total);
+			f_truncate(&file);
+			f_close(&file);
+
+			if (FileExists(dstName))
+				f_unlink(dstName);
+
+			f_rename(srcName, dstName);
+		}
+		else {
+			f_close(&file);
+			Shell_MessageBox("Error", "Transmission failed!", shortName);
+		}
 	}
 
 	show_table();
@@ -823,6 +830,7 @@ void Shell_Commander()
 
 	while (true) {
 		byte key = GetKey();
+		char fullName[PATH_SIZE];
 
 		FRECORD fr;
 		Read(&fr, table_buffer, files_sel);
@@ -886,7 +894,6 @@ void Shell_Commander()
 		}
 		else if (key >= '1' && key <= '4') {
 			if (specConfig.specDiskIf != SpecDiskIf_DivMMC && (fr.attr & AM_DIR) == 0) {
-				char fullName[PATH_SIZE];
 				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
 
 				char *ext = fr.name + strlen(fr.name);
@@ -964,15 +971,11 @@ void Shell_Commander()
 		}
 		else if (key == K_F2) {
 			sniprintf(destinationPath, sizeof(destinationPath), "/%s", get_current_dir());
-
-			char sname[28];
-			make_short_name(sname, sizeof(sname), destinationPath);
-
-			Shell_Toast("Current working directory:", sname, 0070);
+			make_short_name(shortName, 28, destinationPath);
+			Shell_Toast("Current working directory:", shortName, 0070);
 		}
 		else if (key == K_F3) {
 			if ((fr.attr & AM_DIR) == 0) {
-				char fullName[PATH_SIZE];
 				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
 
 				char *ext = fr.name + strlen(fr.name);
@@ -1058,7 +1061,7 @@ void Shell_Commander()
 		else if (key == K_F11) {
 			hide_sel();
 
-			if (Shell_Receiver()) {
+			if (Shell_Receiver(fr.name)) {
 				int last_files_sel = files_sel;
 				read_dir();
 				files_sel = last_files_sel;
@@ -1077,9 +1080,7 @@ void Shell_Commander()
 				show_sel();
 			}
 			else {
-				char fullName[PATH_SIZE];
 				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
-
 				strlwr(fr.name);
 
 				char *ext = fr.name + strlen(fr.name);

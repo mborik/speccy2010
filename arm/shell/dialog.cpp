@@ -99,10 +99,6 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 
 	if (type == MB_PROGRESS)
 		return true;
-	else if (type == MB_RECEIVE) {
-		WriteStrAttr(16 - 3, ++y, " Done ", attrSel);
-		return true;
-	}
 
 	bool result = true;
 	while (true) {
