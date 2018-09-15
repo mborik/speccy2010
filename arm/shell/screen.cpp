@@ -3,6 +3,7 @@
 #include "font1.h"
 #include "font2.h"
 #include "font3.h"
+#include "logo.h"
 
 #include "../system.h"
 #include "../system/sdram.h"
@@ -30,10 +31,38 @@ void ScreenPop()
 void ResetScreen(bool active)
 {
 	if (active) {
-		ClrScr(0026);
-		WriteStr(7, 11, "Speccy2010: v" VERSION);
-		SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
-		SystemBus_Write(0xc00022, 0x8002); // Enable shell border
+		const int maxdest = 0x1b00;
+		byte *src = (byte *) logoPacked;
+		byte *maxsrc = src + sizeof(logoPacked);
+		byte x, y;
+		int i = 0;
+
+		while (src < maxsrc && i < maxdest) {
+			x = *src++;
+
+			if (x & 0x80) {
+				x &= 0x7F;
+				x++;
+				while (x-- > 0 && i < maxdest) {
+					SystemBus_Write(VIDEO_PAGE_PTR + i, *src++);
+					i++;
+				}
+			}
+			else {
+				x += 3;
+				y = *src++;
+				while (x-- > 0 && i < maxdest) {
+					SystemBus_Write(VIDEO_PAGE_PTR + i, y);
+					i++;
+				}
+			}
+		}
+
+		WriteStr(12, 6, "FIRMWARE");
+		WriteStr(13, 7, "v" VERSION);
+
+		SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable reset videopage
+		SystemBus_Write(0xc00022, 0x8002); // Enable reset border
 	}
 	else {
 		SystemBus_Write(0xc00021, 0); // Enable Video
