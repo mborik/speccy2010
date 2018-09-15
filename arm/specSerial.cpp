@@ -7,11 +7,8 @@ char cmd[MAX_CMD_SIZE + 1];
 int cmdSize = 0;
 bool traceNewLine = false;
 
-#define X_NACK 21
-#define X_ACK  6
-#define X_SOH  1
-#define X_EOT  4
-#define X_CAN  0x18
+enum { X_SOH = 1, X_EOT = 4, X_ACK = 6, X_NACK = 21, X_CAN = 24 };
+enum { NOERR = 0, ERR_MAXRETRY, ERR_TIMEOUT, ERR_CANCELLED, ERR_UNKNOWN };
 
 // delay when receive bytes in frame
 #define X_RECEIVEDELAY 7000
@@ -20,8 +17,14 @@ bool traceNewLine = false;
 
 XModem::XModem(FIL *file)
 {
-	data = -1;
 	dest = file;
+}
+void XModem::init(void)
+{
+	data = -1;
+	retries = 0;
+	blockNo = 0;
+	errorCode = 0;
 
 	f_lseek(dest, 0);
 }
@@ -115,37 +118,46 @@ bool XModem::receiveFrames(bool crc)
 
 	blockNo = 1;
 	retries = 0;
+	errorCode = 0;
 
 	while (true) {
-		char cmd = dataRead(100);
+		char cmd = dataRead(1000);
 		switch (cmd) {
 			case X_SOH:
 				if (!receiveFrameNo()) {
 					if (sendNack())
 						break;
-					else
+					else {
+						errorCode = ERR_MAXRETRY;
 						return false;
+					}
 				}
 				if (!receiveData()) {
 					if (sendNack())
 						break;
-					else
+					else {
+						errorCode = ERR_MAXRETRY;
 						return false;
+					}
 				};
 				if (crc) {
 					if (!checkCrc()) {
 						if (sendNack())
 							break;
-						else
+						else {
+							errorCode = ERR_MAXRETRY;
 							return false;
+						}
 					}
 				}
 				else {
 					if (!checkChkSum()) {
 						if (sendNack())
 							break;
-						else
+						else {
+							errorCode = ERR_MAXRETRY;
 							return false;
+						}
 					}
 				}
 				//callback
@@ -165,35 +177,52 @@ bool XModem::receiveFrames(bool crc)
 				// wait second CAN
 				if (dataRead(X_RECEIVEDELAY) == X_CAN) {
 					dataWrite(X_ACK);
-					//flushInput();
+					errorCode = ERR_CANCELLED;
 					return false;
 				}
 				// something wrong
+				errorCode = ERR_UNKNOWN;
 				dataWrite(X_CAN);
 				dataWrite(X_CAN);
 				dataWrite(X_CAN);
 				return false;
 
 			default:
-				//something wrong
-				dataWrite(X_CAN);
-				dataWrite(X_CAN);
-				dataWrite(X_CAN);
-				return false;
+				retries++;
+				if (retries < X_RCVRETRYLIMIT) {
+					// something wrong
+					errorCode = ERR_MAXRETRY;
+					dataWrite(X_CAN);
+					dataWrite(X_CAN);
+					dataWrite(X_CAN);
+					return false;
+				}
 		}
 	}
 }
-long XModem::receive()
+char XModem::receive()
 {
 	for (int i = 0; i < 16; i++) {
 		dataWrite('C');
-		if (dataAvail(1000))
-			return receiveFrames(true) ? (blockNo * X_BLK_SIZE) : 0;
+		if (dataAvail(1000)) {
+			if (receiveFrames(true))
+				return 1;
+			else {
+				__TRACE("\nXMODEM error code: %d", errorCode);
+				return 0;
+			}
+		}
 	}
 	for (int i = 0; i < 16; i++) {
 		dataWrite(X_NACK);
-		if (dataAvail(1000))
-			return receiveFrames(false) ? (blockNo * X_BLK_SIZE) : 0;
+		if (dataAvail(1000)) {
+			if (receiveFrames(false))
+				return 1;
+			else {
+				__TRACE("\nXMODEM error code: %d", errorCode);
+				return 0;
+			}
+		}
 	}
 	return -1;
 }

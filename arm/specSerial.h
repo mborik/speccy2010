@@ -16,6 +16,7 @@ private:
 	int  retries; // retry counter for NACK
 	byte buffer[X_BLK_SIZE]; // buffer
 	bool repeatedBlock; // repeated block flag
+	byte errorCode;
 
 	int  recvChar(int msDelay);
 	word crc16_ccitt(byte *buf, int size);
@@ -28,12 +29,12 @@ private:
 	bool checkChkSum(void);
 	bool receiveFrames(bool crc);
 	bool sendNack(void);
-	void init(void);
 	byte generateChkSum(void);
 
 public:
 	XModem(FIL *file);
-	long receive();
+	void init(void);
+	char receive();
 };
 #endif
 

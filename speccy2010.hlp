@@ -49,6 +49,7 @@ Shift+F6 - rename file
 F7 - create directory
 F8 - delete file(s)
 F9 - create/format TRD/MBD disk image (wizard)
+F11 - receive file via XMODEM thru the UART
 CapsLock - upper case
 
 Settings/ROM/Disk Menu keys:

@@ -746,7 +746,7 @@ bool Shell_Receiver(const char *inputName)
 {
 	const char *title = "XMODEM File Transfer";
 	CString name = inputName;
-	if (!Shell_InputBox(title, "Enter output name:", name))
+	if (!Shell_InputBox(title, "Enter output name:", name) || name.Length() == 0)
 		return false;
 
 	make_short_name(shortName, 20, name.String());
@@ -761,12 +761,14 @@ bool Shell_Receiver(const char *inputName)
 	if (f_open(&file, srcName, FA_READ | FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
 		Shell_MessageBox(title, "Receiving transmission...", "", "", MB_PROGRESS, 0070);
 
-		long total = 0;
+		char status = 0;
 		XModem modem(&file);
 
+		modem.init();
+
 		while (true) {
-			total = modem.receive();
-			if (total < 0) {
+			status = modem.receive();
+			if (status < 0) {
 				if (GetKey(false) == K_ESC)
 					break;
 			}
@@ -775,38 +777,40 @@ bool Shell_Receiver(const char *inputName)
 
 		ScreenPop();
 
-		if (total > 0) {
-			int dc;
+		if (status > 0) {
+			DWORD dc = file.fsize;
 			byte c;
 			UINT r;
 
-			// find proper ending
-			for (dc = 1; dc < 255; dc++) {
-				f_lseek(&file, total - dc);
+			// try to find proper ending
+			for (int i = 0; dc > 1 && i < 127; i++) {
+				f_lseek(&file, --dc);
 				f_read(&file, &c, 1, &r);
 
 				if (c != 0x1A)
 					break;
 			}
 
-			total -= dc;
-
 			CString value;
-			value.Format("%d", total);
+			value.Format("%lu", ++dc);
 			if (Shell_InputBox(title, "Confirm file size:", value))
-				sscanf(value.String(), "%ld", &total);
+				sscanf(value.String(), "%lu", &dc);
 
-			f_lseek(&file, total);
-			f_truncate(&file);
+			if (dc > 0 && dc < file.fsize) {
+				f_lseek(&file, dc);
+				f_truncate(&file);
+			}
+
 			f_close(&file);
 
 			if (FileExists(dstName))
 				f_unlink(dstName);
-
 			f_rename(srcName, dstName);
 		}
 		else {
 			f_close(&file);
+			f_unlink(srcName);
+
 			Shell_MessageBox("Error", "Transmission failed!", shortName);
 		}
 	}
@@ -1061,7 +1065,7 @@ void Shell_Commander()
 		else if (key == K_F11) {
 			hide_sel();
 
-			if (Shell_Receiver(fr.name)) {
+			if (Shell_Receiver((fr.attr & AM_DIR) ? "" : fr.name)) {
 				int last_files_sel = files_sel;
 				read_dir();
 				files_sel = last_files_sel;
