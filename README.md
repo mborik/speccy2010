@@ -25,8 +25,8 @@
   - **Scorpion** 256 modes
 * Disk interfaces
   - **Betadisk** (real floppy disk controller emulation, supported TRD, SCL and FDI disk images)
-  - **DivMMC** (basically [DivIDE](https://divide.speccy.cz/files/pgm_model.txt) control register and with all 64 x 8kB SRAM pages)
-  - **MB-02** (without Z80DMA or real floppy disk controller but specificaly modified original FDC-BIOS and simplified data transfer with new BS-DOS 310 firmware)
+  - **DivMMC** (basically [DivIDE](https://divide.speccy.cz/files/pgm_model.txt) control register and memory model will all 64 x 8kB SRAM pages)
+  - **MB-02** (without Z80DMA or real floppy disk controller but specifically modified original BIOS and simplified data transfer with new BS-DOS 308s firmware)
 * 2xAY (Turbosound), Covox/Soundrive
 * TAP / TZX support
 * full SNA support

@@ -101,11 +101,6 @@ void SD_Init()
 //---------------------------------------------------------------------------------------
 void Spectrum_CleanupSDRAM()
 {
-	CPU_Reset_Seq();
-	CPU_Stop();
-
-	ResetScreen(true);
-
 	__TRACE("Cleanup of SD-RAM...\n");
 
 	SystemBus_Write(0xc00020, 0); // use bank 0
@@ -129,9 +124,6 @@ void Spectrum_CleanupSDRAM()
 	}
 
 	__TRACE("\nCleanup done...\n");
-
-	ResetScreen(false);
-	CPU_Start();
 }
 
 bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbackRomFile = NULL)
@@ -210,7 +202,6 @@ void Spectrum_InitRom()
 {
 	__TRACE("ROM configuration started...\n");
 
-	CPU_Stop();
 	specConfig.specTrdosFlag = 0;
 
 	if (specConfig.specMachine == SpecRom_Classic48) {
@@ -249,20 +240,6 @@ void Spectrum_InitRom()
 	}
 
 	__TRACE("ROM configuration finished...\n");
-
-	SystemBus_Write(0xc00021, 0x0000);
-	SystemBus_Write(0xc00022, 0x0000);
-
-	ResetKeyboard();
-	RTC_Update();
-
-	CPU_Start();
-	CPU_Reset(true);
-	CPU_Reset(false);
-
-	WDT_Kick();
-	timer_flag_1Hz = 0;
-	timer_flag_100Hz = 0;
 }
 
 void Spectrum_UpdateConfig(bool hardReset)
@@ -312,7 +289,8 @@ void Spectrum_UpdateConfig(bool hardReset)
 		(specConfig.specVideoInterlace << 7));
 
 	// disk interface configuration...
-	SystemBus_Write(0xc00042, fpgaDiskIfCfg);
+	SystemBus_Write(0xc00042, fpgaDiskIfCfg | (hardReset ? 0x8000 : 0));
+	diskIfWasActive = 0;
 
 	// audio configuration (AY, YM, TurboSound)...
 	SystemBus_Write(0xc00045, specConfig.specTurboSound |
@@ -324,25 +302,43 @@ void Spectrum_UpdateConfig(bool hardReset)
 	// ROMs initialization...
 	dword newMachineConfig = specConfig.specMachine | (fpgaDiskIfCfg << 4);
 	if (prevMachineConfig != newMachineConfig || hardReset) {
-		if (hardReset)
+		prevMachineConfig = newMachineConfig;
+
+		if (hardReset) {
+			SystemBus_Write(0xc00000, 8);
+			CPU_Stop();
+
+			SystemBus_Write(0xc00020, 0);
+			ResetScreen(true);
+
 			Spectrum_CleanupSDRAM();
+		}
+		else
+			CPU_Stop();
 
 		Spectrum_InitRom();
 		Spectrum_UpdateDisks();
 
-		prevMachineConfig = newMachineConfig;
+		ResetKeyboard();
+		RTC_Update();
+
+		CPU_Start();
+		CPU_Reset_Seq();
+
+		WDT_Kick();
+		timer_flag_1Hz = 0;
+		timer_flag_100Hz = 0;
 	}
 
 	if (hardReset)
-		SystemBus_Write(0xc00042, fpgaDiskIfCfg | 0x8000);
-	diskIfWasActive = 0;
-
-	floppy_set_fast_mode(specConfig.specBdiMode);
+		ResetScreen(false);
 }
 
 void Spectrum_UpdateDisks()
 {
 	if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
+		floppy_set_fast_mode(specConfig.specBdiMode);
+
 		for (int i = 0; i < 4; i++) {
 			fdc_open_image(i, specConfig.specBdiImages[i].name);
 			floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
@@ -628,8 +624,6 @@ void BDI_Routine()
 	while ((trdosStatus & 1) != 0) {
 		bool trdosWr = (trdosStatus & 0x02) != 0;
 		byte trdosAddr = SystemBus_Read(0xc0001a);
-
-		static int counter = 0;
 
 		if (trdosWr) {
 			byte trdosData = SystemBus_Read(0xc0001b);
