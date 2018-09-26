@@ -1,4 +1,4 @@
-//  patches to toolchain
+// patches to toolchain
 // uncomment mthumb-interwork in gcc/config/t-arm-elf
 // 	--disable-hosted-libstdcxx
 // 	empty crt0.s
@@ -9,19 +9,17 @@
 #include "types.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
-
     #include "75x_lib.h"
-    #include "7xx_flash.h"
+    #include "75x_flash.h"
+
     void WDT_Kick();
-    void __TRACE( const char *str );
+	void __TRACE(const char *str);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
 

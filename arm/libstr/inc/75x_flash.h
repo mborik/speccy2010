@@ -17,8 +17,8 @@
 *******************************************************************************/
 
 /* Define to prevent recursive inclusion ------------------------------------ */
-#ifndef __7XX_FLASH_H
-#define __7XX_FLASH_H
+#ifndef __75X_FLASH_H
+#define __75X_FLASH_H
 
 /* Includes ------------------------------------------------------------------*/
 #include "flash_map.h"
@@ -38,13 +38,11 @@
 /* Flash bank 0 module */
 #define FLASH_BANK0_MODULE     0x000000FF  /* Bank 0 module   */
 
-#ifndef STR73x
-  /* Flash bank 1 sectors */
-  #define FLASH_BANK1_SECTOR0    0x00010000  /* Bank 1 sector 0 */
-  #define FLASH_BANK1_SECTOR1    0x00020000  /* Bank 1 sector 1 */
-  /* Flash bank 1 module */
-  #define FLASH_BANK1_MODULE     0x00030000  /* Bank 1 module   */
-#endif
+/* Flash bank 1 sectors */
+#define FLASH_BANK1_SECTOR0    0x00010000  /* Bank 1 sector 0 */
+#define FLASH_BANK1_SECTOR1    0x00020000  /* Bank 1 sector 1 */
+/* Flash bank 1 module */
+#define FLASH_BANK1_MODULE     0x00030000  /* Bank 1 module   */
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
@@ -67,6 +65,6 @@ u16 FLASH_GetPENProtectionLevel(void);
 void FLASH_PermanentProtectionCmd(FunctionalState FLASH_NewState);
 void FLASH_TemporaryProtectionDisable(void);
 
-#endif  /* __7XX_FLASH_H */
+#endif  /* __75X_FLASH_H */
 
 /*******************(C) COPYRIGHT 2006 STMicroelectronics *****END OF FILE****/

@@ -4,12 +4,12 @@ Copyright RAISONANCE S.A.S. 2006
 */
 
 /* include the common STRxxx sub-script */
-INCLUDE "system/STR75x_COMMON.ld"
+INCLUDE "STR75x_COMMON.ld"
 
 /* include the memory spaces definitions sub-script */
-INCLUDE "system/STR75xFx2_DEF.ld"
+INCLUDE "STR75xFx2_DEF.ld"
 
 /* include the sections management sub-script for FLASH mode */
-INCLUDE "system/sections_FLASH.ld"
+INCLUDE "sections_FLASH.ld"
 
 

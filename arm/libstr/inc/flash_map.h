@@ -1,13 +1,11 @@
 /******************** (C) COPYRIGHT 2006 STMicroelectronics ********************
-* File Name          : 75x_cfg.h
+* File Name          : flash_map.h
 * Author             : MCD Application Team
-* Date First Issued  : 03/10/2006
-* Description        : This file contains all the functions prototypes for the
-*                      CFG software library.
+* Date First Issued  : 10/01/2006 : V1.0
+* Description        : Flash registers definition and memory mapping.
 ********************************************************************************
 * History:
-* 07/17/2006 : V1.0
-* 03/10/2006 : V0.1
+* 10/01/2006 : V1.0
 ********************************************************************************
 * THE PRESENT SOFTWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
 * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE TIME.
@@ -17,32 +15,45 @@
 * INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
 *******************************************************************************/
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __75x_CFG_H
-#define __75x_CFG_H
+/* Define to prevent recursive inclusion ------------------------------------ */
+#ifndef __FLASH_MAP_H
+#define __FLASH_MAP_H
 
 /* Includes ------------------------------------------------------------------*/
-#include "75x_map.h"
+#include "75x_type.h"
 
 /* Exported types ------------------------------------------------------------*/
+/******************************************************************************/
+/*                         FLASH registers structure                          */
+/******************************************************************************/
+typedef struct
+{
+  vu32 CR0;
+  vu32 CR1;
+  vu32 DR0;
+  vu32 DR1;
+  vu32 AR;
+  vu32 ER;
+} FLASH_TypeDef;
+
 /* Exported constants --------------------------------------------------------*/
-#define CFG_BootSpace_FLASH     0x00000000
-#define CFG_BootSpace_SRAM      0x00000002
-#define CFG_BootSpace_ExtSMI    0x00000003
+/******************************************************************************/
+/*                               Flash addresses                              */
+/******************************************************************************/
 
-#define CFG_FLASHBurst_Disable    0xFFFFFEFF
-#define CFG_FLASHBurst_Enable     0x00000100
+#define FLASH_BASE_ADDRESS      0x20100000
 
-#define CFG_USBFilter_Disable    0xFFFFFDFF
-#define CFG_USBFilter_Enable     0x00000200
+/* Flash protection registers addresses */
+#define FLASH_NVWPAR_ADDRESS   (FLASH_BASE_ADDRESS + 0xDFB0)
+#define FLASH_NVAPR0_ADDRESS   (FLASH_BASE_ADDRESS + 0xDFB8)
+#define FLASH_NVAPR1_ADDRESS   (FLASH_BASE_ADDRESS + 0xDFBC)
+
+#define FLASH           ((FLASH_TypeDef *)FLASH_BASE_ADDRESS)
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
-void CFG_BootSpaceConfig(u32 CFG_BootSpace);
-void CFG_FLASHBurstConfig(u32 CFG_FLASHBurst);
-void CFG_USBFilterConfig(u32 CFG_USBFilter);
-FlagStatus CFG_GetFlagStatus(void);
 
-#endif /* __75x_CFG_H */
+#endif /* __FLASH_MAP_H */
 
 /******************* (C) COPYRIGHT 2006 STMicroelectronics *****END OF FILE****/
+

@@ -6,7 +6,7 @@ typedef unsigned short word;
 typedef unsigned char byte;
 
 #ifndef __cplusplus
-typedef enum { false = 0, true  = !false } bool;
+typedef enum { false = 0, true = !false } bool;
 #endif
 
 #define BOOL bool
@@ -14,13 +14,13 @@ typedef enum { false = 0, true  = !false } bool;
 #define FALSE false
 
 #ifndef min
-#define min( x, y ) ( x > y ? y : x )
+#define min(x, y) (x > y ? y : x)
 #endif
 
 #ifndef max
-#define max( x, y ) ( x > y ? x : y )
+#define max(x, y) (x > y ? x : y)
 #endif
 
-#define countof(a)   (sizeof(a) / sizeof(*(a)))
+#define countof(a) (sizeof(a) / sizeof(*(a)))
 
 #endif

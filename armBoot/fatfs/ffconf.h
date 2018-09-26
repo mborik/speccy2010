@@ -26,7 +26,7 @@
 /  f_truncate and useless f_getfree. */
 
 
-#define _FS_MINIMIZE	0	/* 0, 1, 2 or 3 */
+#define _FS_MINIMIZE	2	/* 0, 1, 2 or 3 */
 /* The _FS_MINIMIZE option defines minimization level to remove some functions.
 /
 /   0: Full function.
@@ -53,7 +53,7 @@
 / Locale and Namespace Configurations
 /----------------------------------------------------------------------------*/
 
-#define _CODE_PAGE	1251
+#define _CODE_PAGE	437
 /* The _CODE_PAGE specifies the OEM code page to be used on the target system.
 /  Incorrect setting of the code page can cause a file open failure.
 /
@@ -87,7 +87,7 @@
 
 
 #define	_USE_LFN	1		/* 0, 1 or 2 */
-#define	_MAX_LFN	64		/* Maximum LFN length to handle (12 to 255) */
+#define	_MAX_LFN	16		/* Maximum LFN length to handle (12 to 255) */
 /* The _USE_LFN option switches the LFN support.
 /
 /   0: Disable LFN. _MAX_LFN and _LFN_UNICODE have no effect.

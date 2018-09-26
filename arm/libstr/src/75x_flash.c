@@ -1,5 +1,5 @@
 /******************** (C) COPYRIGHT 2006 STMicroelectronics ********************
-* File Name          : 7xx_flash.c
+* File Name          : 75x_flash.c
 * Author             : MCD Application Team
 * Date First Issued  : 10/01/2006 : V1.0
 * Description        : This file provides all the Flash software functions.
@@ -16,7 +16,7 @@
 *******************************************************************************/
 
 /* Includes ------------------------------------------------------------------*/
-#include"7xx_flash.h"
+#include "75x_flash.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -32,22 +32,11 @@
 #define FLASH_INTM_MASK    0x00200000
 #define FLASH_INTP_MASK    0x00100000
 
-#ifdef STR73x
-  /* STR73x Flash lock and busy bits */
-  #define FLASH_FLAG_LOCKBSY     0x12
-#else
-  /* STR71x/STR75x Flash lock and busy bits */
-  #define FLASH_FLAG_LOCKBSY     0x16
-#endif
+/* STR75x Flash lock and busy bits */
+#define FLASH_FLAG_LOCKBSY     0x16
 
-/* Flash protection mask */
-#ifdef STR75x
-  /* STR75x Readout protection */
-  #define FLASH_PROTECTION_MASK  0x00000001
-#else /* STR71x & STR73x */
-  /* STR71x & STR73x Debug protection */
-  #define FLASH_PROTECTION_MASK  0x00000002
-#endif
+/* STR75x Readout protection */
+#define FLASH_PROTECTION_MASK  0x00000001
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -56,7 +45,7 @@
 
 /*******************************************************************************
 * Function Name  : FLASH_DeInit
-* Description    : Deinitializes the Flash module registers to their default 
+* Description    : Deinitializes the Flash module registers to their default
 *                  reset values.
 * Input          : None
 * Output         : None
@@ -196,7 +185,7 @@ void FLASH_ResumeOperation(u32 FLASH_LastOperation)
 * Function Name  : FLASH_ITConfig
 * Description    : Enables or disables the end of write interrupt.
 * Input          : FLASH_NewState: the new state of end of write interrupt.
-*                  This parameter can be one of the following values: 
+*                  This parameter can be one of the following values:
 *                      - ENABLE:  Enable the end of write interrupt.
 *                      - DISABLE: Disable the end of write interrupt.
 * Output         : None
@@ -205,7 +194,7 @@ void FLASH_ResumeOperation(u32 FLASH_LastOperation)
 void FLASH_ITConfig(FunctionalState FLASH_NewState)
 {
   if(FLASH_NewState == ENABLE)
-  { 
+  {
     /* Enable the end of write interrupt */
     FLASH->CR0  |= FLASH_INTM_MASK;
   }
@@ -253,8 +242,8 @@ void FLASH_ClearITPendingBit(void)
 * Description    : Checks the Flash flags.
 * Input          : None
 * Output         : None
-* Return         : The Flash flag errors. 
-*                  The description of the Flash flag errors bits :  
+* Return         : The Flash flag errors.
+*                  The description of the Flash flag errors bits :
 *                      - Bit 0: Write error flag.
 *                      - Bit 1: Erase error flag.
 *                      - Bit 2: Program error flag.
@@ -326,10 +315,10 @@ void FLASH_WaitForLastOperation(void)
 * Output         : None
 * Return         : None
 ********************************************************************************
-* Important Note : 
-*   - The write protection can be disabled only on a temporary way.  
-*   - For the STR73x family this function can work only when the STR73x is on 
-*     SystemMemory boot mode. 
+* Important Note :
+*   - The write protection can be disabled only on a temporary way.
+*   - For the STR73x family this function can work only when the STR73x is on
+*     SystemMemory boot mode.
 *******************************************************************************/
 void FLASH_WriteProtectionCmd(u32 FLASH_Sectors, FunctionalState FLASH_NewState)
 {
@@ -382,9 +371,9 @@ void FLASH_WriteProtectionCmd(u32 FLASH_Sectors, FunctionalState FLASH_NewState)
 * Output         : None
 * Return         : The status of the write protection (SET or RESET)
 ********************************************************************************
-* Important Note : 
-*   - For the STR73x family this function can work only when the STR73x is on 
-*     SystemMemory boot mode. 
+* Important Note :
+*   - For the STR73x family this function can work only when the STR73x is on
+*     SystemMemory boot mode.
 *******************************************************************************/
 FlagStatus FLASH_GetWriteProtectionStatus(u32 FLASH_Sectors)
 {
@@ -395,7 +384,7 @@ FlagStatus FLASH_GetWriteProtectionStatus(u32 FLASH_Sectors)
   else
   {
     return SET;
-  } 
+  }
 }
 
 /*******************************************************************************
@@ -403,12 +392,12 @@ FlagStatus FLASH_GetWriteProtectionStatus(u32 FLASH_Sectors)
 * Description    : Gets the protection enable level.
 * Input          : None
 * Output         : None
-* Return         : The number of time the debug protection was enabled. 
+* Return         : The number of time the debug protection was enabled.
 *                  It's a value from 1 to 16.
 ********************************************************************************
-* Important Note : 
-*   - For the STR73x family this function can work only when the STR73x is on 
-*     SystemMemory boot mode. 
+* Important Note :
+*   - For the STR73x family this function can work only when the STR73x is on
+*     SystemMemory boot mode.
 *******************************************************************************/
 u16 FLASH_GetPENProtectionLevel(void)
 {
@@ -432,12 +421,12 @@ u16 FLASH_GetPENProtectionLevel(void)
 * Description    : Gets the protection disable level.
 * Input          : None
 * Output         : None
-* Return         : The number of time the debug protection was disabled. 
+* Return         : The number of time the debug protection was disabled.
 *                  It's a value from 1 to 16.
 ********************************************************************************
-* Important Note : 
-*   - For the STR73x family this function can work only when the STR73x is on 
-*     SystemMemory boot mode. 
+* Important Note :
+*   - For the STR73x family this function can work only when the STR73x is on
+*     SystemMemory boot mode.
 *******************************************************************************/
 u16 FLASH_GetPDSProtectionLevel(void)
 {
@@ -460,17 +449,17 @@ u16 FLASH_GetPDSProtectionLevel(void)
 * Function Name  : FLASH_PermanentProtectionCmd
 * Description    : Enable or disable the Debug/Readout protection in a permanent
 *                  way.
-* Input          : - FLASH_NewState: Enable or disable the Debug/Readout 
-*                  protection. 
+* Input          : - FLASH_NewState: Enable or disable the Debug/Readout
+*                  protection.
 *                  This parameter can be one of the following values:
 *                      - ENABLE:  Enable the Debug/Readout protection.
 *                      - DISABLE: Disable the Debug/Readout protection.
 * Output         : None
 * Return         : None
 ********************************************************************************
-* Important Note :  
-*   - For the STR73x family this function can work only when the STR73x is on 
-*     SystemMemory boot mode. 
+* Important Note :
+*   - For the STR73x family this function can work only when the STR73x is on
+*     SystemMemory boot mode.
 *******************************************************************************/
 void FLASH_PermanentProtectionCmd(FunctionalState FLASH_NewState)
 {
@@ -503,7 +492,7 @@ void FLASH_PermanentProtectionCmd(FunctionalState FLASH_NewState)
       FLASH->CR0 |= FLASH_WMS_MASK;
     }
   }
-  else /* Disable the Debug/ReadOut protection */ 
+  else /* Disable the Debug/ReadOut protection */
   {
     /* Set the Set Protection bit */
     FLASH->CR0 |= FLASH_SPR_MASK;
@@ -523,9 +512,9 @@ void FLASH_PermanentProtectionCmd(FunctionalState FLASH_NewState)
 * Output         : None
 * Return         : None
 ********************************************************************************
-* Important Note : 
-*   - For the STR73x family this function can work only when the STR73x is on 
-*     SystemMemory boot mode. 
+* Important Note :
+*   - For the STR73x family this function can work only when the STR73x is on
+*     SystemMemory boot mode.
 *******************************************************************************/
 void FLASH_TemporaryProtectionDisable(void)
 {
