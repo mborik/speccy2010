@@ -1,0 +1,5 @@
+# Build
+/str750prog*
+
+# gitignore itself
+/.gitignore
