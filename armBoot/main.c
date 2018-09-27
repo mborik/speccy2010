@@ -7,6 +7,8 @@
 #include "system.h"
 
 #define MAIN_PROG_START 0x20008000
+#define RESET_WRITE_PROTECTION_BITS 0
+
 
 bool MRCC_Config(void)
 {
@@ -137,7 +139,7 @@ void SD_Init()
 		else {
 			__TRACE("OK...\n");
 
-			FATFS fatfs;
+			static FATFS fatfs;
 			f_mount(0, &fatfs);
 		}
 	}
@@ -159,7 +161,7 @@ char *NumToHex(dword num, char *str, int len)
 
 void FlashPage(byte secnum, dword sector, dword startAddr, dword endAddr, FIL newFirmware)
 {
-	char isError = 1;
+	char isError = 0;
 	dword data4;
 	dword storedData4;
 	int pos;
@@ -174,28 +176,27 @@ void FlashPage(byte secnum, dword sector, dword startAddr, dword endAddr, FIL ne
 	else
 		endAddr = endAddr;
 
-	while (isError) {
+	do {
 		__TRACE("\nFlashing sector #");
 		__TRACE(NumToHex(secnum, str, 1));
 		__TRACE(" [START:0x");
 		__TRACE(NumToHex(startAddr, str, 8));
+#if RESET_WRITE_PROTECTION_BITS
 		__TRACE(", WP:");
 		__TRACE(FLASH_GetWriteProtectionStatus(sector) ? "on": "off");
+#endif
 		__TRACE("]\n");
-
-		isError = 0;
-		flashData = (byte *) startAddr;
 
 		__TRACE("- erasing...");
 		FLASH_ClearFlag();
 		FLASH_EraseSector(sector);
 		FLASH_WaitForLastOperation();
 
-		__TRACE(" STATUS=");
-		__TRACE(NumToHex(FLASH_GetFlagStatus(), str, 3));
-		__TRACE("\n- flashing (with WP:off).");
+		__TRACE("\n- flashing.");
 
+#if RESET_WRITE_PROTECTION_BITS
 		FLASH_WriteProtectionCmd(sector, DISABLE);
+#endif
 
 		flashData = (byte *) startAddr;
 		f_lseek(&newFirmware, startAddr - 0x20008000);
@@ -214,20 +215,22 @@ void FlashPage(byte secnum, dword sector, dword startAddr, dword endAddr, FIL ne
 			if (data4 != storedData4) {
 				__TRACE("\n! error at 0x");
 				__TRACE(NumToHex((dword) flashData, str, 8));
-				__TRACE(" [IN:");
+				__TRACE(" [RD:");
 				__TRACE(NumToHex(data4, str, 8));
-				__TRACE(" > STORED:");
+				__TRACE(" > WR:");
 				__TRACE(NumToHex(storedData4, str, 8));
-				__TRACE(" STATUS=");
+#if !RESET_WRITE_PROTECTION_BITS
+				__TRACE(", STATUS:");
 				__TRACE(NumToHex(FLASH_GetFlagStatus(), str, 3));
+#endif
 				__TRACE("]");
-				isError = 1;
+				isError++;
 				break;
 			}
 		}
 
 		__TRACE("\n");
-	}
+	} while (isError && isError <= 3);
 }
 
 void UpdateFirmware()
