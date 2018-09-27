@@ -15,7 +15,7 @@ typedef unsigned char byte;
 
 HANDLE OpenPort(const char *name)
 {
-	HANDLE handle = CreateFile(name, FILE_ALL_ACCESS, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, OPEN_ALWAYS, 0, 0);
+	HANDLE handle = CreateFile(name, FILE_ALL_ACCESS, FILE_SHARE_WRITE | FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
 	if (handle == INVALID_HANDLE_VALUE) {
 		handle = NULL;
 		return handle;
@@ -222,11 +222,11 @@ bool InitDevice(HANDLE port_handle)
 	byte initByte = 0x7f;
 	WriteFile(port_handle, &initByte, 1, &res, 0);
 	if (!GetAnswer(port_handle)) {
-		printf("\x08\x08 - error\n");
+		puts("\b\b - error");
 		return false;
 	}
 
-	printf("\x08\x08 - OK  \n");
+	puts("\b\b - OK  ");
 	return true;
 }
 
@@ -257,11 +257,11 @@ bool EraseSector(HANDLE port_handle, int sectorNumber)
 	if (!GetAnswer(port_handle, 100))
 		goto eraseError;
 
-	printf("\x08\x08 - OK  \n");
+	puts("\b\b - OK  ");
 	return true;
 
 eraseError:
-	printf("\x08\x08 - error\n");
+	puts("\b\b - error");
 	return false;
 }
 
@@ -326,11 +326,11 @@ bool EraseDevice(HANDLE port_handle)
 	if (!GetAnswer(port_handle, 100))
 		goto eraseError;
 
-	printf("\x08\x08 - OK  \n");
+	puts("\b\b - OK  ");
 	return true;
 
 eraseError:
-	printf("\x08\x08 - error\n");
+	puts("\b\b - error");
 	return false;
 }
 
@@ -340,8 +340,8 @@ bool WriteBlock(HANDLE port_handle, dword addr, const byte *buff, dword size)
 	byte header[0x10];
 	dword fullSize = size;
 
-	printf("writting %lu bytes..", size);
-	printf("  0%%");
+	printf("writting");
+	printf(" %lu bytes..  0%%", size);
 
 	while (size > 0) {
 		header[0] = 0x31;
@@ -369,17 +369,18 @@ bool WriteBlock(HANDLE port_handle, dword addr, const byte *buff, dword size)
 		buff += tSize;
 		size -= tSize;
 
-		printf("\x08\x08\x08\x08%3d%%", (int) ((fullSize - size) * 100 / fullSize));
+		printf("\b\b\b\b");
+		printf("%3d%%", (int) ((fullSize - size) * 100 / fullSize));
 		fflush(stdout);
 	}
 
-	printf("\x08\x08\x08\x08");
-	printf("\x08\x08 - OK  \n");
+	printf("\b\b\b\b");
+	puts("\b\b - OK  ");
 	return true;
 
 writeError:
-	printf("\x08\x08\x08\x08");
-	printf("\x08\x08 - error\n");
+	printf("\b\b\b\b");
+	puts("\b\b - error");
 	return false;
 }
 
@@ -390,8 +391,8 @@ bool ReadBlock(HANDLE port_handle, dword addr, byte *buff, dword size)
 
 	dword fullSize = size;
 
-	printf("reading %lu bytes..", size);
-	printf("  0%%");
+	printf("reading");
+	printf(" %lu bytes..  0%%", size);
 
 	while (size > 0) {
 		header[0] = 0x11;
@@ -419,17 +420,18 @@ bool ReadBlock(HANDLE port_handle, dword addr, byte *buff, dword size)
 		buff += tSize;
 		size -= tSize;
 
-		printf("\x08\x08\x08\x08%3d%%", (int) ((fullSize - size) * 100 / fullSize));
+		printf("\b\b\b\b");
+		printf("%3d%%", (int) ((fullSize - size) * 100 / fullSize));
 		fflush(stdout);
 	}
 
-	printf("\x08\x08\x08\x08");
-	printf("\x08\x08 - OK  \n");
+	printf("\b\b\b\b");
+	puts("\b\b - OK  ");
 	return true;
 
 readError:
-	printf("\x08\x08\x08\x08");
-	printf("\x08\x08 - error\n");
+	printf("\b\b\b\b");
+	puts("\b\b - error");
 	return false;
 }
 
@@ -441,7 +443,7 @@ int main(int argc, char *argv[])
 	char file_name[0x100] = "default.bin";
 	int errors_numder = 0;
 
-	printf("str750 prog v1.0\n\n");
+	puts("str750 prog v1.2\n");
 
 	bool cmd_write = false;
 	bool cmd_verify = false;
@@ -464,7 +466,7 @@ int main(int argc, char *argv[])
 
 	FILE *file = NULL;
 	dword file_size;
-	byte *buff = 0;
+	byte *buff = NULL;
 
 	HANDLE port_handle = OpenPort(port_name);
 	if (!port_handle) {
@@ -525,7 +527,7 @@ exit_prog:
 		delete buff;
 
 	if (!errors_numder)
-		printf("done without errors..\n\n");
+		puts("done without errors..\n");
 	else {
 		printf("done with %d error(s)..\n\n", errors_numder);
 		getchar();
