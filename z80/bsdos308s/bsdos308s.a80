@@ -1,0 +1,412 @@
+; BS-DOS 308 (c) Busy Software 1992-1996 (28.07.96)
+; converted with mrs2a80 convertor by dR0n^k3l 2002
+; BS-DOS 308s adopted to Speccy2010 by SinDiKaT 2018
+
+verzia:		equ	308
+
+		device	zxspectrum48
+		slot	0
+		org	0
+
+
+dta:		equ	#53	; Speccy2010 specific communication port
+ram:		equ	#17	; original MB-02 bank switching port
+
+h04:		equ	#40	;4
+h05:		equ	#41	;5
+h0c:		equ	#60	;c
+h0d:		equ	#61	;d
+
+rdrom:		equ	#3c98
+rdram:		equ	#3c9a
+wrrom:		equ	#3c9c
+wrram:		equ	#3c9e
+
+ver1:		equ	verzia/100
+verza:		equ	ver1*100
+verzb:		equ	verzia-verza
+ver2:		equ	verzb/10
+verzc:		equ	ver2*10
+ver3:		equ	verzb-verzc
+
+
+		; load original BS-DOS 308 by Busy
+		incbin "bsdos308.cod"
+
+
+		; and apply patches...
+		org	#0080
+		block	#80
+
+;***********************************************************************
+;***                        SPECCY 2010 BIOS                         ***
+;***********************************************************************
+
+spc2010_bios:
+bz:
+
+verzia_bios =	2010
+
+; definitions of BIOS service numbers
+status_x:	equ	#01
+rest_x:		equ	#02
+seek_x:		equ	#03
+rdsec_x:	equ	#04
+wrsec_x:	equ	#05
+rdtrk_x:	equ	#06
+wrtrk_x:	equ	#07
+rdadd_x:	equ	#08
+rezim_x:	equ	#09
+settrk_x:	equ	#0a
+gettrk_x:	equ	#0b
+aktive_x:	equ	#0c
+pasive_x:	equ	#0d
+dinfo_x:	equ	#0e
+setmax_x:	equ	#0f
+setmlt_x:	equ	#10
+setoff_x:	equ	#11
+
+biosjmp:	jr	skoky
+		dw	status
+		dw	rest
+		dw	seek
+		dw	rdsec
+		dw	wrsec
+		dw	rdtrk
+		dw	wrtrk
+		dw	rdadd
+		dw	rezim
+		dw	settrk
+		dw	gettrk
+		dw	aktive
+		dw	pasive
+		dw	info
+		dw	setmax
+		dw	setmlt
+		dw	setoff
+
+skoky:		ld	c,a
+		add	a,a
+		jr	z,reset		;getver->reset
+		cp	low skoky
+		jr	nc,status
+		push	hl
+		ld	l,a
+		ld	h,biosjmp/256
+		ld	a,(hl)
+		inc	hl
+		ld	h,(hl)
+		ld	l,a
+		ex	(sp),hl
+ret_x:		ret
+
+;; SECTOR READ
+
+rdsec:		ld	a,c
+		ld	bc,dta		; B=0 (looping 256 x 4)
+		call	sets
+		ret	nz
+		push	hl
+		inir
+		inir
+		inir
+		inir
+mltadd:		call	ret_x		; call multitask
+		pop	hl
+		jr	status
+
+;; SECTOR WRITE
+
+wrsec:		ld	a,c
+		ld	bc,dta		; B=0 (looping 256 x 4)
+		call	sets
+		ret	nz
+		push	hl
+		otir
+		otir
+		otir
+		otir
+		jr	mltadd
+
+;; Nastavenie adresy rutinky volanej na pozadi pocas diskovych operacii
+;;
+;; Pouziva napriklad bsdos aby mohol pocas loadovania jedneho sektora
+;; uz v predstihu pripravovat potrebne udaje pre loadovanie dalsieho sektora
+
+setmlt:		ld	a,h
+		or	l
+		jr	nz,setmm
+		ld	hl,ret_x
+setmm:		ld	(mltadd+1),hl
+
+;; Nastavenie maximalnej dlzky prenasaneho bloku cez DMA
+;;
+;; Nema prakticky vyznam, sluzi iba pre istotu,
+;; aby v pripade poruchy FDC neprepisalo DMA viac pameti ako je ocakavane
+setmax:		ret
+
+;; Nastavenie cisla danej operacie, sektora/strany, stopy a nacitanie stavu.
+
+sets:		out	(c),a		; poslem cislo sluzby
+		ld	a,e		; e=sektor, bit 7=strana
+		out	(c),a
+		ld	a,d		; d=stopa
+		out	(c),a
+		in	a,(c)		; nacitanie vysledku seeku
+		or	a		; pripadne write-protect stavu
+		ret
+
+;; Restore - posun hlavicky na zakladnu poziciu (nultu stopu)
+rest:		ld	a,#04		; status: TRACK0
+		ret
+
+;; Citanie indentifikacie sektora
+rdadd:
+
+;; Citanie celej stopy naraz
+rdtrk:		ld	a,#10		; status = RECORD NOT FOUND
+		ret
+
+
+;; Inicializacia biosu
+reset:		ld	bc,verzia_bios
+
+;; Zapis (formatovanie) stopy
+wrtrk:
+
+;; Priame nastavenie stopy do FDC radica
+settrk:
+gettrk:
+
+;; Seek - posun hlavicky na zadanu stopu
+seek:
+
+;; Nastavenie rezimu vypinania motorov mechanik
+setoff:
+
+;; Status - vracia aktualny status
+status:		xor	a		; status: OK
+		ret
+
+;; Nastavenie aktualneho pracovneho rezimu mechaniky: DD alebo HD
+rezim:		ld	a,e
+		dec	a
+		ret
+
+;; Zapnutie danej mechaniky
+;;
+;; Zaroven otestuje jej pripravenost na pouzitie
+;; (ci je vobec vnutri disketa a podobne)
+
+aktive:		call	pasive		; e = drive
+		xor	a
+		xor	e
+		ret	z
+		cp	#05		; 4 mechaniky
+		jr	c,aktiv1
+		xor	a
+		ret
+
+aktiv1:		dec	a
+		ex	af,af'
+		ld	a,aktive_x
+		out	(dta),a
+		ex	af,af'
+		out	(dta),a
+		in	a,(dta)
+		ret
+
+;; Vypnutie zapnutej mechaniky
+
+pasive:		ld	a,pasive_x	;vypni vsetky mechaniky
+		out	(dta),a
+		ld	a,#01		;[1=drive not ready]
+		ret
+
+;; Vrati informacie o konfiguracii danej mechaniky
+
+info:		xor	a
+		ld	d,a
+		xor	e		; e = drive
+		ret	z
+		ld	e,d
+		cp	#05		; 4 mechaniky
+		ret	nc
+		ld	de,#5201	; 82 tracks / HD
+		ret
+
+; fill the free space
+		block	(#03C0-$),0
+
+; system variables
+xxx		equ	#03E0
+yyy: 		equ	#03E1
+color: 		equ	#03E2
+optio: 		equ	#03E3
+actual: 	equ	#03E4
+okdrv: 		equ	#03E6
+okall: 		equ	#03E7
+secsub: 	equ	#03E8
+mmbot: 		equ	#03EA
+mmfat: 		equ	#03EB
+mmdir: 		equ	#03EC
+mmsub: 		equ	#03ED
+disk: 		equ	#03EE
+cesta: 		equ	#03EF
+crcrtr:		equ	#03F1
+
+
+;***********************************************************************
+;***                   SPECCY 2010 BS-DOS PATCHES                    ***
+;***********************************************************************
+bsdos		equ	#0500
+
+		org	#0DC1
+
+		db	#1f
+		db	" BS-DOS "
+		db	'0'+ver1
+		db	'0'+ver2
+		db	'0'+ver3
+		db	"s by SinDiKaT 2018 "
+		db	#1f,0
+
+		org	#0DE8
+
+		db	"@",0
+		dw	0,0
+
+		org	#0DF8
+
+		call	space
+		call	dva
+		ld	bc,26
+		call	printl
+		db	0,0,0
+		ld	e,#00
+
+		org	#0E50
+
+		db	"$",0
+		dw	0,0
+
+		org	#20B0
+
+ds10:		ld	bc,10
+printl:		ld	a,6
+		add	a,xl
+		ld	d,xh
+		ld	e,a
+
+		org	#219A
+
+dva:		ld	a,':'
+		jr	dd1
+space:		ld	a,' '
+disp:		cp	#1e
+		ret	c
+dd1:
+
+		savebin "bsdos308s.bin",#0000,#4000
+
+
+;-----------------------------------------------------------------------
+; BOOTSTRAPER - simple replacement of EPROM content
+;-----------------------------------------------------------------------
+
+		output "bootstrap.bin"
+
+		org	#0000
+
+		di			;; just transfer itself into RAM
+		ld	sp,bootrg
+		xor	a
+		ld	i,a
+		out	(#fe),a
+		ld	bc,#7ffd
+		out	(c),a
+		ld	hl,$4000
+		ld	de,$4001
+		ld	bc,$1AFF
+		ld	(hl),l
+		ldir
+		ld	hl,bootmov
+		ld	de,bootrg
+		ld	bc,bootlen
+		push	de
+		ldir
+		ret
+
+bootmov		org	#6000
+
+bootrg:		ld	a,h0c			;; switch to ROM bank
+		out	(ram),a
+		ld	a,#38			;; basic Sinclair colour
+		ld	(#1266),a		;; patch the ROM
+		ld	(#128E),a
+		ex	af,af'
+		ld	a,h0d			;; switch to DOS bank
+		out	(ram),a
+		ld	hl,xxx			;; clear DOS variables
+		ld	de,xxx+1
+		ld	bc,bsdos-(xxx+1)
+		ld	(hl),0
+		ldir
+		ex	af,af'
+		ld	(color),a		;; patch color in DOS
+		ld	a,4
+		ld	(crcrtr),a
+		ld	a,1
+		ld	(disk),a		;; set actual drive to first
+		dec	a
+		in	a,(#fe)			;; test key, if pressed
+		or	#e0			;; don't run "autosys"
+		inc	a
+		ld	a,#30			;; else call #30 service of DOS:
+		call	z,#20			;; init DOS and run "autosys"
+
+		ld	a,h04			;; switch to ROM bank
+		out	(ram),a
+		ld	a,(#06)			;; test which ROM is loaded:
+		cp	#31			;; BSROM140 ?
+		jp	z,#3906			;; reset in bsrom140
+		cp	#66			;; BSROM118 ?
+		jp	z,#3978			;; reset in bsrom118
+		rst	#00			;; else restart normally
+
+booteffect:	xor	a	;; if everything fails just do the booteffect
+		out	(#fe),a
+		ld	a,3
+		ld	hl,#4000
+		ld	de,#4001
+.loop1		ld	bc,#0100
+		ld	(hl),l
+		ldir
+		ld	b,6
+		ld	(hl),#7E
+		ldir
+		inc	b
+		ld	(hl),l
+		ldir
+		dec	a
+		jr	nz,.loop1
+.loop2		ld	b,h
+		ld	c,l
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		add	hl,bc
+		ld	bc,12
+		add	hl,bc
+		ld	a,h
+		and	3
+		or	88
+		ld	h,a
+		ex	de,hl
+		ldi
+		ex	de,hl
+		ld	b,32
+		djnz	$
+		jr	.loop2
+
+bootlen		equ	$-bootrg

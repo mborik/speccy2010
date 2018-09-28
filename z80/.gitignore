@@ -1,0 +1,14 @@
+# Binaries
+/_utils/*
+!/_utils/*.c
+
+# Compiled files
+*.bin
+*.rom
+*.h
+
+# Intermediate files
+*.lst
+
+# gitignore itself
+/.gitignore

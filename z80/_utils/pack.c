@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#define BYTE  uint8_t
+#define BYTE uint8_t
 
-int packBlock(BYTE *dest, BYTE *src, int len)
+size_t packBlock(BYTE *dest, BYTE *src, int len)
 {
 	BYTE *psrc = src;
 	BYTE *maxsrc = src + len;
@@ -77,39 +77,29 @@ int packBlock(BYTE *dest, BYTE *src, int len)
 	return len;
 }
 
-void displayMemory(BYTE *address, int length)
+int main(int argc, char *argv[])
 {
-	BYTE ch;
-	int i = 0;
-	printf("\t");
-	while (length-- > 0) {
-		printf("0x%02X, ", *address++);
-		if (!(++i % 8) || (length == 0 && i % 8)) {
-			if (length > 0) {
-				printf("\n\t");
-			}
-		}
-	}
+	if (argc < 2)
+		exit(1);
 
-	puts("");
-}
+	char filePath[256];
+	strcpy(filePath, argv[1]);
 
-int main()
-{
-	BYTE src[6912], dst[6912];
+	FILE *f = fopen(filePath, "rb");
+	fseek(f, 0, SEEK_END);
+	size_t inputSize = ftell(f);
 
-	FILE *f = fopen("speccy2010.logo.scr", "rb");
-	fread(src, sizeof(BYTE), 6912, f);
+	BYTE *src = (BYTE *) malloc(inputSize);
+	BYTE *dst = (BYTE *) malloc(inputSize);
+
+	rewind(f);
+	fread(src, sizeof(BYTE), inputSize, f);
 	fclose(f);
 
-	int total = packBlock(dst, src, 6912);
+	size_t packed = packBlock(dst, src, inputSize);
 
-	puts("#ifndef SHELL_LOGO_H_INCLUDED");
-	puts("#define SHELL_LOGO_H_INCLUDED\n");
-
-	printf("const unsigned char logoPacked[%d] = {\n", total);
-	displayMemory(dst, total);
-
-	puts("};\n");
-	puts("#endif");
+	strcat(filePath, ".bin");
+	f = fopen(filePath, "wb");
+	fwrite(dst, sizeof(BYTE), packed, f);
+	fclose(f);
 }
