@@ -97,9 +97,12 @@ int main(int argc, char *argv[])
 	fclose(f);
 
 	size_t packed = packBlock(dst, src, inputSize);
+	free(src);
 
 	strcat(filePath, ".bin");
 	f = fopen(filePath, "wb");
 	fwrite(dst, sizeof(BYTE), packed, f);
+
+	free(dst);
 	fclose(f);
 }
