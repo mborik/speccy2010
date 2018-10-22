@@ -74,10 +74,10 @@ void Debugger_Screen1(word addr, byte CurX, byte CurY) //hex editor
 	char str[0x20];
 	for (int i = 0; i < 23; i++) {
 		sniprintf(str, sizeof(str), "%.4X", (addr & 0xFFF8) + (i << 3));
-		WriteStr(0, i, str);
+		DrawStr(0, i, str);
 		for (int j = 0; j < 8; j++) {
 			sniprintf(str, sizeof(str), "%.2X ", ReadByteAtCursor(addr, j, i));
-			WriteStr(5 + j * 3, i, str);
+			DrawStr(42 + j * 24, i, str);
 		}
 	}
 }
@@ -98,7 +98,7 @@ void Shell_Debugger()
 	CurX = addr & 0x0007;
 
 	Debugger_Screen1(addr, CurX, CurY);
-	WriteAttr(5 + CurX * 3, CurY, 0x17, 2);
+	DrawAttr8(5 + CurX * 3, CurY, 0x17, 2);
 
 	while (true) {
 		byte key = GetKey(true);
@@ -176,8 +176,8 @@ void Shell_Debugger()
 						addr = 0xFF48;
 					editAddr = 0;
 					editAddrPos = 3;
-					WriteAttr(0, 0, 0x07, 4);
-					WriteAttr(5 + CurX * 3, CurY, 0x17, 2);
+					DrawAttr8(0, 0, 0x07, 4);
+					DrawAttr8(5 + CurX * 3, CurY, 0x17, 2);
 				}
 			}
 		}
@@ -212,8 +212,8 @@ void Shell_Debugger()
 						addr = 0xFF48;
 					editAddr = 0;
 					editAddrPos = 3;
-					WriteAttr(0, 0, 0x07, 4);
-					WriteAttr(5 + CurX * 3, CurY, 0x17, 2);
+					DrawAttr8(0, 0, 0x07, 4);
+					DrawAttr8(5 + CurX * 3, CurY, 0x17, 2);
 				}
 			}
 		}
@@ -234,14 +234,14 @@ void Shell_Debugger()
 		if (key != 0) {
 			if (editAddr) {
 				sniprintf(str, sizeof(str), "%.4X", addr & 0xFFF8);
-				WriteStr(0, 0, str);
-				WriteAttr(0, 0, 0x17, 4);
-				WriteAttr(3 - editAddrPos, 0, 0x57, 1);
+				DrawStr(0, 0, str);
+				DrawAttr8(0, 0, 0x17, 4);
+				DrawAttr8(3 - editAddrPos, 0, 0x57, 1);
 			}
 			else {
 				Debugger_Screen1(addr, CurX, CurY);
-				WriteAttr(5 + CurXold * 3, CurYold, 0x07, 2);
-				WriteAttr(5 + CurX * 3, CurY, 0x17, 2);
+				DrawAttr8(5 + CurXold * 3, CurYold, 0x07, 2);
+				DrawAttr8(5 + CurX * 3, CurY, 0x17, 2);
 			}
 		}
 	}

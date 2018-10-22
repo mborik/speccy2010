@@ -55,7 +55,7 @@ CapsLock - upper case
 Settings/ROM/Disk Menu keys:
 ----------------------------
 Backspace - eject disk / remove ROM file
-F5 - hard reset machine
+F5 - cold reset machine
 F11 - video test monoscope
 
 Debugger keys:

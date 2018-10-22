@@ -37,7 +37,7 @@ const char *fatErrorMsg[] = {
 };
 //---------------------------------------------------------------------------------------
 char destinationPath[PATH_SIZE] = "/";
-char srcName[PATH_SIZE], dstName[PATH_SIZE], shortName[30];
+char srcName[PATH_SIZE], dstName[PATH_SIZE], shortName[45];
 //---------------------------------------------------------------------------------------
 void dynamic_bytes_text(dword size, char *buffer)
 {
@@ -80,43 +80,46 @@ byte get_sel_attr(FRECORD &fr)
 //---------------------------------------------------------------------------------------
 void show_table()
 {
-	display_path(get_current_dir(), 0, 22, 32);
+	display_path(get_current_dir(), 0, 22, 42);
 
 	FRECORD fr;
-	char sname[15];
+	char sname[20];
 
-	for (int i = 0; i < FILES_PER_ROW; i++) {
-		for (int j = 0; j < 2; j++) {
-			int col = j * 16;
-			int row = i + 2;
-			int pos = i + j * FILES_PER_ROW + files_table_start;
+	word i, j, x, col, row, pos;
+	for (i = 0; i < FILES_PER_ROW; i++) {
+		for (j = 0; j < 2; j++) {
+			x = (j * 128) + 2;
+			col = (x + 6) >> 3;
+			row = i + 2;
+			pos = i + j * FILES_PER_ROW + files_table_start;
 
 			Read(&fr, table_buffer, pos);
-			make_short_name(sname, 15, fr.name);
+			make_short_name(sname, 19, fr.name);
 
 			if (pos < files_size) {
 				if (fr.sel) {
-					WriteChar(col, row, 0xDD);
-					WriteAttr(col, row, 0116);
+					DrawChar(x, row, 0xDD);
+					DrawAttr(x, row, 0116);
 				}
 				else {
-					WriteChar(col, row, 0xB3);
-					WriteAttr(col, row, 0117);
+					DrawChar(x, row, 0xB3);
+					DrawAttr(x, row, 0117);
 				}
 
-				WriteStrAttr(col + 1, row, sname, get_sel_attr(fr), 14);
+				DrawStr(x + 6, row, sname, 19);
+				DrawAttr8(col, row, get_sel_attr(fr), 14);
 			}
 			else {
-				WriteAttr(col, row, 0117, 15);
-				WriteStr(col, row, "\xB3", 15);
+				DrawStr(x, row, "\xB3", 19);
+				DrawAttr8(col, row, 0117, 14);
 			}
 		}
 	}
 
 	if (too_many_files)
-		WriteStrAttr(17, 17, "TOO MANY FILES", 0126, 14);
+		DrawStrAttr(144, 17, "TOO MANY FILES", 0126, 19);
 	else if (files_size == 0)
-		WriteStrAttr(1, 2, ".. no files ..", 0112, 14);
+		DrawStrAttr(8, 2, "\x1C no files in dir \x1C", 0112, 19);
 }
 //---------------------------------------------------------------------------------------
 void hide_sel()
@@ -125,25 +128,26 @@ void hide_sel()
 		FRECORD fr;
 		Read(&fr, table_buffer, files_sel);
 
-		int col = files_sel_pos_x * 16;
-		int row = files_sel_pos_y + 2;
+		word x = (files_sel_pos_x * 128) + 2;
+		word col = (x + 6) >> 3;
+		word row = files_sel_pos_y + 2;
 
 		if (fr.sel) {
-			WriteChar(col, row, 0xDD);
-			WriteAttr(col, row, 0116);
+			DrawChar(x, row, 0xDD);
+			DrawAttr(x, row, 0116);
 		}
 		else {
-			WriteChar(col, row, 0xB3);
-			WriteAttr(col, row, 0117);
+			DrawChar(x, row, 0xB3);
+			DrawAttr(x, row, 0117);
 		}
 
-		WriteAttr(col + 1, row, get_sel_attr(fr), 14);
-		WriteChar(col + 15, row, 0xB3);
-		WriteAttr(col + 15, row, 0117);
+		DrawAttr8(col, row, get_sel_attr(fr), 14);
+		DrawStr(x + 6, row, "", 20, true, true);
+		DrawChar(x + 120, row, 0xB3);
+		DrawAttr(x + 120, row, 0117);
 	}
 
-	WriteStr(1, 19, "", 30);
-	WriteStr(1, 19, "", 30);
+	DrawStr(8, 19, "", 40);
 }
 //---------------------------------------------------------------------------------------
 void show_sel(bool redraw = false)
@@ -155,36 +159,43 @@ void show_sel(bool redraw = false)
 		FRECORD fr;
 		Read(&fr, table_buffer, files_sel);
 
-		int col = files_sel_pos_x * 16;
-		int row = files_sel_pos_y + 2;
-		byte borders = 0117, fill = 0171;
+		word x = (files_sel_pos_x * 128) + 2;
+		word col = files_sel_pos_x * 16;
+		word row = files_sel_pos_y + 2;
+		byte attr = 0117;
 
 		if (fr.sel) {
-			WriteChar(col, row, 0xDB);
-			borders = 0116;
-			fill = 0161;
+			DrawChar(x, row, 0xDB);
+			attr = 0116;
 		}
 		else
-			WriteChar(col, row, 0xDE);
+			DrawChar(x, row, 0xDE);
 
-		WriteAttr(col, row, borders);
-		WriteAttr(col + 1, row, fill, 14);
-		WriteChar(col + 15, row, 0xDD);
-		WriteAttr(col + 15, row, borders);
+		DrawAttr8(col, row, attr, 16);
+		DrawStr(x + 6, row, "", 20, true, true);
+		DrawChar(x + 120, row, 0xDD);
 
-		char sname[31];
+		char sname[41];
 		make_short_name(sname, sizeof(sname), fr.name);
-		WriteStrAttr(1, 19, sname, get_sel_attr(fr), 30);
-		WriteStrAttr(24, 18, "\xC4\xC4\xC4\xC4\xC4\xC4", 0117, 6);
+		DrawStrAttr(8, 19, sname, get_sel_attr(fr), 40);
+		DrawStrAttr(206, 18, "\xC4\xC4\xC4\xC4\xC4\xC4", 0117, 6);
 
 		if (files_sel_number > 0) {
-			sniprintf(sname, sizeof(sname), "(%u)", files_sel_number);
+			sniprintf(sname, sizeof(sname), " \x11%u\x10", files_sel_number);
 			size_t len = strlen(sname);
-			WriteStrAttr(30 - len, 18, sname, 0116, len);
+			DrawStr(242 - (len * 6), 18, sname, len);
+			switch (len) {
+				case 4:  len = 2; break;
+				case 5:  len = 3; break;
+				case 6:
+				case 7:  len = 4; break;
+				default: len = 0; break;
+			}
+			DrawAttr8(30 - len, 18, 0116, len);
 		}
 
 		if ((fr.date & 0x1ff) == 0 || strcmp(sname, "..") == 0) {
-			WriteStr(1, 20, "---------- -----", 16);
+			DrawStr(8, 20, "---------- -----", 16);
 		}
 		else {
 			sniprintf(sname, sizeof(sname), "%04u-%02u-%02u %02u:%02u",
@@ -193,7 +204,7 @@ void show_sel(bool redraw = false)
 				(fr.date & 0x1f),
 				(fr.time >> 11) & 0x1f,
 				(fr.time >> 5) & 0x3f);
-			WriteStr(1, 20, sname, 16);
+			DrawStr(8, 20, sname, 16);
 		}
 
 		if ((fr.attr & AM_DIR) != 0)
@@ -201,7 +212,7 @@ void show_sel(bool redraw = false)
 		else
 			dynamic_bytes_text(fr.size, sname);
 
-		WriteStr(19, 20, sname, 12);
+		DrawStr(176, 20, sname, 12);
 	}
 }
 //---------------------------------------------------------------------------------------
@@ -210,16 +221,27 @@ void init_screen()
 	SystemBus_Write(0xc00022, 0x8000); // Enable shell border
 
 	ClrScr(0006);
-	DrawFrame(0, 18, 32,  4, 0117, "\xC3\xC4\xB4\xB3\xC0\xC4\xD9");
-	DrawFrame(0,  1, 16, 18, 0117, "\xD1\xCD\xD1\xB3\xC3\xC4\xC1");
-	DrawFrame(16, 1, 16, 18, 0117, "\xD1\xCD\xD1\xB3\xC1\xC4\xB4");
+	DrawFrame(  2, 18, 254,  4, 0117, "\xC3\xC4\xB4\xB3\xC0\xC4\xD9");
+	DrawFrame(  2,  1, 126, 18, 0117, "\xD1\xCD\xD1\xB3\xC3\xC4\xC1");
+	DrawFrame(130,  1, 126, 18, 0117, "\xD1\xCD\xD1\xB3\xC1\xC4\xB4");
 
-	WriteStrAttr(0, 0, " Speccy2010 v" VERSION " File Manager ", 0114, 32);
-	WriteStrAttr(0, 23, "1hlp2cwd3vw4ed5cp6mv7mkd8del9img", 0050, 32);
+	DrawLine(1, 1);
+	DrawLine(1, 3);
 
-	const byte fnKeys[9] = { 0, 4, 8, 11, 14, 17, 20, 24, 28 };
-	for (int i = 0; i < 9; i++)
-		WriteAttr(fnKeys[i], 23, 0107);
+	DrawStr(2, 0, "Speccy2010 Commander v" VERSION " \7 File Manager");
+
+	const char *fnKeys = "1help2cwd3view4hex5copy6mov7mkdir8del9img";
+	bool wasChar = false, isChar = false;
+	for (int i = 0, x = 1; i < 41; i++, x += 6) {
+		isChar = (fnKeys[i] > '9');
+		if (!isChar && wasChar)
+			++x;
+		DrawChar(x, 23, fnKeys[i], false, isChar);
+		wasChar = isChar;
+	}
+
+	DrawAttr8(0,  0, 0114, 32);
+	DrawAttr8(0, 23, 0005, 32);
 
 	SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
 }
@@ -233,7 +255,7 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 		sname--;
 
 	int res;
-	make_short_name(shortName, 20, sname);
+	make_short_name(shortName, 32, sname);
 
 	show_table();
 
@@ -402,7 +424,7 @@ bool Shell_CreateFolder()
 		return true;
 	}
 
-	make_short_name(shortName, 20, name);
+	make_short_name(shortName, 32, name);
 
 	Shell_MessageBox("Error", "Cannot create the folder", shortName, fatErrorMsg[res]);
 	show_table();
@@ -420,7 +442,7 @@ bool Shell_DeleteItem(const char *name)
 	while (sname != name && sname[-1] != '/')
 		sname--;
 
-	make_short_name(shortName, 20, sname);
+	make_short_name(shortName, 32, sname);
 
 	Shell_MessageBox("Error", "Cannot delete the item", shortName, fatErrorMsg[res]);
 	show_table();
@@ -436,7 +458,7 @@ bool Shell_Delete(const char *name)
 	if (files_sel_number > 0)
 		sniprintf(shortName, 24, "selected %u item%s", files_sel_number, files_sel_number > 1 ? "s" : "");
 	else
-		make_short_name(shortName, 24, name);
+		make_short_name(shortName, 32, name);
 	strcat(shortName, "?");
 
 	if (!Shell_MessageBox("Delete", "Do you wish to delete", shortName, "", MB_YESNO))
@@ -466,7 +488,7 @@ bool Shell_Delete(const char *name)
 bool Shell_EmptyTrd(const char *_name, bool format = true)
 {
 	bool result = false;
-	make_short_name(shortName, 21, _name);
+	make_short_name(shortName, 32, _name);
 
 	if (format) {
 		char *ext = (char *) (_name + strlen(_name));
@@ -545,7 +567,7 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 	}
 
 	if (res != FR_OK) {
-		make_short_name(shortName, 21, _name);
+		make_short_name(shortName, 32, _name);
 		Shell_MessageBox("Error", "Cannot format", shortName, fatErrorMsg[res]);
 	}
 
@@ -564,7 +586,7 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), _name);
 
 	if (format) {
-		make_short_name(shortName, 21, _name);
+		make_short_name(shortName, 32, _name);
 
 		if (mb02_checkfmt(dstName, &numtrk, &numsec)) {
 			strcat(shortName, "?");
@@ -714,7 +736,7 @@ void Shell_ScreenBrowser(char *fullName)
 	}
 }
 //---------------------------------------------------------------------------------------
-void Shell_Viewer(char *fullName)
+bool Shell_Viewer(char *fullName)
 {
 	FIL file;
 	if (f_open(&file, fullName, FA_READ) == FR_OK) {
@@ -733,13 +755,17 @@ void Shell_Viewer(char *fullName)
 
 		f_close(&file);
 
-		if ((100.0f / ((float) total / ascii)) > 80.0f)
+		if ((100.0f / ((float) total / ascii)) > 80.0f) {
 			Shell_TextViewer(fullName);
+			return true;
+		}
 		else {
 			Shell_MessageBox("Binary file",
 				"Hex view of binary file", "not yet implemented", "", MB_OK, 0137);
 		}
 	}
+
+	return false;
 }
 //---------------------------------------------------------------------------------------
 bool Shell_Receiver(const char *inputName)
@@ -749,7 +775,7 @@ bool Shell_Receiver(const char *inputName)
 	if (!Shell_InputBox(title, "Enter output name:", name) || name.Length() == 0)
 		return false;
 
-	make_short_name(shortName, 20, name.String());
+	make_short_name(shortName, 32, name.String());
 	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
 
 	if (FileExists(dstName) && !Shell_MessageBox("Overwrite", "Do you want to overwrite", shortName, "", MB_YESNO, 0050, 0115))
@@ -946,10 +972,10 @@ void Shell_Commander()
 
 				if (extMatch) {
 					if (imgValid) {
-						char successMsg[2][26];
+						char successMsg[2][36];
 
-						make_short_name(successMsg[0], 26, fr.name);
-						sniprintf(successMsg[1], 26, "mounted into %s drive...", mountPoint);
+						make_short_name(successMsg[0], 36, fr.name);
+						sniprintf(successMsg[1], 36, "mounted into %s drive...", mountPoint);
 
 						Shell_Toast(successMsg[0], successMsg[1]);
 					}
@@ -975,7 +1001,7 @@ void Shell_Commander()
 		}
 		else if (key == K_F2) {
 			sniprintf(destinationPath, sizeof(destinationPath), "/%s", get_current_dir());
-			make_short_name(shortName, 28, destinationPath);
+			make_short_name(shortName, 36, destinationPath);
 			Shell_Toast("Current working directory:", shortName, 0070);
 		}
 		else if (key == K_F3) {
@@ -989,13 +1015,14 @@ void Shell_Commander()
 				strlwr(ext);
 				if (strcmp(ext, ".scr") == 0 || fr.size == 6912 || fr.size == 6144) {
 					Shell_ScreenBrowser(fullName);
+					init_screen();
+					show_table();
 				}
-				else {
-					Shell_Viewer(fullName);
+				else if (Shell_Viewer(fullName)) {
+					init_screen();
+					show_table();
 				}
 
-				init_screen();
-				show_table();
 				show_sel(true);
 			}
 		}

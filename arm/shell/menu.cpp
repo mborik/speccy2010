@@ -8,68 +8,67 @@
 
 //---------------------------------------------------------------------------------------
 CMenuItem mainMenu[] = {
-	CMenuItem( 1,  2, "Date: ", "0000"),
-	CMenuItem(11,  2, "-", "00"),
-	CMenuItem(14,  2, "-", "00"),
+	CMenuItem(  8,  2, "Date:", "0000"),
+	CMenuItem( 65,  2, "-", "00"),
+	CMenuItem( 88,  2, "-", "00"),
 
-	CMenuItem( 1,  3, "Time: ", "00"),
-	CMenuItem( 9,  3, ":", "00"),
-	CMenuItem(12,  3, ":", "00"),
+	CMenuItem(  8,  3, "Time:", "00"),
+	CMenuItem( 56,  3, ":", "00"),
+	CMenuItem( 80,  3, ":", "00"),
 
-	CMenuItem( 1,  5, "Machine: ", GetParam(iniParameters, "Machine", PGRP_GENERAL)),
-	CMenuItem( 1,  6, "Timings: ", GetParam(iniParameters, "Timings", PGRP_GENERAL)),
-	CMenuItem( 1,  7, "Disk IF: ", GetParam(iniParameters, "Disk Interface", PGRP_GENERAL)),
-	CMenuItem(19,  7, "BDI mode:", GetParam(iniParameters, "BDI mode", PGRP_TRDOS)),
-	CMenuItem( 1,  8, "Turbo: ", GetParam(iniParameters, "Turbo", PGRP_GENERAL)),
-	CMenuItem( 1,  9, "AY Chip: ", GetParam(iniParameters, "AY Chip", PGRP_GENERAL)),
-	CMenuItem(14,  9, "Turbo Sound: ", GetParam(iniParameters, "Turbo Sound", PGRP_GENERAL)),
-	CMenuItem( 1, 10, "AY mode: ", GetParam(iniParameters, "AY mode", PGRP_GENERAL)),
-	CMenuItem(14, 10, "Covox:", GetParam(iniParameters, "Covox", PGRP_GENERAL)),
-	CMenuItem( 1, 11, "Audio DAC mode: ", GetParam(iniParameters, "Audio DAC mode", PGRP_GENERAL)),
+	CMenuItem(  8,  5, "Machine :", GetParam(iniParameters, "Machine", PGRP_GENERAL)),
+	CMenuItem(  8,  6, "Timings :", GetParam(iniParameters, "Timings", PGRP_GENERAL)),
+	CMenuItem(  8,  7, "Disk IF :", GetParam(iniParameters, "Disk Interface", PGRP_GENERAL)),
+	CMenuItem(128,  7, "Betadisk speed:", GetParam(iniParameters, "BDI mode", PGRP_TRDOS)),
+	CMenuItem(  8,  8, "Turbo   :", GetParam(iniParameters, "Turbo", PGRP_GENERAL)),
+	CMenuItem(  8,  9, "AY Chip :", GetParam(iniParameters, "AY Chip", PGRP_GENERAL)),
+	CMenuItem(104,  9, "Covox:", GetParam(iniParameters, "Covox", PGRP_GENERAL)),
+	CMenuItem(  8, 10, "AY mode :", GetParam(iniParameters, "AY mode", PGRP_GENERAL)),
+	CMenuItem(104, 10, "Turbo Sound: ", GetParam(iniParameters, "Turbo Sound", PGRP_GENERAL)),
+	CMenuItem(  8, 11, "Audio DAC mode:", GetParam(iniParameters, "Audio DAC mode", PGRP_GENERAL)),
 
-	CMenuItem( 1, 12, "Joystick emulation: ", GetParam(iniParameters, "Joystick emulation", PGRP_GENERAL)),
-	CMenuItem( 1, 13, "Joystick 1: ", GetParam(iniParameters, "Joystick 1", PGRP_GENERAL)),
-	CMenuItem( 1, 14, "Joystick 2: ", GetParam(iniParameters, "Joystick 2", PGRP_GENERAL)),
-	CMenuItem( 1, 15, "Mouse Sensitivity: ", GetParam(iniParameters, "Mouse Sensitivity", PGRP_GENERAL)),
-	CMenuItem( 1, 16, "Swap mouse buttons: ", GetParam(iniParameters, "Swap mouse buttons", PGRP_GENERAL)),
+	CMenuItem(  8, 12, "Joystick emulation:", GetParam(iniParameters, "Joystick emulation", PGRP_GENERAL)),
+	CMenuItem(  8, 13, "Joystick 1:", GetParam(iniParameters, "Joystick 1", PGRP_GENERAL)),
+	CMenuItem(  8, 14, "Joystick 2:", GetParam(iniParameters, "Joystick 2", PGRP_GENERAL)),
+	CMenuItem(  8, 15, "Mouse sensitivity :", GetParam(iniParameters, "Mouse Sensitivity", PGRP_GENERAL)),
+	CMenuItem(  8, 16, "Swap mouse buttons:", GetParam(iniParameters, "Swap mouse buttons", PGRP_GENERAL)),
 
-	CMenuItem( 1, 17, "Video mode: ", GetParam(iniParameters, "Video mode", PGRP_GENERAL)),
-	CMenuItem( 1, 18, "Video aspect ratio: ", GetParam(iniParameters, "Video aspect ratio", PGRP_GENERAL)),
-	CMenuItem( 1, 19, "TV Interlace: ", GetParam(iniParameters, "Video interlace", PGRP_GENERAL)),
-	CMenuItem(20, 19, "Font: ", GetParam(iniParameters, "Font", PGRP_GENERAL))
+	CMenuItem(  8, 17, "Video mode:", GetParam(iniParameters, "Video mode", PGRP_GENERAL)),
+	CMenuItem(  8, 18, "Video aspect ratio:", GetParam(iniParameters, "Video aspect ratio", PGRP_GENERAL)),
+	CMenuItem(  8, 19, "TV Interlace emulation:", GetParam(iniParameters, "Video interlace", PGRP_GENERAL))
 };
 //---------------------------------------------------------------------------------------
 CMenuItem trdosDisksMenu[] = {
-	CMenuItem(1,  3, "A: ", GetParam(iniParameters, "Disk A", PGRP_TRDOS)),
-	CMenuItem(1,  4, "A  Write protect: ", GetParam(iniParameters, "Disk A WP", PGRP_TRDOS)),
-	CMenuItem(1,  6, "B: ", GetParam(iniParameters, "Disk B", PGRP_TRDOS)),
-	CMenuItem(1,  7, "B  Write protect: ", GetParam(iniParameters, "Disk B WP", PGRP_TRDOS)),
-	CMenuItem(1,  9, "C: ", GetParam(iniParameters, "Disk C", PGRP_TRDOS)),
-	CMenuItem(1, 10, "C  Write protect: ", GetParam(iniParameters, "Disk C WP", PGRP_TRDOS)),
-	CMenuItem(1, 12, "D: ", GetParam(iniParameters, "Disk D", PGRP_TRDOS)),
-	CMenuItem(1, 13, "D  Write protect: ", GetParam(iniParameters, "Disk D WP", PGRP_TRDOS))
+	CMenuItem(8,  3, "A: ", GetParam(iniParameters, "Disk A", PGRP_TRDOS)),
+	CMenuItem(8,  4, "A  Write protect: ", GetParam(iniParameters, "Disk A WP", PGRP_TRDOS)),
+	CMenuItem(8,  6, "B: ", GetParam(iniParameters, "Disk B", PGRP_TRDOS)),
+	CMenuItem(8,  7, "B  Write protect: ", GetParam(iniParameters, "Disk B WP", PGRP_TRDOS)),
+	CMenuItem(8,  9, "C: ", GetParam(iniParameters, "Disk C", PGRP_TRDOS)),
+	CMenuItem(8, 10, "C  Write protect: ", GetParam(iniParameters, "Disk C WP", PGRP_TRDOS)),
+	CMenuItem(8, 12, "D: ", GetParam(iniParameters, "Disk D", PGRP_TRDOS)),
+	CMenuItem(8, 13, "D  Write protect: ", GetParam(iniParameters, "Disk D WP", PGRP_TRDOS))
 };
 //---------------------------------------------------------------------------------------
 CMenuItem mb02DisksMenu[] = {
-	CMenuItem(1,  3, "A: ", GetParam(iniParameters, "Disk A", PGRP_MB02)),
-	CMenuItem(1,  4, "A  Write protect: ", GetParam(iniParameters, "Disk A WP", PGRP_MB02)),
-	CMenuItem(1,  6, "B: ", GetParam(iniParameters, "Disk B", PGRP_MB02)),
-	CMenuItem(1,  7, "B  Write protect: ", GetParam(iniParameters, "Disk B WP", PGRP_MB02)),
-	CMenuItem(1,  9, "C: ", GetParam(iniParameters, "Disk C", PGRP_MB02)),
-	CMenuItem(1, 10, "C  Write protect: ", GetParam(iniParameters, "Disk C WP", PGRP_MB02)),
-	CMenuItem(1, 12, "D: ", GetParam(iniParameters, "Disk D", PGRP_MB02)),
-	CMenuItem(1, 13, "D  Write protect: ", GetParam(iniParameters, "Disk D WP", PGRP_MB02))
+	CMenuItem(8,  3, "A: ", GetParam(iniParameters, "Disk A", PGRP_MB02)),
+	CMenuItem(8,  4, "A  Write protect: ", GetParam(iniParameters, "Disk A WP", PGRP_MB02)),
+	CMenuItem(8,  6, "B: ", GetParam(iniParameters, "Disk B", PGRP_MB02)),
+	CMenuItem(8,  7, "B  Write protect: ", GetParam(iniParameters, "Disk B WP", PGRP_MB02)),
+	CMenuItem(8,  9, "C: ", GetParam(iniParameters, "Disk C", PGRP_MB02)),
+	CMenuItem(8, 10, "C  Write protect: ", GetParam(iniParameters, "Disk C WP", PGRP_MB02)),
+	CMenuItem(8, 12, "D: ", GetParam(iniParameters, "Disk D", PGRP_MB02)),
+	CMenuItem(8, 13, "D  Write protect: ", GetParam(iniParameters, "Disk D WP", PGRP_MB02))
 };
 //---------------------------------------------------------------------------------------
 CMenuItem romCfgMenu[] = {
-	CMenuItem(1,  3, "ZX 48   : ", GetParam(iniParameters, "48", PGRP_ROMS)),
-	CMenuItem(1,  4, "ZX 128  : ", GetParam(iniParameters, "128", PGRP_ROMS)),
-	CMenuItem(1,  5, "Pentagon: ", GetParam(iniParameters, "Pentagon", PGRP_ROMS)),
-	CMenuItem(1,  6, "Scorpion: ", GetParam(iniParameters, "Scorpion", PGRP_ROMS)),
-	CMenuItem(1,  8, "Gluk/EVO Reset Service\n> ", GetParam(iniParameters, "EVO Reset Service", PGRP_ROMS)),
-	CMenuItem(1, 11, "TR-DOS Firmware  (16k)\n> ", GetParam(iniParameters, "TR-DOS", PGRP_ROMS)),
-	CMenuItem(1, 13, "DivMMC Firmware   (8k)\n> ", GetParam(iniParameters, "DivMMC Firmware", PGRP_ROMS)),
-	CMenuItem(1, 15, "MB-02 Firmware   (32k)\n> ", GetParam(iniParameters, "BS-DOS", PGRP_ROMS))
+	CMenuItem(8,  3, "ZX 48    :", GetParam(iniParameters, "48", PGRP_ROMS)),
+	CMenuItem(8,  4, "ZX 128   :", GetParam(iniParameters, "128", PGRP_ROMS)),
+	CMenuItem(8,  5, "Pentagon :", GetParam(iniParameters, "Pentagon", PGRP_ROMS)),
+	CMenuItem(8,  6, "Scorpion :", GetParam(iniParameters, "Scorpion", PGRP_ROMS)),
+	CMenuItem(8,  8, "Gluk/EVO Reset Service\n>", GetParam(iniParameters, "EVO Reset Service", PGRP_ROMS)),
+	CMenuItem(8, 11, "TR-DOS Firmware  (16k)\n>", GetParam(iniParameters, "TR-DOS", PGRP_ROMS)),
+	CMenuItem(8, 13, "DivMMC Firmware   (8k)\n>", GetParam(iniParameters, "DivMMC Firmware", PGRP_ROMS)),
+	CMenuItem(8, 15, "MB-02 Firmware   (32k)\n>", GetParam(iniParameters, "BS-DOS", PGRP_ROMS))
 };
 //---------------------------------------------------------------------------------------
 void Shell_SettingsMenu()
@@ -106,17 +105,17 @@ void InitScreen(const char *title)
 	SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE);           // Enable shell videopage
 	SystemBus_Write(0xc00022, 0x8000 | ((attr >> 3) & 0x03)); // Enable shell border
 
-	static char str[33];
-	sniprintf(str, sizeof(str), "Speccy2010 v" VERSION " \7 %s", title);
+	static char str[43];
+	sniprintf(str, sizeof(str), "Speccy2010 v" VERSION " \7 %s Dialog", title);
 
 	size_t len = strlen(str);
-	WriteStrAttr((32 - len) / 2, 0, str, 0105, len);
+	DrawStrAttr((256 - (len * 6)) / 2, 0, str, 0105, len);
 
-	WriteAttr(0, 1, 0002, 32);
+	DrawAttr8(0, 1, 0002, 32);
 	DrawLine(1, 3);
 	DrawLine(1, 5);
 
-	WriteAttr(0, 20, 0002, 32);
+	DrawAttr8(0, 20, 0002, 32);
 	DrawLine(20, 3);
 	DrawLine(20, 5);
 }
@@ -125,6 +124,7 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 {
 	static tm time;
 	static dword tickCounter = 0;
+	static byte testVideo = 0;
 
 	CPU_Stop();
 
@@ -285,8 +285,8 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 			}
 		}
 		else if (menu == mainMenu && key == K_F11) {
-			static byte testVideo = 0;
-			SystemBus_Write(0xc00049, (++testVideo) & 0x07);
+			testVideo = (testVideo + 1) & 0x07;
+			SystemBus_Write(0xc00049, testVideo);
 		}
 		else if (menu == mainMenu && key == K_F5) {
 			hardReset = true;
@@ -319,8 +319,13 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 	}
 
 	int mmNewMachineCfg = specConfig.specMachine | (specConfig.specDiskIf << 8);
-	if (menu == mainMenu && mmLastMachineCfg != mmNewMachineCfg)
-		hardReset = true;
+	if (menu == mainMenu) {
+		if (mmLastMachineCfg != mmNewMachineCfg)
+			hardReset = true;
+
+		if (testVideo != 0)
+			SystemBus_Write(0xc00049, (testVideo = 0));
+	}
 
 	SaveConfig();
 

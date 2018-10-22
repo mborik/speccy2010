@@ -2,7 +2,7 @@
 #include "screen.h"
 #include "../specKeyboard.h"
 
-#define PROGRESSBAR_SIZE 24
+#define PROGRESSBAR_SIZE 32
 char progressBarBuffer[PROGRESSBAR_SIZE + 1];
 //---------------------------------------------------------------------------------------
 void Shell_Window(int x, int y, int w, int h, const char *title, byte attr)
@@ -10,38 +10,49 @@ void Shell_Window(int x, int y, int w, int h, const char *title, byte attr)
 	DrawFrame(x, y, w, h, attr, "\xC9\xCD\xBB\xBA\xC8\xCD\xBC");
 
 	if (title != NULL && title[0] != 0) {
-		int titleSize = strlen(title);
+		int titleSize = strlen(title) * 6;
 		int titlePos = x + ((w - titleSize) / 2);
 
-		WriteChar(titlePos - 1, y, ' ');
-		WriteStrAttr(titlePos, y, title, attr);
-		WriteChar(titlePos + titleSize, y, ' ');
+		DrawChar(titlePos - 6, y, ' ');
+		DrawStr(titlePos, y, title);
+		DrawChar(titlePos + titleSize, y, ' ');
 	}
 }
 //---------------------------------------------------------------------------------------
 void Shell_Toast(const char *str, const char *str2, byte attr, int timeout)
 {
-	int w = 12;
+	int w = 72;
 	int h = 3;
 
-	if (w < (int) strlen(str) + 4)
-		w = strlen(str) + 4;
+	int len = (strlen(str) + 4) * 6;
+	if (w < len)
+		w = len;
 
 	if (str2 != NULL && str2[0] != 0) {
-		if (w < (int) strlen(str2) + 2)
-			w = strlen(str2) + 2;
+		len = (strlen(str2) + 2) * 6;
+		if (w < len)
+			w = len;
 		h++;
 	}
 
-	int x = (32 - w) / 2;
+	int x = (256 - w) / 2;
 	int y = ((22 - h) / 2) + 5;
+
+	byte mod = (x & 7);
+	if (mod > 0) {
+		w  = mod + ((((x + w) | 7) + 1) - x);
+		x -= mod;
+	}
 
 	ScreenPush();
 	Shell_Window(x, y++, w, h, NULL, attr);
 
-	WriteStr(x + ((w - strlen(str)) / 2), y++, str);
-	if (str2 != NULL && str2[0] != 0)
-		WriteStr(x + ((w - strlen(str2)) / 2), y, str2);
+	len = strlen(str) * 6;
+	DrawStr(x + ((w - len) / 2), y++, str);
+	if (str2 != NULL && str2[0] != 0) {
+		len = strlen(str2) * 6;
+		DrawStr(x + ((w - len) / 2), y, str2);
+	}
 
 	DelayMs(500);
 	timeout -= 500;
@@ -59,22 +70,26 @@ void Shell_Toast(const char *str, const char *str2, byte attr, int timeout)
 //---------------------------------------------------------------------------------------
 bool Shell_MessageBox(const char *title, const char *str, const char *str2, const char *str3, int type, byte attr, byte attrSel)
 {
-	int w = 12;
+	int w = 72;
 	int h = 3;
 
-	if (w < (int) strlen(title) + 6)
-		w = strlen(title) + 6;
-	if (w < (int) strlen(str) + 2)
-		w = strlen(str) + 2;
+	int len = (strlen(title) + 6) * 6;
+	if (w < len)
+		w = len;
+	len = (strlen(str) + 2) * 6;
+	if (w < len)
+		w = len;
 
 	if (str2[0] != 0) {
-		if (w < (int) strlen(str2) + 2)
-			w = strlen(str2) + 2;
+		len = (strlen(str2) + 2) * 6;
+		if (w < len)
+			w = len;
 		h++;
 
 		if (str3[0] != 0) {
-			if (w < (int) strlen(str3) + 2)
-				w = strlen(str3) + 2;
+			len = (strlen(str3) + 2) * 6;
+			if (w < len)
+				w = len;
 			h++;
 		}
 	}
@@ -82,19 +97,25 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 	if (type != MB_PROGRESS)
 		h++;
 
-	int x = (32 - w) / 2;
+	int x = (256 - w) / 2;
 	int y = (22 - h) / 2;
+	int xl = x + 6;
+
+	byte mod = (x & 7);
+	if (mod > 0) {
+		w  = mod + ((((x + w) | 7) + 1) - x);
+		x -= mod;
+	}
 
 	ScreenPush();
-	Shell_Window(x - 1, y - 1, w + 2, h + 2, title, attr);
-	x++;
-	y++;
+	Shell_Window(x - 8, y - 1, w + 16, h + 2, title, attr);
 
-	WriteStr(x, y++, str);
+	y++;
+	DrawStr(xl, y++, str);
 	if (str2 && str2[0] != 0) {
-		WriteStr(x, y++, str2);
+		DrawStr(xl, y++, str2);
 		if (str3 && str3[0] != 0)
-			WriteStr(x, y++, str3);
+			DrawStr(xl, y++, str3);
 	}
 
 	if (type == MB_PROGRESS)
@@ -103,15 +124,15 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 	bool result = true;
 	while (true) {
 		if (type == MB_OK) {
-			WriteStrAttr(16 - 2, y, " OK ", attrSel);
+			DrawStrAttr(128 - 12, y, " OK ", attrSel);
 		}
 		else if (type == MB_DISK) {
-			WriteStrAttr(16 - 5, y, " MBD ", result ? attrSel : attr);
-			WriteStrAttr(16, y, " TRD ", result ? attr : attrSel);
+			DrawStrAttr(128 - 39, y, " MBD ", result ? attrSel : attr);
+			DrawStrAttr(128 +  9, y, " TRD ", result ? attr : attrSel);
 		}
 		else {
-			WriteStrAttr(16 - 5, y, " Yes ", result ? attrSel : attr);
-			WriteStrAttr(16, y, " No ", result ? attr : attrSel);
+			DrawStrAttr(128 - 39, y, " Yes ", result ? attrSel : attr);
+			DrawStrAttr(128 + 12, y, " No ", result ? attr : attrSel);
 		}
 
 		byte key = GetKey();
@@ -131,26 +152,37 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 //---------------------------------------------------------------------------------------
 bool Shell_InputBox(const char *title, const char *str, CString &buff)
 {
-	int w = 22;
+	int w = 192;
 	int h = 4;
 
-	if (w < (int) strlen(title) + 6)
-		w = strlen(title) + 6;
-	if (w < (int) strlen(str) + 2)
-		w = strlen(str) + 2;
+	int len = (strlen(title) + 6) * 6;
+	if (w < len)
+		w = len;
+	len = (strlen(str) + 2) * 6;
+	if (w < len)
+		w = len;
 
-	int x = (32 - w) / 2;
+	int x = (256 - w) / 2;
 	int y = (22 - h) / 2;
 
+	byte mod = (x & 7);
+	if (mod > 0) {
+		w  = mod + ((((x + w) | 7) + 1) - x);
+		x -= mod;
+	}
+
 	ScreenPush();
-	Shell_Window(x - 1, y - 1, w + 2, h + 2, title, 0050);
+	Shell_Window(x - 8, y - 1, w + 16, h + 2, title, 0050);
 
-	x++;
-	y++;
-	w -= 2;
+	x += 8;
+	w -= 16;
 
-	WriteStr(x, y++, str);
-	WriteAttr(x, y, 0150, w);
+	DrawStr(x, ++y, str);
+	DrawAttr(x, ++y, 0150, w);
+
+	len = (w / 6);
+	x += (w - (len * 6)) / 2;
+	w = len;
 
 	bool result = false;
 	int p = buff.Length();
@@ -164,10 +196,8 @@ bool Shell_InputBox(const char *title, const char *str, CString &buff)
 		while (s > 0 && (s + w - 1) > buff.Length())
 			s--;
 
-		for (int i = 0; i < w; i++) {
-			WriteChar(x + i, y, buff.GetSymbol(s + i));
-			WriteAttr(x + i, y, i == (p - s) ? 0106 : 0150);
-		}
+		for (int i = 0; i < w; i++)
+			DrawChar(x + (i * 6), y, buff.GetSymbol(s + i), false, (i == (p - s)));
 
 		char key = GetKey();
 
@@ -200,9 +230,9 @@ bool Shell_InputBox(const char *title, const char *str, CString &buff)
 void Shell_ProgressBar(const char *title, const char *str, byte attr)
 {
 	int i;
-	for (i = 0; i < 24; i++)
+	for (i = 0; i < PROGRESSBAR_SIZE; i++)
 		progressBarBuffer[i] = 0xB0; // shade block
-	progressBarBuffer[24] = 0;
+	progressBarBuffer[PROGRESSBAR_SIZE] = 0;
 
 	Shell_MessageBox(title, str, progressBarBuffer, "", MB_PROGRESS, attr);
 
@@ -212,9 +242,9 @@ void Shell_ProgressBar(const char *title, const char *str, byte attr)
 //---------------------------------------------------------------------------------------
 void Shell_UpdateProgress(float progress, byte attr)
 {
-	byte prog = (progress * 24);
+	byte prog = (progress * PROGRESSBAR_SIZE);
 	if (prog > 0)
-		WriteStrAttr(4, 11, progressBarBuffer, attr, prog);
+		DrawStr(32, 11, progressBarBuffer, prog);
 
 	WDT_Kick();
 }

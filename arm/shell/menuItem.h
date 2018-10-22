@@ -6,7 +6,7 @@
 
 class CMenuItem {
 private:
-	int x, y, state, size, origY, maxLen;
+	int x, y, state, size, x2, origY, maxLen;
 	const char *origName;
 	byte colors[4];
 

@@ -19,21 +19,21 @@ const char *get_current_dir()
 //---------------------------------------------------------------------------------------
 void display_path(const char *str, int col, int row, byte max_sz)
 {
-	char path_buff[33] = "/";
+	char path_buff[43] = "/";
 	char *path_short = (char *) str;
 
 	if (strlen(str) > max_sz) {
-		while (strlen(path_short) + 2 > max_sz) {
+		while (strlen(path_short) > max_sz) {
 			path_short++;
 			while (*path_short != '/')
 				path_short++;
 		}
 
-		strcpy(path_buff, "...");
+		strcpy(path_buff, "\x1C");
 	}
 
 	strcat(path_buff, path_short);
-	WriteStr(col, row, path_buff, max_sz);
+	DrawStr(col, row, path_buff, max_sz);
 }
 //---------------------------------------------------------------------------------------
 void make_short_name(char *sname, word size, const char *name)
@@ -47,7 +47,7 @@ void make_short_name(char *sname, word size, const char *name)
 		word sizeB = (size - 1) - (sizeA + 1);
 
 		memcpy(sname, name, sizeA);
-		sname[sizeA] = '~';
+		sname[sizeA] = 0x1C;
 		memcpy(sname + sizeA + 1, name + nSize - sizeB, sizeB + 1);
 	}
 }
@@ -60,7 +60,7 @@ void make_short_name(CString &str, word size, const char *name)
 
 	if (nSize + 1 > size) {
 		str.Delete((size - 2) / 2, 2 + nSize - size);
-		str.Insert((size - 2) / 2, "~");
+		str.Insert((size - 2) / 2, "\x1C");
 	}
 }
 //------------------------------------------------------------------

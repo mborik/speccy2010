@@ -1,8 +1,5 @@
 #include "screen.h"
 #include "font0.h"
-#include "font1.h"
-#include "font2.h"
-#include "font3.h"
 #include "logo.h"
 
 #include "../system.h"
@@ -58,8 +55,8 @@ void ResetScreen(bool active)
 			}
 		}
 
-		WriteStr(12, 6, "FIRMWARE");
-		WriteStr(13, 7, "v" VERSION);
+		DrawStr(104, 6, "FIRMWARE");
+		DrawStr(110, 7, "v" VERSION);
 
 		SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable reset videopage
 		SystemBus_Write(0xc00022, 0x8002); // Enable reset border
@@ -68,11 +65,6 @@ void ResetScreen(bool active)
 		SystemBus_Write(0xc00021, 0); // Enable Video
 		SystemBus_Write(0xc00022, 0);
 	}
-}
-//---------------------------------------------------------------------------------------
-void WriteDisplay(word address, byte data)
-{
-	SystemBus_Write(VIDEO_PAGE_PTR + address, data);
 }
 //---------------------------------------------------------------------------------------
 void ClrScr(byte attr)
@@ -88,10 +80,10 @@ void DrawLine(byte y, byte cy)
 {
 	y = y * 8 + cy;
 
-	if (y < 24 * 8) {
-		word address = ((y & 0xc0) | ((y & 0x38) >> 3) | ((y & 0x07) << 3)) << 5;
+	if (y < 192) {
+		dword address = (VIDEO_PAGE_PTR) + (((y & 0xc0) | ((y & 0x38) >> 3) | ((y & 0x07) << 3)) << 5);
 		for (byte yy = 0; yy < 32; yy++)
-			WriteDisplay(address++, 0xff);
+			SystemBus_Write(address++, 0xff);
 	}
 }
 //---------------------------------------------------------------------------------------
@@ -100,99 +92,130 @@ void DrawFrame(byte x, byte y, byte w, byte h, byte attr, const char corners[7])
 	char current;
 
 	for (int yy = 0; yy < h; yy++) {
-		WriteAttr(x, y + yy, attr, w);
-		WriteStr(x + 1, y + yy, "", w - 2);
+		DrawAttr(x, y + yy, attr, w);
 
-		for (int xx = 0; xx < w; xx++) {
+		for (int xx = 0, xw = w - 6; xx < w; xx += 6) {
 			if (yy == 0 && xx == 0)
 				current = corners[0];
-			else if (yy == 0 && xx == w - 1)
+			else if (yy == 0 && xx >= xw)
 				current = corners[2];
 			else if (yy == h - 1 && xx == 0)
 				current = corners[4];
-			else if (yy == h - 1 && xx == w - 1)
+			else if (yy == h - 1 && xx >= xw)
 				current = corners[6];
 			else if (yy == 0)
 				current = corners[1];
 			else if (yy == h - 1)
 				current = corners[5];
-			else if (xx == 0 || xx == w - 1)
+			else if (xx == 0 || xx >= xw)
 				current = corners[3];
 			else
-				continue;
+				current = 0;
 
-			WriteChar(x + xx, y + yy, current);
+			DrawChar(x + (xx < xw ? xx : xw), y + yy, current);
 		}
 	}
 }
 //---------------------------------------------------------------------------------------
-void WriteChar(byte x, byte y, char c)
+void DrawChar(byte x, byte y, char c, bool over, bool inv)
 {
-	if (x < 32 && y < 24) {
-		const byte *charTable = shellFont0;
-		if (specConfig.specFont == 1)
-			charTable = shellFont1;
-		else if (specConfig.specFont == 2)
-			charTable = shellFont2;
+	if (x >= 250 && y >= 24)
+		return;
 
-		if ((byte) c < 0x20) {
-			// DOS CP437 char range (00 - 1F) special chars
-			charTable = shellFont3_low;
+	byte col = (x >> 3);
+	byte mod = (x & 0x07);
+	byte rot = 7 - ((mod + 5) & 7);
+
+	word data = (0b111111 << rot);
+	word invr = inv ? data : 0;
+	word mask = ~data;
+	word copy;
+
+	dword address = VIDEO_PAGE_PTR + (col + (y & 0x07) * 32 + (y & 0x18) * 256);
+	const byte *tablePos = &shellFont0[(byte) c * 8];
+
+	for (byte i = 0; i < 8; i++) {
+		data = (*tablePos++) << rot;
+		if (mod > 2) {
+			copy = (SystemBus_Read(address) << 8) | SystemBus_Read(address + 1);
+			if (over)
+				copy ^= data ^ invr;
+			else {
+				copy &= mask;
+				copy |= data;
+				copy ^= invr;
+			}
+
+			SystemBus_Write(address, (copy >> 8));
+			SystemBus_Write(address + 1, (copy & 0xff));
 		}
 		else {
-			c -= 0x20;
-
-			// DOS CP437 char range (AE - DF) with special box-drawings
-			if ((byte) c >= 0x8E && (byte) c <= 0xBF) {
-				charTable = shellFont3_high;
-				c -= 0x8E;
+			copy = SystemBus_Read(address);
+			if (over)
+				copy ^= data ^ invr;
+			else {
+				copy &= mask;
+				copy |= data;
+				copy ^= invr;
 			}
-			else if ((byte) c >= 0x80)
-				c = 0;
+
+			SystemBus_Write(address, copy);
 		}
 
-		word address = x + (y & 0x07) * 32 + (y & 0x18) * 32 * 8;
-		const byte *tablePos = &charTable[(byte) c * 8];
+		address += 256;
+	}
+}
+//---------------------------------------------------------------------------------------
+void DrawAttr(byte x, byte y, byte attr, int w, bool incent)
+{
+	if (y < 24) {
+		byte col = (x >> 3);
+		byte mod = (x & 0x07);
 
-		for (byte i = 0; i < 8; i++) {
-			WriteDisplay(address, *tablePos++);
-			address += 32 * 8;
+		if (incent && mod > 4) {
+			col++;
+			w -= mod;
+		}
+
+		dword address = VIDEO_PAGE_PTR + 0x1800 + col + y * 32;
+
+		while (w > (incent ? 8 : 0)) {
+			SystemBus_Write(address++, attr);
+			w -= 8;
 		}
 	}
 }
 //---------------------------------------------------------------------------------------
-void WriteAttr(byte x, byte y, byte attr, byte n)
+void DrawAttr8(byte x, byte y, byte attr, byte n)
 {
 	if (x < 32 && y < 24) {
-		word address = 0x1800 + x + y * 32;
+		dword address = VIDEO_PAGE_PTR + 0x1800 + x + y * 32;
 
 		while (n--)
-			WriteDisplay(address++, attr);
+			SystemBus_Write(address++, attr);
 	}
 }
 //---------------------------------------------------------------------------------------
-void WriteStr(byte x, byte y, const char *str, byte size)
+void DrawStr(byte x, byte y, const char *str, byte size, bool over, bool inv)
 {
 	if (size == 0)
 		size = strlen(str);
 
 	while (size > 0) {
-		if (*str)
-			WriteChar(x++, y, *str++);
-		else
-			WriteChar(x++, y, ' ');
+		DrawChar(x, y, *str ? *str++ : ' ', over, inv);
 
+		x += 6;
 		size--;
 	}
 }
 //---------------------------------------------------------------------------------------
-void WriteStrAttr(byte x, byte y, const char *str, byte attr, byte size)
+void DrawStrAttr(byte x, byte y, const char *str, byte attr, byte size, bool over, bool inv)
 {
 	if (size == 0)
 		size = strlen(str);
 
-	WriteStr(x, y, str, size);
-	WriteAttr(x, y, attr, size);
+	DrawStr(x, y, str, size, over, inv);
+	DrawAttr(x, y, attr, size * 6);
 }
 //---------------------------------------------------------------------------------------
 void CycleMark(byte x, byte y)
@@ -200,7 +223,7 @@ void CycleMark(byte x, byte y)
 	const char marks[4] = { '/', '-', '\\', '|' };
 	static int mark = 0;
 
-	WriteChar(x, y, marks[mark]);
+	DrawChar(x, y, marks[mark]);
 	mark = (mark + 1) & 3;
 }
 //---------------------------------------------------------------------------------------

@@ -930,7 +930,7 @@ int main()
 
 	InitStack();
 
-	__TRACE("\n%s\n", "Speccy2010: v" VERSION);
+	__TRACE("\n%s\n", "Speccy2010 v" VERSION);
 
 	if (!pllStatusOK)
 		__TRACE("PLL initialization error !\n");

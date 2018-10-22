@@ -9,7 +9,7 @@ const int VIEWER_LINES = 21;
 //---------------------------------------------------------------------------------------
 void Shell_TextViewer(const char *fullName)
 {
-	CTextReader reader(fullName, 32);
+	CTextReader reader(fullName, 42);
 	if (reader.GetLines() < 0) {
 		Shell_MessageBox("Error", "Cannot open file!");
 		return;
@@ -19,10 +19,10 @@ void Shell_TextViewer(const char *fullName)
 	DrawLine(1, 3);
 	DrawLine(1, 5);
 
-	WriteAttr(0,  0, 0115, 32);
-	WriteAttr(0, 23, 0006, 32);
+	DrawAttr8(0,  0, 0115, 32);
+	DrawAttr8(0, 23, 0006, 32);
 
-	display_path(fullName, 0, 0, 32);
+	display_path(fullName, 0, 0, 42);
 
 	if (reader.GetLines() == reader.LINES_MAX) {
 		Shell_MessageBox("Error", "Too many lines!");
@@ -39,12 +39,12 @@ void Shell_TextViewer(const char *fullName)
 
 		char str[5];
 		sniprintf(str, 5, "%3d%%", p);
-		WriteStr(28, 23, str, 4);
+		DrawStr(232, 23, str, 4);
 
 		for (int j = 0; j < VIEWER_LINES; j++) {
 			reader.SetLine(pos + j);
-			for (int i = 0; i < 32; i++)
-				WriteChar(i, 2 + j, reader.GetChar());
+			for (int i = 0, x = 0; i < 42; i++, x += 6)
+				DrawChar(x, 2 + j, reader.GetChar());
 		}
 
 		key = GetKey();
