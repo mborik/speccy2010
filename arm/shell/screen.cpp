@@ -218,6 +218,19 @@ void DrawStrAttr(byte x, byte y, const char *str, byte attr, byte size, bool ove
 	DrawAttr(x, y, attr, size * 6);
 }
 //---------------------------------------------------------------------------------------
+void DrawFnKeys(byte x, byte y, const char *fnKeys, int len)
+{
+	bool wasChar = false, isChar = false;
+	for (int i = 0; i < len; i++, x += 6) {
+		isChar = (fnKeys[i] > '9');
+		if (!isChar && wasChar)
+			++x;
+
+		DrawChar(x, y, fnKeys[i], false, isChar);
+		wasChar = isChar;
+	}
+}
+//---------------------------------------------------------------------------------------
 void CycleMark(byte x, byte y)
 {
 	const char marks[4] = { '/', '-', '\\', '|' };

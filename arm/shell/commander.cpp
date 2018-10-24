@@ -117,14 +117,14 @@ void show_table()
 	}
 
 	if (too_many_files)
-		DrawStrAttr(144, 17, "TOO MANY FILES", 0126, 19);
+		DrawStrAttr(144, 18, " TOO MANY FILES ", 0126);
 	else if (files_size == 0)
 		DrawStrAttr(8, 2, "\x1C no files in dir \x1C", 0112, 19);
 }
 //---------------------------------------------------------------------------------------
 void hide_sel()
 {
-	if (files_size != 0) {
+	if (!too_many_files && files_size != 0) {
 		FRECORD fr;
 		Read(&fr, table_buffer, files_sel);
 
@@ -155,7 +155,7 @@ void show_sel(bool redraw = false)
 	if (calc_sel() || redraw)
 		show_table();
 
-	if (files_size != 0) {
+	if (!too_many_files && files_size != 0) {
 		FRECORD fr;
 		Read(&fr, table_buffer, files_sel);
 
@@ -181,7 +181,7 @@ void show_sel(bool redraw = false)
 		DrawStrAttr(206, 18, "\xC4\xC4\xC4\xC4\xC4\xC4", 0117, 6);
 
 		if (files_sel_number > 0) {
-			sniprintf(sname, sizeof(sname), " \x11%u\x10", files_sel_number);
+			sniprintf(sname, sizeof(sname), " (%u)", files_sel_number);
 			size_t len = strlen(sname);
 			DrawStr(242 - (len * 6), 18, sname, len);
 			switch (len) {
@@ -229,16 +229,7 @@ void init_screen()
 	DrawLine(1, 3);
 
 	DrawStr(2, 0, "Speccy2010 Commander v" VERSION " \7 File Manager");
-
-	const char *fnKeys = "1help2cwd3view4hex5copy6mov7mkdir8del9img";
-	bool wasChar = false, isChar = false;
-	for (int i = 0, x = 1; i < 41; i++, x += 6) {
-		isChar = (fnKeys[i] > '9');
-		if (!isChar && wasChar)
-			++x;
-		DrawChar(x, 23, fnKeys[i], false, isChar);
-		wasChar = isChar;
-	}
+	DrawFnKeys(1, 23, "1help2cwd3view4hex5copy6mov7mkdir8del9img", 41);
 
 	DrawAttr8(0,  0, 0114, 32);
 	DrawAttr8(0, 23, 0005, 32);
@@ -993,7 +984,7 @@ void Shell_Commander()
 			show_sel();
 		}
 		else if (key == K_F1) {
-			Shell_TextViewer("speccy2010.hlp");
+			Shell_TextViewer("speccy2010.hlp", true);
 
 			init_screen();
 			show_table();

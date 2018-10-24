@@ -3,7 +3,7 @@
 #include "../system/sdram.h"
 
 //---------------------------------------------------------------------------------------
-CTextReader::CTextReader(const char *fullName, int size)
+CTextReader::CTextReader(const char *fullName, int width)
 {
 	buffer = Malloc(LINES_MAX, sizeof(fil.fptr));
 
@@ -12,11 +12,24 @@ CTextReader::CTextReader(const char *fullName, int size)
 		return;
 	}
 
+	ReadLines(width);
+}
+//---------------------------------------------------------------------------------------
+CTextReader::~CTextReader()
+{
+	f_close(&fil);
+	Free(buffer);
+}
+//---------------------------------------------------------------------------------------
+void CTextReader::ReadLines(int width)
+{
+	f_lseek(&fil, 0);
+
 	lines = 0;
 	Write(&fil.fptr, buffer, lines++);
 
 	white = false;
-	char c;
+	char c, wasCRLF = 0;
 	int pos = 0;
 
 	int lastPos = 0;
@@ -24,11 +37,19 @@ CTextReader::CTextReader(const char *fullName, int size)
 	bool prevWhite = false;
 
 	while (fil.fptr < fil.fsize && lines < LINES_MAX) {
-		dword res;
 		f_read(&fil, &c, 1, &res);
 
-		if (c == '\r')
-			continue;
+		if (wasCRLF) {
+			if (c == wasCRLF) {
+				lastPtr = fil.fptr;
+				Write(&lastPtr, buffer, lines - 1);
+				lastPtr = 0;
+				wasCRLF = 0;
+				continue;
+			}
+
+			wasCRLF = 0;
+		}
 
 		if (c == '\t' || c == ' ') {
 			if (white)
@@ -46,8 +67,9 @@ CTextReader::CTextReader(const char *fullName, int size)
 			lastPtr = fil.fptr - 1;
 		}
 
-		if (c == '\n' || (!white && pos > size)) {
-			if (c == '\n') {
+		if (c == '\n' || c == '\r' || (!white && width > 0 && pos > width)) {
+			if (c == '\n' || c == '\r') {
+				wasCRLF = c ^ 7;
 				lastPos = pos;
 				lastPtr = fil.fptr;
 			}
@@ -69,12 +91,6 @@ CTextReader::CTextReader(const char *fullName, int size)
 	}
 
 	f_lseek(&fil, 0);
-}
-//---------------------------------------------------------------------------------------
-CTextReader::~CTextReader()
-{
-	f_close(&fil);
-	Free(buffer);
 }
 //---------------------------------------------------------------------------------------
 void CTextReader::SetLine(int i)
@@ -99,7 +115,6 @@ void CTextReader::SetLine(int i)
 char CTextReader::GetChar()
 {
 	char result;
-	dword res;
 
 	while (true) {
 		if (fil.fptr >= nextLinePos)

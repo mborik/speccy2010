@@ -5,20 +5,22 @@
 
 class CTextReader {
 	FIL fil;
-	dword buffer;
+	dword buffer, res;
 
 	int lines;
-	dword nextLinePos;
 	bool white;
+	dword nextLinePos;
 
 public:
 	static const int LINES_MAX = 0x4000;
 
-public:
-	CTextReader(const char *fullName, int size);
+	CTextReader(const char *fullName, int width);
 	~CTextReader();
 
 	inline int GetLines() { return lines; }
+	inline int GetFileSize() { return fil.fsize; }
+
+	void ReadLines(int width);
 	void SetLine(int i);
 	char GetChar();
 };
