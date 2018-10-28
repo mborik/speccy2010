@@ -225,8 +225,8 @@ void init_screen()
 	DrawFrame(  2,  1, 126, 18, 0117, "\xD1\xCD\xD1\xB3\xC3\xC4\xC1");
 	DrawFrame(130,  1, 126, 18, 0117, "\xD1\xCD\xD1\xB3\xC1\xC4\xB4");
 
-	DrawLine(1, 1);
-	DrawLine(1, 3);
+	DrawLine(1, 2);
+	DrawLine(1, 4);
 
 	DrawStr(2, 0, "Speccy2010 Commander v" VERSION " \7 File Manager");
 	DrawFnKeys(1, 23, "1help2cwd3view4hex5copy6mov7mkdir8del9img", 41);
@@ -750,10 +750,8 @@ bool Shell_Viewer(char *fullName)
 			Shell_TextViewer(fullName);
 			return true;
 		}
-		else {
-			Shell_MessageBox("Binary file",
-				"Hex view of binary file", "not yet implemented", "", MB_OK, 0137);
-		}
+		else
+			return Shell_HexViewer(fullName);
 	}
 
 	return false;
@@ -1018,8 +1016,15 @@ void Shell_Commander()
 			}
 		}
 		else if (key == K_F4) {
-			if ((fr.attr & AM_DIR) == 0)
-				Shell_Toast("Hex editor", "not yet implemented");
+			if ((fr.attr & AM_DIR) == 0) {
+				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
+
+				if (Shell_HexViewer(fullName, true)) {
+					init_screen();
+					show_table();
+					show_sel(true);
+				}
+			}
 		}
 		else if (key == K_F5) {
 			hide_sel();

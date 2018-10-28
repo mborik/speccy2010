@@ -347,6 +347,7 @@ char CodeToChar(word keyCode)
 		case KEY_ESC:           return K_ESC;
 		case KEY_RETURN:        return K_RETURN;
 		case KEY_BACKSPACE:     return K_BACKSPACE;
+		case KEY_TAB:           return K_TAB;
 
 		case KEY_UP:            return K_UP;
 		case KEY_DOWN:          return K_DOWN;

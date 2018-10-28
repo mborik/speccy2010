@@ -127,12 +127,12 @@ bool Shell_MessageBox(const char *title, const char *str, const char *str2, cons
 			DrawStrAttr(128 - 12, y, " OK ", attrSel);
 		}
 		else if (type == MB_DISK) {
-			DrawStrAttr(128 - 39, y, " MBD ", result ? attrSel : attr);
-			DrawStrAttr(128 +  9, y, " TRD ", result ? attr : attrSel);
+			DrawStrAttr(128 - 31, y, " MBD ", result ? attrSel : attr);
+			DrawStrAttr(128 +  1, y, " TRD ", result ? attr : attrSel);
 		}
 		else {
-			DrawStrAttr(128 - 39, y, " Yes ", result ? attrSel : attr);
-			DrawStrAttr(128 + 12, y, " No ", result ? attr : attrSel);
+			DrawStrAttr(128 - 31, y, " Yes ", result ? attrSel : attr);
+			DrawStrAttr(128 +  4, y, " No  ", result ? attr : attrSel);
 		}
 
 		byte key = GetKey();

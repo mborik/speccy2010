@@ -110,7 +110,7 @@ void DrawFrame(byte x, byte y, byte w, byte h, byte attr, const char corners[7])
 			else if (xx == 0 || xx >= xw)
 				current = corners[3];
 			else
-				current = 0;
+				current = ' ';
 
 			DrawChar(x + (xx < xw ? xx : xw), y + yy, current);
 		}
@@ -216,6 +216,16 @@ void DrawStrAttr(byte x, byte y, const char *str, byte attr, byte size, bool ove
 
 	DrawStr(x, y, str, size, over, inv);
 	DrawAttr(x, y, attr, size * 6);
+}
+//---------------------------------------------------------------------------------------
+void DrawHexNum(byte x, byte y, dword num, int len)
+{
+	dword rem;
+	while (--len >= 0) {
+		rem = num % 16;
+		DrawChar(x + (len * 6), y, rem + ((rem > 9) ? ('a' - 10) : '0'));
+		num /= 16;
+	}
 }
 //---------------------------------------------------------------------------------------
 void DrawFnKeys(byte x, byte y, const char *fnKeys, int len)

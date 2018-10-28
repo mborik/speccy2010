@@ -15,6 +15,7 @@ void DrawAttr(byte x, byte y, byte attr, int w = 6, bool incent = false);
 void DrawAttr8(byte x, byte y, byte attr, byte n = 1);
 void DrawStr(byte x, byte y, const char *str, byte size = 0, bool over = false, bool inv = false);
 void DrawStrAttr(byte x, byte y, const char *str, byte attr, byte size = 0, bool over = false, bool inv = false);
+void DrawHexNum(byte x, byte y, dword num, int len = 2);
 void DrawFnKeys(byte x, byte y, const char *fnKeys, int len);
 void CycleMark(byte x = 0, byte y = 22);
 

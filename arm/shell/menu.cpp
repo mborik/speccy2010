@@ -112,8 +112,8 @@ void InitScreen(const char *title)
 	DrawStrAttr((256 - (len * 6)) / 2, 0, str, 0105, len);
 
 	DrawAttr8(0, 1, 0002, 32);
-	DrawLine(1, 3);
-	DrawLine(1, 5);
+	DrawLine(1, 2);
+	DrawLine(1, 4);
 
 	DrawAttr8(0, 20, 0002, 32);
 	DrawLine(20, 3);
