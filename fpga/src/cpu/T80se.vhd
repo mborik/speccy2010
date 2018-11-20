@@ -62,7 +62,6 @@
 library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
-use work.T80_Pack.all;
 
 entity T80se is
 	generic(
@@ -86,15 +85,20 @@ entity T80se is
 		RFSH_n		: out std_logic;
 		HALT_n		: out std_logic;
 		BUSAK_n		: out std_logic;
+		OUT0        : in  std_logic := '0';  -- 0 => OUT(C),0, 1 => OUT(C),255
 		A			: out std_logic_vector(15 downto 0);
 		DI			: in std_logic_vector(7 downto 0);
 		DO			: out std_logic_vector(7 downto 0);
+
+		REG         : out std_logic_vector(211 downto 0); -- IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
+		DIR         : in  std_logic_vector(211 downto 0) := (others => '0'); -- IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
+		DIRSet      : in  std_logic := '0';
 
 		SavePC      : out std_logic_vector(15 downto 0);
 		SaveINT     : out std_logic_vector(7 downto 0);
 		RestorePC   : in std_logic_vector(15 downto 0);
 		RestoreINT  : in std_logic_vector(7 downto 0);
-		
+
 		RestorePC_n : in std_logic
 	);
 end T80se;
@@ -111,7 +115,7 @@ architecture rtl of T80se is
 
 begin
 
-	u0 : T80
+	u0 : work.T80
 		generic map(
 			Mode => Mode,
 			IOWait => IOWait)
@@ -136,14 +140,20 @@ begin
 			DO => DO,
 			MC => MCycle,
 			TS => TState,
+			OUT0 => OUT0,
 			IntCycle_n => IntCycle_n,
+
+			REG => REG,
+			DIR => DIR,
+			DIRSet => DIRSet,
 
 			SavePC => SavePC,
 			SaveINT => SaveINT,
 			RestorePC => RestorePC,
 			RestoreINT => RestoreINT,
-			
-			RestorePC_n => RestorePC_n );
+
+			RestorePC_n => RestorePC_n
+		);
 
 
 	process (CLK_n)
@@ -192,7 +202,7 @@ begin
 				if TState = "010" and Wait_n = '1' then
 					DI_Reg <= DI;
 				end if;
-				
+
 			end if;
 		end if;
 	end process;

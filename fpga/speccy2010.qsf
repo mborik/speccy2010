@@ -209,7 +209,6 @@ set_global_assignment -name VHDL_FILE src/peripheral/sound/YM2149_volmix.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80_ALU.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80_MCode.vhd
-set_global_assignment -name VHDL_FILE src/cpu/T80_Pack.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80_Reg.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/video/sinus.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/video/vencode.vhd

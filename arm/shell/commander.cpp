@@ -817,9 +817,13 @@ bool Shell_Receiver(const char *inputName)
 			}
 
 			f_close(&file);
+			DelayMs(100);
 
-			if (FileExists(dstName))
+			if (FileExists(dstName)) {
 				f_unlink(dstName);
+				DelayMs(200);
+			}
+
 			f_rename(srcName, dstName);
 		}
 		else {
@@ -830,7 +834,6 @@ bool Shell_Receiver(const char *inputName)
 		}
 	}
 
-	show_table();
 	return true;
 }
 //---------------------------------------------------------------------------------------
@@ -1094,6 +1097,7 @@ void Shell_Commander()
 				files_sel = last_files_sel;
 			}
 
+			show_table();
 			show_sel(true);
 		}
 		else if (key == K_ESC || key == K_F10 || key == K_F12) {

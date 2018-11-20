@@ -4,37 +4,37 @@ use IEEE.numeric_std.all;
 
 entity speccy2010_top is
 	port(
-		CLK_20          : in std_logic;
-		CLK_20_ALT      : in std_logic;
+		CLK_20      : in std_logic;
+		CLK_20_ALT  : in std_logic;
 
-		SOUND_LEFT		: out std_logic_vector(7 downto 0) := "10000000";
-		SOUND_RIGHT		: out std_logic_vector(7 downto 0) := "10000000";
+		SOUND_LEFT  : out std_logic_vector(7 downto 0) := "10000000";
+		SOUND_RIGHT : out std_logic_vector(7 downto 0) := "10000000";
 
-		VIDEO_R			: out std_logic_vector(7 downto 0) := "01111111";
-		VIDEO_G			: out std_logic_vector(7 downto 0) := "01111111";
-		VIDEO_B			: out std_logic_vector(7 downto 0) := "01111111";
+		VIDEO_R     : out std_logic_vector(7 downto 0) := "01111111";
+		VIDEO_G     : out std_logic_vector(7 downto 0) := "01111111";
+		VIDEO_B     : out std_logic_vector(7 downto 0) := "01111111";
 
-		VIDEO_HSYNC		: out std_logic := '1';
-		VIDEO_VSYNC		: out std_logic := '1';
+		VIDEO_HSYNC : out std_logic := '1';
+		VIDEO_VSYNC : out std_logic := '1';
 
-		ARM_AD			: inout std_logic_vector(15 downto 0) := (others => 'Z');
-		ARM_A			: in std_logic_vector(23 downto 16);
+		ARM_AD      : inout std_logic_vector(15 downto 0) := (others => 'Z');
+		ARM_A       : in std_logic_vector(23 downto 16);
 
-		ARM_RD			: in std_logic;
-		ARM_WR			: in std_logic;
-		ARM_ALE			: in std_logic;
-		ARM_WAIT		: out std_logic := '0';
+		ARM_RD      : in std_logic;
+		ARM_WR      : in std_logic;
+		ARM_ALE     : in std_logic;
+		ARM_WAIT    : out std_logic := '0';
 
-		JOY0			: in std_logic_vector(5 downto 0);
-		JOY0_SEL  		: out std_logic := '0';
-		JOY1			: in std_logic_vector(5 downto 0);
-		JOY1_SEL  		: out std_logic := '0';
+		JOY0        : in std_logic_vector(5 downto 0);
+		JOY0_SEL    : out std_logic := '0';
+		JOY1        : in std_logic_vector(5 downto 0);
+		JOY1_SEL    : out std_logic := '0';
 
-		KEYS_CLK		: inout std_logic := 'Z';
-		KEYS_DATA		: inout std_logic := 'Z';
+		KEYS_CLK    : inout std_logic := 'Z';
+		KEYS_DATA   : inout std_logic := 'Z';
 
-		MOUSE_CLK		: inout std_logic := 'Z';
-		MOUSE_DATA		: inout std_logic := 'Z';
+		MOUSE_CLK   : inout std_logic := 'Z';
+		MOUSE_DATA  : inout std_logic := 'Z';
 
 		-- SD-RAM ports
 		pMemClk     : out std_logic;                        -- SD-RAM Clock
@@ -50,7 +50,7 @@ entity speccy2010_top is
 		pMemAdr     : out std_logic_vector(12 downto 0);    -- SD-RAM Address
 		pMemDat     : inout std_logic_vector(15 downto 0);  -- SD-RAM Data
 
-		RESET_n			: in std_logic
+		RESET_n     : in std_logic
 	);
 
 end speccy2010_top;
@@ -192,7 +192,7 @@ architecture rtl of speccy2010_top is
 
 	signal specMode         : unsigned(2 downto 0) := "000";  -- 0: ZX 48 | 1: ZX 128 | 2: Pentagon 1024 | 3: Scorpion
 	signal syncMode         : unsigned(2 downto 0) := "000";  -- 0: ZX 48 | 1: ZX 128 | 2: Pentagon | 3: Scorpion
-	signal cpuTurbo         : unsigned(1 downto 0) := "00";   -- 0: 7MHz | 1: 14MHz | 2: 28MHz | 3: 35MHz
+	signal cpuTurbo         : unsigned(1 downto 0) := "00";   -- 0: 3.5MHz | 1: 7MHz | 2: 14MHz | 3: 28MHz
 
 	signal videoMode        : unsigned(3 downto 0) := "0000"; -- 0: Comp/SVideo | 1: RGB | 2: VGA 50Hz | 3: 60Hz | 4: 75Hz
 	signal videoAspectRatio : unsigned(2 downto 0) := "000";  -- 0: 4/3 | 1: 5/4 | 2: 16/9
@@ -211,7 +211,7 @@ architecture rtl of speccy2010_top is
 	signal speaker      : std_logic;
 
 	signal tapeIn       : std_logic := '0';
-	signal keyboard     : std_logic_vector(39 downto 0) := "1111111111111111111111111111111111111111";
+	signal keyboard     : std_logic_vector(39 downto 0) := (others => '1');
 	signal joystick     : std_logic_vector(7 downto 0) := x"00";
 	signal mouseX       : std_logic_vector(7 downto 0) := x"00";
 	signal mouseY       : std_logic_vector(7 downto 0) := x"00";
@@ -272,7 +272,6 @@ architecture rtl of speccy2010_top is
 	signal ayOUT_B      : std_logic_vector(7 downto 0);
 	signal ayOUT_C      : std_logic_vector(7 downto 0);
 
--- Poopi
 	signal ay2WR        : std_logic;
 	signal ay2RD        : std_logic;
 	signal ay2Dout      : std_logic_vector(7 downto 0);
@@ -335,6 +334,9 @@ architecture rtl of speccy2010_top is
 
 	signal cpuRestoreINT    : std_logic_vector(7 downto 0);
 	signal cpuRestorePC_n   : std_logic := '1';
+
+	signal cpuRegisters     : std_logic_vector(211 downto 0) := (others => '0');
+	signal cpuRegStoreNow   : std_logic := '0';
 
 	signal vgaHSync         : std_logic;
 	signal vgaVSync         : std_logic;
@@ -413,9 +415,10 @@ begin
 			HALT_n  => open,
 			BUSAK_n => open,
 			A       => cpuA,
---			D       => cpuDout,
 			DO      => cpuDout,
 			DI      => cpuDin,
+
+			REG => cpuRegisters,
 
 			SavePC => cpuSavePC,
 			SaveINT => cpuSaveINT,
@@ -897,7 +900,7 @@ begin
 		variable cpuReq : std_logic;
 
 		type rtcRamType is array ( integer range <> ) of std_logic_vector( 7 downto 0 );
-		variable rtcRam : rtcRamType( 0 to 63 );
+		variable rtcRam : rtcRamType( 0 to 27 );
 
 		variable rtcRamAddressRd : unsigned(7 downto 0) := x"00";
 		variable rtcRamDataRd : std_logic_vector(7 downto 0) := x"00";
@@ -921,7 +924,15 @@ begin
 			end if;
 
 			rtcRamDataRd := rtcRamDataRdPrev;
-			rtcRamDataRdPrev := rtcRam( to_integer( rtcRamAddressRd ) );
+			if rtcRamAddressRd < 12 then
+				rtcRamDataRdPrev := rtcRam( to_integer( rtcRamAddressRd ) );
+			elsif rtcRamAddressRd = 16 then
+				rtcRamDataRdPrev := x"80";
+			elsif rtcRamAddressRd = 17 then
+				rtcRamDataRdPrev := x"aa";
+			else
+				rtcRamDataRdPrev := x"00";
+			end if;
 
 			if cpuReset = '1' then
 				specDiskIfWait <= '0';
@@ -1122,7 +1133,7 @@ begin
 
 					-- DivMMC or MB-02 real time clock at #0n03 ports
 					elsif ( divmmcEnabled = '1' or mb02Enabled = '1' ) and cpuA( 15 downto 12 ) & cpuA( 7 downto 0 ) = x"003" then
-						rtcRam( to_integer(unsigned(cpuA( 11 downto 8 ))) + 32 ) := "0000" & cpuDout( 3 downto 0 );
+						rtcRam( to_integer(unsigned(cpuA( 11 downto 8 ))) + 12 ) := "0000" & cpuDout( 3 downto 0 );
 
 					-- DivMMC control or data-transfer ports
 					elsif divmmcEnabled = '1' and cpuA( 7 downto 4 ) & cpuA( 1 downto 0 ) = "111011" then
@@ -1259,7 +1270,7 @@ begin
 
 					-- DivMMC or MB-02 real time clock at #0n03 ports
 					elsif ( divmmcEnabled = '1' or mb02Enabled = '1' ) and cpuA( 15 downto 12 ) & cpuA( 7 downto 0 ) = x"003" then
-						cpuDin <= rtcRam( to_integer(unsigned(cpuA( 11 downto 8 ))) + 32 );
+						cpuDin <= rtcRam( to_integer(unsigned(cpuA( 11 downto 8 ))) + 12 );
 
 					-- DivMMC or MB-02 control and data-transfer ports
 					elsif ( divmmcEnabled = '1' and cpuA( 7 downto 0 ) = x"EB" ) or
@@ -1431,6 +1442,17 @@ begin
 
 						end if;
 
+					-- elsif addressReg( 23 downto 4 ) = x"c001f" then
+					-- 	if addressReg( 3 downto 0 ) = x"F" then
+					-- 		cpuRegStoreNow <= ARM_AD(0);
+					-- 	elsif cpuRegStoreNow = '1' then -- cpuRegisters write enabled
+					-- 		if addressReg( 3 downto 0 ) = x"E" then
+					-- 			cpuRegisters( 211 downto 208 ) <= ARM_AD( 3 downto 0 ); -- IFF2, IFF1, IM
+					-- 		else
+					-- 			cpuRegisters((to_integer(addressReg( 3 downto 0 )) * 16) + 15 downto (to_integer(addressReg( 3 downto 0 )) * 16)) <= ARM_AD;
+					-- 		end if;
+					-- 	end if;
+
 					elsif addressReg( 23 downto 8 ) = x"c001" then
 						rtcRam( to_integer( addressReg( 7 downto 0 ) ) ) := ARM_AD( 7 downto 0 );
 
@@ -1507,6 +1529,9 @@ begin
 								mouseRd <= '1';
 							end if;
 
+						elsif addressReg( 7 downto 0 ) = x"40" then
+							ARM_AD <= x"00" & std_logic_vector(cpuTurbo) & std_logic_vector(syncMode) & std_logic_vector(specMode);
+
 						elsif addressReg( 7 downto 0 ) = x"50" then
 							ARM_AD <= std_logic_vector( counter20( 15 downto 0 ) );
 						elsif addressReg( 7 downto 0 ) = x"51" then
@@ -1517,7 +1542,7 @@ begin
 							ARM_AD <= std_logic_vector( counterMem( 31 downto 16 ) );
 
 						elsif addressReg( 7 downto 0 ) = x"f0" then
-							ARM_AD <= x"f003"; -- for firmware version >= 1.2.2
+							ARM_AD <= x"f004"; -- for firmware version >= 1.2.3
 
 						else
 							ARM_AD <= x"ffff";
@@ -1525,12 +1550,24 @@ begin
 
 						ARM_WAIT <= '1';
 
+					elsif addressReg( 23 downto 4 ) = x"c001f" then
+						if addressReg( 3 downto 0 ) = x"F" then
+							ARM_AD <= memAddress( 21 downto 6 );
+						elsif cpuRegStoreNow = '0' then  -- cpuRegisters read only
+							if addressReg( 3 downto 0 ) = x"E" then
+								ARM_AD <= x"000" & cpuRegisters( 211 downto 208 ); -- IFF2, IFF1, IM
+							else
+								ARM_AD <= cpuRegisters((to_integer(addressReg( 3 downto 0 )) * 16) + 15 downto (to_integer(addressReg( 3 downto 0 )) * 16));
+							end if;
+						end if;
+
+						ARM_WAIT <= '1';
+
 					elsif addressReg( 23 downto 8 ) = x"c001" then
-						ARM_AD <= x"00" & rtcRam( to_integer( addressReg( 5 downto 0 ) ) );
+						ARM_AD <= x"00" & rtcRam( to_integer( addressReg( 4 downto 0 ) ) );
 						ARM_WAIT <= '1';
 
 					else
-
 						ARM_AD <= x"ffff";
 						ARM_WAIT <= '1';
 

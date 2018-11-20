@@ -1,11 +1,9 @@
 #include "specRtc.h"
 
-static byte rtcData[0x30] = {
+static byte rtcData[28] = {
 	// GLUK RTC
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00,
-	0x80, 0xaa, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x20, 0x02,
 	// MB-02 RTC
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x04
@@ -189,8 +187,8 @@ byte RTC_ToDec(byte dat)
 
 void RTC_Update()
 {
-	rtcData[0x0a] |= 0x80;
-	SystemBus_Write(0xc0010a, rtcData[0x0a]);
+	rtcData[10] |= 0x80;
+	SystemBus_Write(0xc00100 + 10, rtcData[10]);
 
 	tm time;
 	if (RTC_FetchData() < RTC_TIMEOUT) {
@@ -211,45 +209,45 @@ void RTC_Update()
 	rtcData[8] = RTC_ToDec(time.tm_mon + 1);
 	rtcData[9] = RTC_ToDec(time.tm_year % 100);
 
-	rtcData[0x20] = (data[0] & 0x0f);
-	rtcData[0x21] = (data[0] >> 4) & 0x07;
-	rtcData[0x22] = (data[1] & 0x0f);
-	rtcData[0x23] = (data[1] >> 4) & 0x07;
-	rtcData[0x24] = (data[2] & 0x0f);
-	rtcData[0x25] = (data[2] >> 4) & 0x07;
-	rtcData[0x26] = (data[4] & 0x0f);
-	rtcData[0x27] = (data[4] >> 4) & 0x03;
-	rtcData[0x28] = (data[5] & 0x0f);
-	rtcData[0x29] = (data[5] >> 4) & 0x01;
-	rtcData[0x2a] = (data[6] & 0x0f);
-	rtcData[0x2b] = (data[6] >> 4);
-	rtcData[0x2c] = (data[3] & 0x0f);
+	rtcData[12] = (data[0] & 0x0f);
+	rtcData[13] = (data[0] >> 4) & 0x07;
+	rtcData[14] = (data[1] & 0x0f);
+	rtcData[15] = (data[1] >> 4) & 0x07;
+	rtcData[16] = (data[2] & 0x0f);
+	rtcData[17] = (data[2] >> 4) & 0x07;
+	rtcData[18] = (data[4] & 0x0f);
+	rtcData[19] = (data[4] >> 4) & 0x03;
+	rtcData[20] = (data[5] & 0x0f);
+	rtcData[21] = (data[5] >> 4) & 0x01;
+	rtcData[22] = (data[6] & 0x0f);
+	rtcData[23] = (data[6] >> 4);
+	rtcData[24] = (data[3] & 0x0f);
 
 	int i;
 	if (firstTimeInit) {
-		for (i = 0; i < 0x30; i++)
+		for (i = 0; i < 28; i++)
 			SystemBus_Write(0xc00100 + i, rtcData[i]);
 
 		firstTimeInit = false;
 	}
 	else {
-		for (i = 0x00; i < 0x0a; i++)
+		for (i = 0; i < 10; i++)
 			SystemBus_Write(0xc00100 + i, rtcData[i]);
 
-		rtcData[0x0a] &= ~0x80;
-		rtcData[0x2d] = SystemBus_Read(0xc0012d);
-		SystemBus_Write(0xc0010a, rtcData[0x0a]);
+		rtcData[10] &= ~0x80;
+		rtcData[25] = SystemBus_Read(0xc00100 + 25);
+		SystemBus_Write(0xc00100 + 10, rtcData[10]);
 
 		int busyWait = 0;
-		while (busyWait < RTC_TIMEOUT && (rtcData[0x2d] & RTC_BUSY) != 0) {
-			rtcData[0x2d] = SystemBus_Read(0xc0012d);
+		while (busyWait < RTC_TIMEOUT && (rtcData[25] & RTC_BUSY) != 0) {
+			rtcData[25] = SystemBus_Read(0xc00100 + 25);
 			busyWait += 5;
 			DelayUs(5);
 		}
 
-		rtcData[0x2d] |= RTC_IRQ;
+		rtcData[25] |= RTC_IRQ;
 
-		for (i = 0x20; i <= 0x2d; i++)
+		for (i = 12; i <= 25; i++)
 			SystemBus_Write(0xc00100 + i, rtcData[i]);
 	}
 }
