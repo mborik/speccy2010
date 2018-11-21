@@ -65,53 +65,47 @@ use IEEE.numeric_std.all;
 
 entity T80se is
 	generic(
-		Mode : integer := 0;	-- 0 => Z80, 1 => Fast Z80, 2 => 8080, 3 => GB
+		Mode    : integer := 0;	-- 0 => Z80, 1 => Fast Z80, 2 => 8080, 3 => GB
 		T2Write : integer := 1;	-- 0 => WR_n active in T3, /=0 => WR_n active in T2
-		IOWait : integer := 1	-- 0 => Single cycle I/O, 1 => Std I/O cycle
+		IOWait  : integer := 1	-- 0 => Single cycle I/O, 1 => Std I/O cycle
 	);
 	port(
-		RESET_n		: in std_logic;
-		CLK_n		: in std_logic;
-		CLKEN		: in std_logic;
-		WAIT_n		: in std_logic;
-		INT_n		: in std_logic;
-		NMI_n		: in std_logic;
-		BUSRQ_n		: in std_logic;
-		M1_n		: out std_logic;
-		MREQ_n		: out std_logic;
-		IORQ_n		: out std_logic;
-		RD_n		: out std_logic;
-		WR_n		: out std_logic;
-		RFSH_n		: out std_logic;
-		HALT_n		: out std_logic;
-		BUSAK_n		: out std_logic;
+		RESET_n     : in  std_logic;
+		CLK_n       : in  std_logic;
+		CLKEN       : in  std_logic;
+		WAIT_n      : in  std_logic;
+		INT_n       : in  std_logic;
+		NMI_n       : in  std_logic;
+		BUSRQ_n     : in  std_logic;
+		M1_n        : out std_logic;
+		MREQ_n      : out std_logic;
+		IORQ_n      : out std_logic;
+		RD_n        : out std_logic;
+		WR_n        : out std_logic;
+		RFSH_n      : out std_logic;
+		HALT_n      : out std_logic;
+		BUSAK_n     : out std_logic;
 		OUT0        : in  std_logic := '0';  -- 0 => OUT(C),0, 1 => OUT(C),255
-		A			: out std_logic_vector(15 downto 0);
-		DI			: in std_logic_vector(7 downto 0);
-		DO			: out std_logic_vector(7 downto 0);
+		A           : out std_logic_vector(15 downto 0);
+		DI          : in  std_logic_vector(7 downto 0);
+		DO          : out std_logic_vector(7 downto 0);
 
-		REG         : out std_logic_vector(211 downto 0); -- IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
-		DIR         : in  std_logic_vector(211 downto 0) := (others => '0'); -- IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
-		DIRSet      : in  std_logic := '0';
-
-		SavePC      : out std_logic_vector(15 downto 0);
-		SaveINT     : out std_logic_vector(7 downto 0);
-		RestorePC   : in std_logic_vector(15 downto 0);
-		RestoreINT  : in std_logic_vector(7 downto 0);
-
-		RestorePC_n : in std_logic
+		REG         : out std_logic_vector(212 downto 0); -- Int, IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
+		DIR         : in  std_logic_vector(15 downto 0);  -- value for register pair to store
+		DIRNumber   : in  std_logic_vector(3 downto 0);   -- number of register pair to store
+		DIRSet_n    : in  std_logic := '1'                -- set if regpair value+number are ready to store
 	);
 end T80se;
 
 architecture rtl of T80se is
 
-	signal IntCycle_n	: std_logic;
-	signal NoRead		: std_logic;
-	signal Write		: std_logic;
-	signal IORQ			: std_logic;
-	signal DI_Reg		: std_logic_vector(7 downto 0);
-	signal MCycle		: std_logic_vector(2 downto 0);
-	signal TState		: std_logic_vector(2 downto 0);
+	signal IntCycle_n   : std_logic;
+	signal NoRead       : std_logic;
+	signal Write        : std_logic;
+	signal IORQ	        : std_logic;
+	signal DI_Reg       : std_logic_vector(7 downto 0);
+	signal MCycle       : std_logic_vector(2 downto 0);
+	signal TState       : std_logic_vector(2 downto 0);
 
 begin
 
@@ -145,14 +139,8 @@ begin
 
 			REG => REG,
 			DIR => DIR,
-			DIRSet => DIRSet,
-
-			SavePC => SavePC,
-			SaveINT => SaveINT,
-			RestorePC => RestorePC,
-			RestoreINT => RestoreINT,
-
-			RestorePC_n => RestorePC_n
+			DIRNumber => DIRNumber,
+			DIRSet_n => DIRSet_n
 		);
 
 

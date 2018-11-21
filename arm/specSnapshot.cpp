@@ -123,7 +123,7 @@ bool LoadSnapshot(const char *fileName)
 			DelayMs(1);
 			CPU_Stop();
 
-			//__TRACE("oldPc - 0x%.4x\n", SystemBus_Read(0xc00001));
+			//__TRACE("oldPc - 0x%.4x\n", SystemBus_Read(0xc001f4));
 
 			f_lseek(&snaFile, 0x1b);
 
@@ -160,7 +160,7 @@ bool LoadSnapshot(const char *fileName)
 				}
 			}
 
-			CPU_ModifyPC(specPc, (header[25] & 0x03) | 0x08 | (header[19] & 0x04));
+			CPU_ModifyPC(specPc, (header[25] & 0x03) | 0x04 | ((header[19] & 0x04) << 1));
 			result = true;
 		}
 	}
@@ -261,8 +261,8 @@ void SaveSnapshot(const char *name)
 	byte specPort7ffd = SystemBus_Read(0xc00017);
 	byte specTrdosFlag = SystemBus_Read(0xc00018);
 
-	word specPc = SystemBus_Read(0xc00001);
-	byte specInt = SystemBus_Read(0xc00002);
+	word specPc = SystemBus_Read(0xc001f4);
+	byte specInt = SystemBus_Read(0xc001fd);
 
 	FIL snaFile;
 	if (f_open(&snaFile, fileName, FA_CREATE_ALWAYS | FA_READ | FA_WRITE) == FR_OK) {

@@ -119,16 +119,10 @@ entity T80 is
 		Stop       : out std_logic;
 		OUT0       : in  std_logic := '0';  -- 0 => OUT(C),0, 1 => OUT(C),255
 
-		REG        : out std_logic_vector(211 downto 0); -- IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
-		DIR        : in  std_logic_vector(211 downto 0) := (others => '0'); -- IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
-		DIRSet     : in  std_logic := '0';
-
-		SavePC      : out std_logic_vector(15 downto 0);
-		SaveINT     : out std_logic_vector(7 downto 0);
-		RestorePC   : in std_logic_vector(15 downto 0);
-		RestoreINT  : in std_logic_vector(7 downto 0);
-
-		RestorePC_n : in std_logic
+		REG        : out std_logic_vector(212 downto 0); -- Int, IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
+		DIR        : in  std_logic_vector(15 downto 0);  -- value for register pair to store
+		DIRNumber  : in  std_logic_vector(3 downto 0);   -- number of register pair to store
+		DIRSet_n   : in  std_logic := '1'                -- set if regpair value+number are ready to store
 	);
 end T80;
 
@@ -181,8 +175,9 @@ architecture rtl of T80 is
 	signal BusAck               : std_logic;
 	signal ClkEn                : std_logic;
 	signal NMI_s                : std_logic;
-	signal INT_s			: std_logic;
+	signal INT_s                : std_logic;
 	signal IStatus              : std_logic_vector(1 downto 0);
+	signal SaveINT              : std_logic_vector(4 downto 0);
 
 	signal DI_Reg               : std_logic_vector(7 downto 0);
 	signal T_Res                : std_logic;
@@ -259,6 +254,8 @@ architecture rtl of T80 is
 	signal SetWZ                : std_logic_vector(1 downto 0);
 	signal SetDI                : std_logic;
 	signal SetEI                : std_logic;
+	signal SetReg               : std_logic := '0';
+	signal SetRegNumber         : std_logic_vector(2 downto 0);
 	signal IMode                : std_logic_vector(1 downto 0);
 	signal Halt                 : std_logic;
 	signal XYbit_undoc          : std_logic;
@@ -266,8 +263,8 @@ architecture rtl of T80 is
 
 begin
 
-	REG <= IntE_FF2 & IntE_FF1 & IStatus & DOR & std_logic_vector(PC) & std_logic_vector(SP) & std_logic_vector(R) & I & Fp & Ap & F & ACC when Alternate = '0'
-			 else IntE_FF2 & IntE_FF1 & IStatus & DOR(127 downto 112) & DOR(47 downto 0) & DOR(63 downto 48) & DOR(111 downto 64) &
+	REG <= SaveINT & DOR & std_logic_vector(PC) & std_logic_vector(SP) & std_logic_vector(R) & I & Fp & Ap & F & ACC when Alternate = '0'
+			 else SaveINT & DOR(127 downto 112) & DOR(47 downto 0) & DOR(63 downto 48) & DOR(111 downto 64) &
 						std_logic_vector(PC) & std_logic_vector(SP) & std_logic_vector(R) & I & Fp & Ap & F & ACC;
 
 	mcode : work.T80_MCode
@@ -376,9 +373,10 @@ begin
 		DI_Reg when Save_ALU_r = '0' else
 		ALU_Q;
 
-	process (RESET_n, RestorePC_n, CLK_n)
+	process (RESET_n, CLK_n, DIRSet_n)
 		variable n : std_logic_vector(7 downto 0);
 		variable ioq : std_logic_vector(8 downto 0);
+		variable imdtRegn : unsigned(3 downto 0);
 	begin
 		if RESET_n = '0' then
 			PC <= (others => '0');  -- Program Counter
@@ -412,25 +410,39 @@ begin
 
 		elsif rising_edge(CLK_n) then
 
-			if DIRSet = '1' then
-				ACC <= DIR( 7 downto  0);
-				F   <= DIR(15 downto  8);
-				Ap  <= DIR(23 downto 16);
-				Fp  <= DIR(31 downto 24);
-				I   <= DIR(39 downto 32);
-				R   <= unsigned(DIR(47 downto 40));
-				SP  <= unsigned(DIR(63 downto 48));
-				PC  <= unsigned(DIR(79 downto 64));
-				A   <= DIR(79 downto 64);
-				IStatus <= DIR(209 downto 208);
+			if DIRSet_n = '0' then
+				case DIRNumber is
+					when "0000" =>
+						ACC <= DIR(7 downto 0);
+						F   <= DIR(15 downto 8);
+					when "0001" =>
+						Ap  <= DIR(7 downto 0);
+						Fp  <= DIR(15 downto 8);
+					when "0010" =>
+						I   <= DIR(7 downto 0);
+						R   <= unsigned(DIR(15 downto 8));
+					when "0011" =>
+						SP  <= unsigned(DIR);
+					when "0100" =>
+						PC  <= unsigned(DIR);
+						A   <= DIR;
+					when "0101"|"0110"|"0111"|"1000"|"1001"|"1010"|"1011"|"1100" =>
+						imdtRegn := unsigned(DIRNumber) - 5;
+						if Alternate = '1' and not ( imdtRegn = "011" or imdtRegn = "111" ) then
+							imdtRegn := imdtRegn xor "0100";
+						end if;
 
-			elsif RestorePC_n = '0' then
-				PC <= unsigned( RestorePC );
-				A <= RestorePC;
-				IStatus <= RestoreInt(1 downto 0);
+						SetRegNumber <= std_logic_vector(resize(imdtRegn, SetRegNumber'length));
+						SetReg <= '1';
+					when "1101" =>
+						IStatus <= DIR(1 downto 0);
+
+					when others => null;
+				end case;
 
 			elsif ClkEn = '1' then
 
+				SetReg <= '0';
 				ALU_Op_r <= "0000";
 				Save_ALU_r <= '0';
 				Read_To_Reg_r <= "00000";
@@ -961,8 +973,10 @@ begin
 			DOCH => RegBusC(15 downto 8),
 			DOCL => RegBusC(7 downto 0),
 			DOR  => DOR,
-			DIRSet => DIRSet,
-			DIR  => DIR(207 downto 80));
+			DIR    => DIR,
+			DIRNum => SetRegNumber,
+			DIRSet => SetReg
+		);
 
 ---------------------------------------------------------------------------
 --
@@ -1039,12 +1053,12 @@ begin
 -- Generate external control signals
 --
 ---------------------------------------------------------------------------
-	process (RESET_n,CLK_n)
+	process (RESET_n, CLK_n)
 	begin
 		if RESET_n = '0' then
 			RFSH_n <= '1';
 		elsif rising_edge(CLK_n) then
-			if DIRSet = '0' and CEN = '1' then
+			if DIRSet_n = '1' and CEN = '1' then
 				if MCycle = "001" and ((TState = 2  and Wait_n = '1') or TState = 3) then
 					RFSH_n <= '0';
 				else
@@ -1064,16 +1078,15 @@ begin
 	IORQ <= IORQ_i;
 	Stop <= I_DJNZ;
 
-	SavePC <= std_logic_vector( PC );
-	SaveINT <= "0000" & IntE_FF2 & IntE_FF1 & IStatus when MCycle = "001" and TState = "001" and Prefix = "00" and IntCycle = '0' and NMICycle = '0' else
-			"1111" & IntE_FF2 & IntE_FF1 & IStatus;
+	SaveINT <= '0' & IntE_FF2 & IntE_FF1 & IStatus when MCycle = "001" and TState = "001" and Prefix = "00" and IntCycle = '0' and NMICycle = '0' else
+				'1' & IntE_FF2 & IntE_FF1 & IStatus;
 
 -------------------------------------------------------------------------
 --
 -- Main state machine
 --
 -------------------------------------------------------------------------
-	process (RESET_n, CLK_n)
+	process (RESET_n, CLK_n, DIRSet_n)
 		variable OldNMI_n : std_logic;
 	begin
 		if RESET_n = '0' then
@@ -1092,11 +1105,12 @@ begin
 			M1_n <= '1';
 			BusReq_s <= '0';
 			NMI_s <= '0';
-		elsif rising_edge(CLK_n) then
 
-			if DIRSet = '1' then
-				IntE_FF2 <= DIR(211);
-				IntE_FF1 <= DIR(210);
+		elsif rising_edge(CLK_n) then
+			if DIRSet_n = '0' and DIRNumber = "1101" then
+				IntE_FF1 <= DIR(2);
+				IntE_FF2 <= DIR(3);
+
 			else
 				if NMI_n = '0' and OldNMI_n = '1' then
 					NMI_s <= '1';

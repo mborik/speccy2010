@@ -83,13 +83,14 @@ void CPU_ModifyPC(word pc, byte istate)
 {
 	CPU_Stop();
 
-	SystemBus_Write(0xc00001, pc);
-	SystemBus_Write(0xc00002, istate);
+	SystemBus_Write(0xc001f4, pc);
+	DelayUs(1);
+	SystemBus_Write(0xc001fd, istate);
 
-	SystemBus_Write(0xc00000, 0x0003);
 	DelayUs(1);
 	SystemBus_Write(0xc00000, 0x0001);
 
 	CPU_Start();
+	SystemBus_Write(0xc001ff, 0);
 }
 //---------------------------------------------------------------------------------------

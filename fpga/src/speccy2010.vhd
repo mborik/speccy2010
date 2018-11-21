@@ -328,15 +328,10 @@ architecture rtl of speccy2010_top is
 	signal cpuDout      : std_logic_vector(7 downto 0);
 	signal cpuDin       : std_logic_vector(7 downto 0);
 
-	signal cpuSavePC    : std_logic_vector(15 downto 0);
-	signal cpuSaveINT   : std_logic_vector(7 downto 0);
-	signal cpuRestorePC : std_logic_vector(15 downto 0);
-
-	signal cpuRestoreINT    : std_logic_vector(7 downto 0);
-	signal cpuRestorePC_n   : std_logic := '1';
-
-	signal cpuRegisters     : std_logic_vector(211 downto 0) := (others => '0');
-	signal cpuRegStoreNow   : std_logic := '0';
+	signal cpuRegisters     : std_logic_vector(212 downto 0) := (others => '0');
+	signal cpuRegNumber     : std_logic_vector(3 downto 0);
+	signal cpuRegValue      : std_logic_vector(15 downto 0);
+	signal cpuRegStore_n    : std_logic := '1';
 
 	signal vgaHSync         : std_logic;
 	signal vgaVSync         : std_logic;
@@ -419,13 +414,9 @@ begin
 			DI      => cpuDin,
 
 			REG => cpuRegisters,
-
-			SavePC => cpuSavePC,
-			SaveINT => cpuSaveINT,
-			RestorePC => cpuRestorePC,
-			RestoreINT => cpuRestoreINT,
-
-			RestorePC_n => cpuRestorePC_n
+			DIR => cpuRegValue,
+			DIRNumber => cpuRegNumber,
+			DIRSet_n => cpuRegStore_n
 		);
 
 	-- PSG chip
@@ -1323,15 +1314,9 @@ begin
 					if addressReg( 23 downto 8 ) = x"c000" then
 						if addressReg( 7 downto 0 ) = x"00" then
 							cpuHaltReq <= ARM_AD( 0 );
-							cpuRestorePC_n <= not ARM_AD( 1 );
 							cpuOneCycleWaitReq <= ARM_AD( 2 );
 							cpuReset <= ARM_AD( 3 );
 							cpuInvokeNMI <= ARM_AD( 4 );
-
-						elsif addressReg( 7 downto 0 ) = x"01" then
-							cpuRestorePC <= ARM_AD;
-						elsif addressReg( 7 downto 0 ) = x"02" then
-							cpuRestoreINT <= ARM_AD( 7 downto 0 );
 
 						elsif addressReg( 7 downto 0 ) = x"08" then
 							cpuTraceReq <= ARM_AD(0);
@@ -1442,16 +1427,18 @@ begin
 
 						end if;
 
-					-- elsif addressReg( 23 downto 4 ) = x"c001f" then
-					-- 	if addressReg( 3 downto 0 ) = x"F" then
-					-- 		cpuRegStoreNow <= ARM_AD(0);
-					-- 	elsif cpuRegStoreNow = '1' then -- cpuRegisters write enabled
-					-- 		if addressReg( 3 downto 0 ) = x"E" then
-					-- 			cpuRegisters( 211 downto 208 ) <= ARM_AD( 3 downto 0 ); -- IFF2, IFF1, IM
-					-- 		else
-					-- 			cpuRegisters((to_integer(addressReg( 3 downto 0 )) * 16) + 15 downto (to_integer(addressReg( 3 downto 0 )) * 16)) <= ARM_AD;
-					-- 		end if;
-					-- 	end if;
+					elsif addressReg( 23 downto 4 ) = x"c001f" then
+						if addressReg( 3 downto 0 ) = x"F" then
+							if ARM_AD = x"0000" then
+								cpuRegStore_n <= '1';
+							else
+								cpuRegStore_n <= '0';
+							end if;
+						else
+							cpuRegNumber <= std_logic_vector(addressReg( 3 downto 0 ));
+							cpuRegValue <= ARM_AD;
+							cpuRegStore_n <= '0';
+						end if;
 
 					elsif addressReg( 23 downto 8 ) = x"c001" then
 						rtcRam( to_integer( addressReg( 7 downto 0 ) ) ) := ARM_AD( 7 downto 0 );
@@ -1482,10 +1469,6 @@ begin
 
 						if addressReg( 7 downto 0 ) = x"00" then
 							ARM_AD <= x"00" & b"0000000" & cpuHaltAck;
-						elsif addressReg( 7 downto 0 ) = x"01" then
-							ARM_AD <= std_logic_vector( cpuSavePC );
-						elsif addressReg( 7 downto 0 ) = x"02" then
-							ARM_AD <= x"00" & cpuSaveINT;
 
 						elsif addressReg( 7 downto 0 ) = x"15" then
 							ARM_AD <= x"00" & "0000000" & tapeFifoFull;
@@ -1551,16 +1534,13 @@ begin
 						ARM_WAIT <= '1';
 
 					elsif addressReg( 23 downto 4 ) = x"c001f" then
-						if addressReg( 3 downto 0 ) = x"F" then
-							ARM_AD <= memAddress( 21 downto 6 );
-						elsif cpuRegStoreNow = '0' then  -- cpuRegisters read only
-							if addressReg( 3 downto 0 ) = x"E" then
-								ARM_AD <= x"000" & cpuRegisters( 211 downto 208 ); -- IFF2, IFF1, IM
-							else
-								ARM_AD <= cpuRegisters((to_integer(addressReg( 3 downto 0 )) * 16) + 15 downto (to_integer(addressReg( 3 downto 0 )) * 16));
-							end if;
+						if addressReg( 3 downto 0 ) = x"F" or addressReg( 3 downto 0 ) = x"E" then
+							ARM_AD <= x"0000";
+						elsif addressReg( 3 downto 0 ) = x"D" then
+							ARM_AD <= x"000" & cpuRegisters( 211 downto 208 ); -- IFF2, IFF1, IM
+						else
+							ARM_AD <= cpuRegisters((to_integer(addressReg( 3 downto 0 )) * 16) + 15 downto (to_integer(addressReg( 3 downto 0 )) * 16));
 						end if;
-
 						ARM_WAIT <= '1';
 
 					elsif addressReg( 23 downto 8 ) = x"c001" then
@@ -1629,7 +1609,7 @@ begin
 
 				cpuHaltAck <= '0';
 
-			elsif cpuHaltAck = '0' and cpuSaveINT( 7 ) = '0' and cpuSaveInt7_prev = '1' then
+			elsif cpuHaltAck = '0' and cpuRegisters(212) = '0' and cpuSaveInt7_prev = '1' then
 
 				if cpuHaltReq = '1' then
 					cpuHaltAck <= '1';
@@ -1639,7 +1619,7 @@ begin
 
 			end if;
 
-			cpuSaveInt7_prev := cpuSaveINT( 7 );
+			cpuSaveInt7_prev := cpuRegisters(212);
 
 		end if;
 

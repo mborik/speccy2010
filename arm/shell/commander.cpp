@@ -817,13 +817,9 @@ bool Shell_Receiver(const char *inputName)
 			}
 
 			f_close(&file);
-			DelayMs(100);
 
-			if (FileExists(dstName)) {
+			if (FileExists(dstName))
 				f_unlink(dstName);
-				DelayMs(200);
-			}
-
 			f_rename(srcName, dstName);
 		}
 		else {
