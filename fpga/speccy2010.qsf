@@ -196,9 +196,12 @@ set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL OFF
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
 set_global_assignment -name ADD_PASS_THROUGH_LOGIC_TO_INFERRED_RAMS ON
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name USE_CONFIGURATION_DEVICE ON
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name VERILOG_INPUT_VERSION SYSTEMVERILOG_2005
+set_global_assignment -name VERILOG_SHOW_LMF_MAPPING_MESSAGES OFF
 set_global_assignment -name VHDL_FILE src/peripheral/sound/SoundMixer.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/sound/SounDrive15.vhd
-set_global_assignment -name VHDL_FILE src/cpu/T80se.vhd
 set_global_assignment -name SDC_FILE speccy2010.sdc
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2fifo.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2.vhd
@@ -206,15 +209,15 @@ set_global_assignment -name VHDL_FILE src/peripheral/ps2/fifo.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/memory/sdram.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/sound/vol_table_array.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/sound/YM2149_volmix.vhd
+set_global_assignment -name VHDL_FILE src/cpu/T80pa.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80_ALU.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80_MCode.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80_Reg.vhd
+set_global_assignment -name SYSTEMVERILOG_FILE src/peripheral/video/ula.sv
 set_global_assignment -name VHDL_FILE src/peripheral/video/sinus.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/video/vencode.vhd
 set_global_assignment -name VHDL_FILE src/speccy2010.vhd
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll.qip
 set_global_assignment -name QIP_FILE src/peripheral/pll/pll2.qip
-set_global_assignment -name USE_CONFIGURATION_DEVICE ON
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
