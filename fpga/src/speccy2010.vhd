@@ -63,6 +63,7 @@ architecture rtl of speccy2010_top is
 			ce_28m:         in  std_logic;
 			ce_cpu_sp:      out std_logic;
 			ce_cpu_sn:      out std_logic;
+			ce_pix:         out std_logic;
 			addr:           in  std_logic_vector(15 downto 0);
 			din:            in  std_logic_vector(7 downto 0);
 			nMREQ:          in  std_logic;
@@ -73,6 +74,7 @@ architecture rtl of speccy2010_top is
 			ula_wait:       out std_logic;
 			vram_addr:      out std_logic_vector(14 downto 0);
 			vram_dout:      in  std_logic_vector(7 downto 0);
+			vram_req:       out std_logic;
 			port_ff:        out std_logic_vector(7 downto 0);
 			ulap_tmx_ena:   in  std_logic_vector(1 downto 0);
 			ulap_sel:       out std_logic;
@@ -86,6 +88,7 @@ architecture rtl of speccy2010_top is
 			Gx:             out std_logic_vector(3 downto 0);
 			Bx:             out std_logic_vector(3 downto 0);
 			Yx:             out std_logic;
+			mono:           out std_logic;
 			hCnt:           out std_logic_vector(8 downto 0);
 			vCnt:           out std_logic_vector(8 downto 0);
 			Paper:          out std_logic;
@@ -117,7 +120,9 @@ architecture rtl of speccy2010_top is
 	signal clk7mp : std_logic;
 	signal clk7mn : std_logic;
 	signal clk35m : std_logic;
-	signal clkTurboNeg : std_logic;
+
+	signal clkTurboNeg  : std_logic;
+	signal clkPixel     : std_logic;
 
 	signal counter20       : unsigned(31 downto 0) := x"00000000";
 	signal counterMem      : unsigned(31 downto 0) := x"00000000";
@@ -256,6 +261,7 @@ architecture rtl of speccy2010_top is
 	signal ramPage      : std_logic_vector(7 downto 0);
 	signal vramPage     : std_logic_vector(7 downto 0);
 
+	signal vramReq      : std_logic;
 	signal vramA        : std_logic_vector(14 downto 0);
 	signal vramDout     : std_logic_vector(7 downto 0);
 	signal timexPortFF  : std_logic_vector(7 downto 0);
@@ -430,6 +436,7 @@ begin
 			CLK     => sysclk,
 			CEN_p   => cpuCEN_p,
 			CEN_n   => cpuCEN_n,
+			WAIT_n  => '1',
 			INT_n   => cpuINT,
 			NMI_n   => cpuNMI,
 			BUSRQ_n => '1',
@@ -764,6 +771,7 @@ begin
 			ce_28m => clk28m,
 			ce_cpu_sp => cpuCEN_sp,
 			ce_cpu_sn => cpuCEN_sn,
+			ce_pix => clkPixel,
 			addr => cpuA,
 			din => cpuDout,
 			nMREQ => cpuMREQ,
@@ -774,6 +782,7 @@ begin
 			ula_wait => ulaWait,
 			vram_addr => vramA,
 			vram_dout => vramDout,
+			vram_req => vramReq,
 			port_ff => timexPortFF,
 			ulap_tmx_ena => "00",
 			ulap_sel => open,
@@ -1916,7 +1925,7 @@ begin
 
 	------------------------------------------------------------------------------------------------
 
-	cpuWait <= cpuHaltAck or cpuMemoryWait or specDiskIfWait or cpuOneCycleWaitReq or ulaWait;
+	cpuWait <= cpuHaltAck or cpuMemoryWait or specDiskIfWait or cpuOneCycleWaitReq;
 
 	cpuCLK_nowt <=
 		clk7mp and not hCnt(0) when cpuTurbo = 0 else
@@ -1935,7 +1944,6 @@ begin
 	process( sysclk )
 
 		variable cpuIntSkip : std_logic := '0';
-		variable cpuCLK_nowait_prev : std_logic := '0';
 
 	begin
 		if sysclk'event and sysclk = '1' then
@@ -1949,8 +1957,6 @@ begin
 			if cpuReset = '1' or cpuHaltAck = '1' or specDiskIfWait = '1' or ( cpuMREQ = '0' and cpuRFSH = '0' ) then
 				refresh <= '1';
 			end if;
-
-			cpuCLK_nowait_prev := cpuCLK_nowt;
 
 			if cpuCLK_nowt = '1' then
 				cpuOneCycleWaitAck <= cpuOneCycleWaitReq;
@@ -1979,7 +1985,6 @@ begin
 
 	process( memclk )
 		variable videoPage  : std_logic_vector(10 downto 0);
-
 		variable portFfTemp : std_logic_vector(7 downto 0) := x"FF";
 
 		variable vidReq : std_logic := '0';
@@ -1993,8 +1998,8 @@ begin
 			end if;
 
 			if Paper = '0' then
-
-				if vidReq = '0' and ( unsigned(hCnt(8 downto 3)) = 0 ) then
+				-- TODO: should I take into account a mem/io/device wait?
+				if vidReq = '0' then
 
 					if ( vidReqUla = '0' and hCnt(2 downto 0) = "000" ) or
 						( vidReqUla = '1' and hCnt(2 downto 0) = "010" ) then
@@ -2005,7 +2010,7 @@ begin
 
 				end if;
 
-				if vidReq = '1' and memReq2 = '0' then -- and cpuCLK_nowait_prev = '1' then
+				if vidReq = '1' and memReq2 = '0' and cpuCLK_n = '1' then
 
 					memWr2 <= '0';
 					memReq2 <= '1';
@@ -2018,13 +2023,12 @@ begin
 					if vramA(0) = '0' then
 						vramDout <= memDataOut2( 7 downto 0 );
 						portFfTemp := memDataOut2( 7 downto 0 );
-						vidReq := '1';
 					else
 						vramDout <= memDataOut2( 15 downto 8 );
 						portFfTemp := memDataOut2( 15 downto 8 );
-						vidReq := '0';
 					end if;
 
+					vidReq := '0';
 				end if;
 
 			end if;
@@ -2047,50 +2051,50 @@ begin
 
 	end process;
 
-	process( sysclk, clk7mp )
-
-		variable hBorderSize : integer := 0;
-		variable vBorderSize : integer := 0;
-
-		variable hPosBegin : integer := 0;
-		variable hPosEnd : integer := 0;
-		variable vPosBegin : integer := 0;
-		variable vPosEnd : integer := 0;
-
-	begin
-
-		if sysclk'event and sysclk = '1' and clk7mp = '1' then
-			if hCnt( 2 downto 0 ) = "111" then
-				if videoMode >= 3 then
-					hBorderSize := 48;
-					vBorderSize := 54;
-				elsif videoAspectRatio = 0 then
-					hBorderSize := 6 * 8;
-					vBorderSize := 5 * 8;
-				elsif videoAspectRatio = 1 then
-					hBorderSize := 6 * 8;
-					vBorderSize := 6 * 8;
-				else
-					hBorderSize := 8 * 8;
-					vBorderSize := 2 * 8;
-				end if;
-
-				hPosBegin := hSize - hBorderSize;
-				hPosEnd := 256 + hBorderSize;
-				vPosBegin := vSize - vBorderSize;
-				vPosEnd := 192 + vBorderSize;
-
-				if ( ( unsigned(hCnt) >= hPosEnd and unsigned(hCnt) < hPosBegin ) or
-					( unsigned(vCnt) >= vPosEnd and unsigned(vCnt) < vPosBegin ) ) then
-
-					Blank_c <= '0';
-				else
-					Blank_c <= '1';
-				end if;
-			end if;
-
-		end if;
-	end process;
+--	process( sysclk, clkPixel )
+--
+--		variable hBorderSize : integer := 0;
+--		variable vBorderSize : integer := 0;
+--
+--		variable hPosBegin : integer := 0;
+--		variable hPosEnd : integer := 0;
+--		variable vPosBegin : integer := 0;
+--		variable vPosEnd : integer := 0;
+--
+--	begin
+--
+--		if sysclk'event and sysclk = '1' and clkPixel = '1' then
+--			if hCnt( 2 downto 0 ) = "111" then
+--				if videoMode >= 3 then
+--					hBorderSize := 6 * 8;
+--					vBorderSize := 6 * 9;
+--				elsif videoAspectRatio = 0 then
+--					hBorderSize := 6 * 8;
+--					vBorderSize := 5 * 8;
+--				elsif videoAspectRatio = 1 then
+--					hBorderSize := 6 * 8;
+--					vBorderSize := 6 * 8;
+--				else
+--					hBorderSize := 8 * 8;
+--					vBorderSize := 2 * 8;
+--				end if;
+--
+--				hPosBegin := hSize - hBorderSize;
+--				hPosEnd   := 256 + hBorderSize;
+--				vPosBegin := vSize - vBorderSize;
+--				vPosEnd   := 192 + vBorderSize;
+--
+--				if ( ( unsigned(hCnt) >= hPosEnd and unsigned(hCnt) < hPosBegin ) or
+--					( unsigned(vCnt) >= vPosEnd and unsigned(vCnt) < vPosBegin ) ) then
+--
+--					Blank_c <= '0';
+--				else
+--					Blank_c <= '1';
+--				end if;
+--			end if;
+--
+--		end if;
+--	end process;
 
 	------------------------------------------------------------------------------------------------
 
@@ -2103,7 +2107,7 @@ begin
 	hSize <= 456 when syncMode = 1 else 448;
 	vSize <= 320 when syncMode = 2 else 311 when syncMode = 1 else 312;
 
-	palSync <= not (Paper_r or Blank_c);
+	palSync <= not (Paper_r or Blank_r);
 
 	-------------------------------------------------------------------------------------
 	-- SCANDOUBLER ----------------------------------------------------------------------
@@ -2111,17 +2115,16 @@ begin
 	process( sysclk, clk14m )
 		variable vgaHCounter : unsigned(15 downto 0) := x"0000";
 		variable vgaVCounter : unsigned(15 downto 0) := x"0000";
-		variable vgaHPorch	: std_logic;
-		variable vgaVPorch	: std_logic;
+		variable vgaHPorch   : std_logic;
+		variable vgaVPorch   : std_logic;
 
 		type doubleByfferType is array ( 0 to 1023 ) of std_logic_vector( 23 downto 0 );
 		variable doubleByffer : doubleByfferType;
 
-		variable bufferReadAddress : unsigned(9 downto 0) := "0000000000";
+		variable bufferReadAddress  : unsigned(9 downto 0) := "0000000000";
 		variable bufferWriteAddress : unsigned(9 downto 0) := "0000000000";
 
-		variable temp : std_logic_vector(23 downto 0) := x"000000";
-
+		variable temp  : std_logic_vector(23 downto 0) := x"000000";
 		variable prevH : std_logic := '0';
 		variable prevV : std_logic := '0';
 
@@ -2208,49 +2211,46 @@ begin
 		end if;
 	end process;
 
-	process( sysclk )
+	process( sysclk, clkPixel )
 
 	begin
-		if sysclk'event and sysclk = '1' then
-			if clk7mp = '1' then
-				if testVideo = 0 then
-					if specY = '0' then
+		if sysclk'event and sysclk = '1' and clkPixel = '1' then
+			if testVideo = 0 then
+				if specY = '0' then
 
-						rgbR <= specR & x"0";
-						rgbG <= specG & x"0";
-						rgbB <= specB & x"0";
+					rgbR <= specR & x"0";
+					rgbG <= specG & x"0";
+					rgbB <= specB & x"0";
 
-					else
+				else
 
-						rgbR <= specR & specR;
-						rgbG <= specG & specG;
-						rgbB <= specB & specB;
-
-					end if;
-
-				else -- video testing monoscope
-
-					rgbR <= x"00";
-					rgbG <= x"00";
-					rgbB <= x"00";
-
-					if Paper = '0' then
-
-						if testVideo( 0 ) = '1' then rgbB <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
-						if testVideo( 1 ) = '1' then rgbR <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
-						if testVideo( 2 ) = '1' then rgbG <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
-
-					elsif Blank_c = '1' and ( hCnt(3) xor vCnt(3) ) = '1' then
-
-						rgbR <= x"FF";
-						rgbG <= x"FF";
-						rgbB <= x"FF";
-
-					end if;
+					rgbR <= specR & specR;
+					rgbG <= specG & specG;
+					rgbB <= specB & specB;
 
 				end if;
-			end if;
 
+			else -- video testing monoscope
+
+				rgbR <= x"00";
+				rgbG <= x"00";
+				rgbB <= x"00";
+
+				if Paper = '0' then
+
+					if testVideo( 0 ) = '1' then rgbB <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
+					if testVideo( 1 ) = '1' then rgbR <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
+					if testVideo( 2 ) = '1' then rgbG <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
+
+				elsif Blank_r = '1' and ( hCnt(3) xor vCnt(3) ) = '1' then
+
+					rgbR <= x"FF";
+					rgbG <= x"FF";
+					rgbB <= x"FF";
+
+				end if;
+
+			end if;
 		end if;
 
 	end process;
