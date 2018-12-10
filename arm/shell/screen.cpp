@@ -218,12 +218,12 @@ void DrawStrAttr(byte x, byte y, const char *str, byte attr, byte size, bool ove
 	DrawAttr(x, y, attr, size * 6);
 }
 //---------------------------------------------------------------------------------------
-void DrawHexNum(byte x, byte y, dword num, int len)
+void DrawHexNum(byte x, byte y, dword num, int len, char caps)
 {
 	dword rem;
 	while (--len >= 0) {
 		rem = num % 16;
-		DrawChar(x + (len * 6), y, rem + ((rem > 9) ? ('a' - 10) : '0'));
+		DrawChar(x + (len * 6), y, rem + ((rem > 9) ? (caps - 10) : '0'));
 		num /= 16;
 	}
 }
