@@ -12,6 +12,7 @@ static bool wrapLines = false;
 
 const int SCREEN_WIDTH = 42;
 const int VIEWER_LINES = 21;
+const int VIEWER_BYTES = (VIEWER_LINES * 8);
 //---------------------------------------------------------------------------------------
 void Shell_TextViewer(const char *fullName, bool simpleMode, const char *description)
 {
@@ -184,7 +185,10 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 	UINT res;
 	bool rightPane = false, lowNibble = false;
 	int pos = 0, ptr = 0, cursor = 0;
-	int maxPos = max(0, (1 + (fil.fsize | 7)) - (VIEWER_LINES * 8));
+	int maxPos = 0;
+
+	if (fil.fsize > (signed) VIEWER_BYTES)
+		maxPos = max(0, (1 + (fil.fsize | 7)) - VIEWER_BYTES);
 
 	byte key = 0, c;
 	while (true) {
@@ -254,13 +258,17 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 		else if (key == K_DOWN) {
 			lowNibble = false;
 
-			if (editMode && cursor < ((VIEWER_LINES - 1) * 8)) {
+			if (editMode &&
+				(cursor < (signed) fil.fsize || cursor < (VIEWER_BYTES - 8))) {
+
 				cursor += 8;
 
 				if ((pos + cursor) > fil.fsize)
 					cursor = fil.fsize - pos;
 				continue;
 			}
+			else if (fil.fsize < (signed) VIEWER_BYTES)
+				continue;
 
 			pos = min(pos + 8, maxPos);
 		}
@@ -277,13 +285,13 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 				}
 			}
 			else
-				pos = max(pos - (VIEWER_LINES * 8), 0);
+				pos = max(pos - VIEWER_BYTES, 0);
 		}
 		else if (key == K_RIGHT) {
 			if (editMode) {
 				lowNibble = false;
 
-				if (cursor < (VIEWER_LINES * 8) - 1)
+				if (cursor < VIEWER_BYTES - 1)
 					cursor++;
 				else {
 					pos = min(pos + 8, maxPos);
@@ -295,11 +303,17 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 					cursor = fil.fsize - pos;
 			}
 			else
-				pos = min(pos + (VIEWER_LINES * 8), maxPos);
+				pos = min(pos + VIEWER_BYTES, maxPos);
 		}
 		else if (key == K_PAGEUP) {
 			lowNibble = false;
-			pos = max(pos - (VIEWER_LINES * 8), 0);
+
+			if (editMode && pos == 0) {
+				cursor &= 7;
+				continue;
+			}
+
+			pos = max(pos - VIEWER_BYTES, 0);
 		}
 		else if (key == K_PAGEDOWN) {
 			lowNibble = false;
@@ -309,7 +323,7 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 				continue;
 			}
 
-			pos = min(pos + (VIEWER_LINES * 8), maxPos);
+			pos = min(pos + VIEWER_BYTES, maxPos);
 		}
 		else if (key == K_HOME) {
 			lowNibble = false;
@@ -343,7 +357,7 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 			if (rightPane) {
 				f_write(&fil, &key, 1, &res);
 
-				if (cursor < (VIEWER_LINES * 8) - 1)
+				if (cursor < VIEWER_BYTES - 1)
 					cursor++;
 				else {
 					pos = min(pos + 8, maxPos);
