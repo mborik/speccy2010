@@ -5,14 +5,6 @@
 #include "../specConfig.h"
 #include "../specKeyboard.h"
 
-#define COL_NORMAL  0007
-#define COL_ACTIVE  0017
-#define COL_CURSOR  0030
-#define COL_EDITOR  0146
-#define COL_TITLE   0151
-#define COL_SIDEPAN 0140
-#define COL_SIDE_HI 0141
-
 typedef struct TRegLayout {
 	byte i, width;
 	byte x, y;
@@ -20,33 +12,33 @@ typedef struct TRegLayout {
 } TRegLayout;
 
 static const TRegLayout regLayout[16] = {
-	// i, w,  x, y,  lf, rt, up, dn
-	{  0, 4,  16, 1,   0,  4,  0,  1 }, //  0 af
-	{  5, 4,  16, 2,   1,  5,  0,  2 }, //  1 bc
-	{  6, 4,  16, 3,   2,  6,  1,  3 }, //  2 de
-	{  7, 4,  16, 4,   3,  7,  2,  3 }, //  3 hl
-	{  1, 4,  64, 1,   0,  8,  4,  5 }, //  4 af'
-	{  9, 4,  64, 2,   1,  9,  4,  6 }, //  5 bc'
-	{ 10, 4,  64, 3,   2, 10,  5,  7 }, //  6 de'
-	{ 11, 4,  64, 4,   3, 11,  6,  7 }, //  7 hl'
-	{  3, 4, 112, 1,   4, 12,  8,  9 }, //  8 sp
-	{  4, 4, 112, 2,   5,  9,  8, 10 }, //  9 pc
-	{  8, 4, 112, 3,   6, 13,  9, 11 }, // 10 ix
-	{ 12, 4, 112, 4,   7, 15, 10, 11 }, // 11 iy
-	{  2, 4, 168, 1,   8, 12, 12, 14 }, // 12 ir
-	{ 13, 1, 162, 3,  10, 14, 12, 15 }, // 13 im
-	{ 14, 2, 180, 3,  13, 14, 12, 15 }, // 14 iff
-	{  0, 8, 144, 4,  11, 15, 13, 15 }, // 15 flags
+	// index  , w,  x,  y,  lf, rt, up, dn
+	{ REG_AF  , 4,  16, 1,   0,  4,  0,  1 }, //  0 af
+	{ REG_BC  , 4,  16, 2,   1,  5,  0,  2 }, //  1 bc
+	{ REG_DE  , 4,  16, 3,   2,  6,  1,  3 }, //  2 de
+	{ REG_HL  , 4,  16, 4,   3,  7,  2,  3 }, //  3 hl
+	{ REG_AF_ , 4,  64, 1,   0,  8,  4,  5 }, //  4 af'
+	{ REG_BC_ , 4,  64, 2,   1,  9,  4,  6 }, //  5 bc'
+	{ REG_DE_ , 4,  64, 3,   2, 10,  5,  7 }, //  6 de'
+	{ REG_HL_ , 4,  64, 4,   3, 11,  6,  7 }, //  7 hl'
+	{ REG_SP  , 4, 112, 1,   4, 12,  8,  9 }, //  8 sp
+	{ REG_PC  , 4, 112, 2,   5,  9,  8, 10 }, //  9 pc
+	{ REG_IX  , 4, 112, 3,   6, 13,  9, 11 }, // 10 ix
+	{ REG_IY  , 4, 112, 4,   7, 15, 10, 11 }, // 11 iy
+	{ REG_IR  , 4, 168, 1,   8, 12, 12, 14 }, // 12 ir
+	{ REG_IM  , 1, 162, 3,  10, 14, 12, 15 }, // 13 im
+	{ REG_IFF , 2, 180, 3,  13, 14, 12, 15 }, // 14 iff
+	{ REG_AF  , 8, 144, 4,  11, 15, 13, 15 }, // 15 flags
 };
 
-enum { WIN_TRACE, WIN_WATCHERS, WIN_MEMDUMP };
-
-word regBuffer[15];
-byte activeWindow = WIN_TRACE;
-bool activeRegPanel = false;
 byte regPanelCursor = 0;
 byte regPanelEditor = 0;
 word regPanelEditBak;
+
+word regBuffer[15];
+
+byte activeWindow = WIN_TRACE;
+bool activeRegPanel = false;
 //---------------------------------------------------------------------------------------
 dword CalculateAddrAtCursor(word addr)
 {
@@ -114,6 +106,12 @@ void WriteByteAtCursor(word addr, byte data)
 	SystemBus_Write(CalculateAddrAtCursor(addr), data);
 }
 //---------------------------------------------------------------------------------------
+bool IsRegPanel() { return activeRegPanel; }
+//---------------------------------------------------------------------------------------
+word GetCPUState(byte reg) { return regBuffer[reg]; }
+//---------------------------------------------------------------------------------------
+void SetCPUState(byte reg, word value) { regBuffer[reg] = value; }
+//---------------------------------------------------------------------------------------
 //=======================================================================================
 //---------------------------------------------------------------------------------------
 void Debugger_SwitchPanel()
@@ -121,13 +119,21 @@ void Debugger_SwitchPanel()
 	byte y;
 	for (y = 1; y < 5; y++)
 		DrawAttr8(0, y, activeRegPanel ? COL_ACTIVE : COL_NORMAL, 24);
-	for (++y; y < 24; y++)
-		DrawAttr8(0, y, activeRegPanel ? COL_NORMAL : COL_ACTIVE, 24);
+	for (++y; y < 24; y++) {
+		if (activeWindow == WIN_TRACE) {
+			DrawAttr8( 0, y, activeRegPanel ? COL_NORMAL : COL_ACTIVE, 24);
+			DrawAttr8(24, y, COL_BACKGND, 1);
+		}
+		else if (activeWindow == WIN_MEMDUMP) {
+			DrawAttr8( 0, y, activeRegPanel ? COL_NORMAL : COL_ACTIVE, 19);
+			DrawAttr8(19, y, (activeRegPanel ? COL_NORMAL : COL_ACTIVE) & ~3, 6);
+		}
+	}
 }
 //---------------------------------------------------------------------------------------
 void Debugger_Screen0()
 {
-	ClrScr(0056);
+	ClrScr(COL_BACKGND);
 
 	DrawStrAttr(  1,  0, "regs",  COL_TITLE, 4);
 	DrawStrAttr(  1,  5, "trace", COL_TITLE, 5);
@@ -185,27 +191,29 @@ void Debugger_Screen0()
 	}
 }
 //---------------------------------------------------------------------------------------
-void Debugger_UpdateRegs()
+void Debugger_UpdateRegs(bool updateCpuState = false)
 {
 	const TRegLayout *r = NULL;
 	word reg;
 	byte i, c;
 
-	for (i = 0; i < 14; i++) {
-		reg = SystemBus_Read(0xc001f0 + i);
+	if (updateCpuState) {
+		for (i = 0; i < 14; i++) {
+			reg = SystemBus_Read(0xc001f0 + i);
 
-		if (i == 2) {
-			// IR
-			regBuffer[i] = (reg >> 8) | (reg << 8);
+			if (i == 2) {
+				// IR
+				regBuffer[i] = (reg >> 8) | (reg << 8);
+			}
+			else if (i == 13) {
+				// IM
+				regBuffer[i++] = (reg & 0x03);
+				// IFF in BCD
+				regBuffer[i] = ((reg & 0x08) << 1) | (reg & 0x04) >> 2;
+			}
+			else
+				regBuffer[i] = reg;
 		}
-		else if (i == 13) {
-			// IM
-			regBuffer[i++] = (reg & 0x03);
-			// IFF in BCD
-			regBuffer[i] = ((reg & 0x08) << 1) | (reg & 0x04) >> 2;
-		}
-		else
-			regBuffer[i] = reg;
 	}
 
 	for (i = 0; i < 16; i++) {
@@ -236,35 +244,6 @@ void Debugger_UpdateRegs()
 			"SZ5H3PNCsz.h.pnc"[((reg & (0x80 >> i)) ? 0 : 8) + i],
 			false, (c == COL_EDITOR)
 		);
-	}
-}
-//---------------------------------------------------------------------------------------
-void Debugger_UpdateTrace()
-{
-	byte dbuf[8];
-	char *asmbuf;
-	int i, x, len = 8, row;
-
-	word addr = regBuffer[4]; // pc
-
-	for (row = 6; row < 24; row++) {
-		for (i = 0; i < 8; i++)
-			dbuf[i] = ReadByteAtCursor(0xFFFF & (i + addr));
-
-		asmbuf = Shell_DebugDisasm(dbuf, addr, &len);
-
-		DrawHexNum(0, row, addr, 4, 'A');
-		for (i = 0, x = 32; i < 4; i++, x += 12) {
-			if (i < len)
-				DrawHexNum(x, row, dbuf[i], 2, 'A');
-			else
-				DrawStr(x, row, "", 2);
-		}
-
-		DrawChar(x, row, (len > 4) ? '\x1C' : ' ');
-		DrawStr(96, row, asmbuf, 16);
-
-		addr += len;
 	}
 }
 //---------------------------------------------------------------------------------------
@@ -302,7 +281,7 @@ void Debugger_UpdateSidePanel()
 	DrawChar(248, 3, '2');
 	DrawChar(248, 4, '0' + (ram & 7));
 
-	word addr, stack = 0xFFFF & (((int) regBuffer[3]) - 2); // sp
+	word addr, stack = 0xFFFF & (((int) regBuffer[REG_SP]) - 2); // sp
 	for (byte y = 7; y < 16; y++, stack += 2) {
 		addr = ReadByteAtCursor(stack) | ReadByteAtCursor(stack + 1) << 8;
 		DrawHexNum(230, y, addr, 4, 'A');
@@ -330,16 +309,49 @@ bool Debugger_TestKeyRegs(byte key)
 			return false;
 	}
 	else {
-		int shift = (r->width - regPanelEditor) * 4;
-		word mask = 0xFFFF ^ (0x0F << shift);
+		word value = regBuffer[r->i];
 
 		if (key == K_LEFT && regPanelEditor > 1)
 			regPanelEditor--;
 		else if (key == K_RIGHT && regPanelEditor < r->width)
 			regPanelEditor++;
-		else if (regPanelCursor < 13 && key >= '0' && key <= '9') {
-			key -= (key <= '9') ? '0' : (key <= 'F') ? 'A' : 'a';
-			regBuffer[r->i] = (regBuffer[r->i] & mask) | (key << shift);
+		else if (regPanelCursor < 13 && (
+				(key >= '0' && key <= '9') ||
+				(key >= 'a' && key <= 'f') ||
+				(key >= 'A' && key <= 'F'))) {
+
+			int shift = (r->width - regPanelEditor) * 4;
+			word mask = 0xFFFF ^ (0x0F << shift);
+			byte nibble = key;
+
+			if (key >= '0' && key <= '9')
+				nibble -= '0';
+			else if (key >= 'a' && key <= 'f')
+				nibble -= ('a' - 10);
+			else if (key >= 'A' && key <= 'F')
+				nibble -= ('A' - 10);
+
+			regBuffer[r->i] = (value & mask) | (nibble << shift);
+
+			if (regPanelEditor < 4)
+				regPanelEditor++;
+		}
+		else if (key == K_RETURN) {
+			if (regPanelCursor == 12)
+				SystemBus_Write(0xc001f2, (value >> 8) | (value << 8)); // IR
+			else if (regPanelCursor == 13 || regPanelCursor == 14) {
+				SystemBus_Write(0xc001fd,
+					(regBuffer[REG_IM] & 0x03) |
+					((regBuffer[REG_IFF] & 0x01) << 2) |
+					((regBuffer[REG_IFF] & 0x10) >> 1)); // IFF/IM
+			}
+			else
+				SystemBus_Write(0xc001f0 + r->i, value);
+
+			DelayUs(1);
+			SystemBus_Write(0xc001ff, 0);
+
+			regPanelEditor = 0;
 		}
 		else if (key == K_ESC) {
 			regPanelEditor = 0;
@@ -365,16 +377,20 @@ void Shell_Debugger()
 	regPanelEditor = 0;
 
 	byte key;
+	bool firstTime = true;
 	bool updateAll = true;
 	bool updateRegs = false;
 	bool updateTrace = false;
 
 	while (true) {
 		if (updateRegs || updateAll) {
-			Debugger_UpdateRegs();
+			Debugger_UpdateRegs(updateAll);
 			updateRegs = false;
 		}
 		if (updateTrace || updateAll) {
+			Debugger_RefreshRequested(firstTime);
+			firstTime = false;
+
 			Debugger_UpdateTrace();
 			updateTrace = false;
 		}
@@ -392,17 +408,10 @@ void Shell_Debugger()
 			updateRegs = true;
 			updateTrace = true;
 		}
-		else if (activeRegPanel && Debugger_TestKeyRegs(key)) {
+		else if (activeRegPanel && Debugger_TestKeyRegs(key))
 			updateRegs = true;
-			continue;
-		}
-		else if (key == K_F7) { // one step
-			SystemBus_Write(0xc00008, 0x01);
-			DelayMs(1);
-			DiskIF_Routine();
-
-			updateAll = true;
-		}
+		else if (Debugger_TestKeyTrace(key, &updateAll))
+			updateTrace = true;
 		else if (key == K_ESC)
 			break;
 	}

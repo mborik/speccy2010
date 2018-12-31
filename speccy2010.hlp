@@ -31,7 +31,7 @@ ScrollLock - toggle PC keyboard emulation
 File manager keys:
 ------------------
 Arrows - move cursor
-Enter - run/mount disk image / enter directory
+Enter - run/mount disk image / enter dir
 Backspace - leave directory
 Space - select files
 '+' - select all files
@@ -41,15 +41,15 @@ Space - select files
 F1 - show this help
 F2 - select destination directory
 F3 - view file
-F4 - hex editor (not yet implemented)
+F4 - hex editor
 F5 - copy file(s) to destination directory
 Shift+F5 - copy file
 F6 - move file(s) to destination directory
 Shift+F6 - rename file
 F7 - create directory
 F8 - delete file(s)
-F9 - create/format TRD/MBD disk image (wizard)
-F11 - receive file via XMODEM thru the UART
+F9 - create/format TRD/MBD disk image
+F11 - receive file via XMODEM thru UART
 CapsLock - upper case
 
 Settings/ROM/Disk Menu keys:
@@ -60,7 +60,7 @@ F11 - video test monoscope
 
 Debugger keys:
 --------------
+Tab - switch between sections
 Arrows - move cursor
-0..9, A..F - enter values
-M - set address
-Z - execute current Z80 instruction
+Enter - modify value
+F7 - execute single step
