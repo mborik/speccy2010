@@ -24,7 +24,7 @@ enum {
 	REG_IR  =  2, REG_SP  =  3, REG_PC  =  4,
 	REG_BC  =  5, REG_DE  =  6, REG_HL  =  7, REG_IX  =  8,
 	REG_BC_ =  9, REG_DE_ = 10, REG_HL_ = 11, REG_IY  = 12,
-	REG_IM  = 13, REG_IFF = 14
+	REG_IM  = 13, REG_IFF = 14, REG_FLG = 15
 };
 
 #ifdef __cplusplus
@@ -42,5 +42,7 @@ void SetCPUState(byte reg, word value);
 void Debugger_UpdateTrace();
 bool Debugger_TestKeyTrace(byte key, bool *updateAll);
 void Debugger_RefreshRequested(bool firstTime = false);
+void Debugger_HandleBreakpoint();
+void Debugger_Init();
 
 #endif

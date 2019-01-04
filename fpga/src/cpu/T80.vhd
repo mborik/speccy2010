@@ -263,9 +263,9 @@ architecture rtl of T80 is
 
 begin
 
-	REG <= SaveINT & DOR & std_logic_vector(PC) & std_logic_vector(SP) & std_logic_vector(R) & I & Fp & Ap & F & ACC when Alternate = '0'
+	REG <= SaveINT & DOR & std_logic_vector(PC) & std_logic_vector(SP) & I & std_logic_vector(R) & Ap & Fp & ACC & F when Alternate = '0'
 			 else SaveINT & DOR(127 downto 112) & DOR(47 downto 0) & DOR(63 downto 48) & DOR(111 downto 64) &
-						std_logic_vector(PC) & std_logic_vector(SP) & std_logic_vector(R) & I & Fp & Ap & F & ACC;
+						std_logic_vector(PC) & std_logic_vector(SP) & I & std_logic_vector(R) & Ap & Fp & ACC & F;
 
 	mcode : work.T80_MCode
 		generic map(

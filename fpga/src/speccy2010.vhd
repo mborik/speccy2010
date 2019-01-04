@@ -90,8 +90,9 @@ architecture rtl of speccy2010_top is
 	signal cpuOneCycleWaitReq  : std_logic := '0';
 	signal cpuOneCycleWaitAck  : std_logic := '0';
 
---	signal cpuBP0       : std_logic_vector(15 downto 0) := x"0000";
---	cpuBP0_en           : std_logic := '0';
+	constant cpuBPMax : integer := 3;
+	type cpuBPArray is array ( integer range <> ) of unsigned(16 downto 0);
+	signal cpuBP : cpuBPArray( 0 to cpuBPMax );
 
 	signal activeBank   : unsigned( 1 downto 0 ) := "00";
 	signal armVideoPage : std_logic_vector(15 downto 0) := x"0000";
@@ -878,7 +879,7 @@ begin
 
 	process( memclk )
 
-		variable addressReg : unsigned(23 downto 0) := "000000000000000000000000";
+		variable addressReg : unsigned(23 downto 0) := x"000000";
 
 		variable ArmWr	: std_logic_vector(1 downto 0);
 		variable ArmRd	: std_logic_vector(1 downto 0);
@@ -899,6 +900,8 @@ begin
 
 		variable iCpuWr : std_logic_vector(1 downto 0);
 		variable iCpuRd : std_logic_vector(1 downto 0);
+
+		variable breakpointReq: integer range 0 to cpuBPMax;
 
 	begin
 
@@ -1269,6 +1272,10 @@ begin
 						specDiskIfWait <= '1';
 						specDiskIfWr <= '0';
 
+					-- MB-02 paging port
+					elsif ( mb02Enabled = '1' and cpuA( 7 downto 0 ) = x"17" ) then
+						cpuDin <= mb02MemEprom & mb02MemSram & mb02MemWriteRom & mb02SramPage;
+
 					else
 
 						if cpuA( 7 downto 0 ) = x"1F" then
@@ -1320,10 +1327,14 @@ begin
 
 						elsif addressReg( 7 downto 0 ) = x"08" then
 							cpuTraceReq <= ARM_AD(0);
-						--elsif addressReg( 7 downto 0 ) = x"09" then
-							--cpuBP0_en <= ARM_AD(0);
-						--elsif addressReg( 7 downto 0 ) = x"0A" then
-							--cpuBP0 <= ARM_AD;
+						elsif addressReg( 7 downto 0 ) = x"09" then
+							breakpointReq := to_integer( unsigned( ARM_AD( 1 downto 0 ) ) );
+
+							if ( ARM_AD(15) = '0' ) then
+								cpuBP( breakpointReq ) <= ( '0' & x"0000" );
+							end if;
+						elsif addressReg( 7 downto 0 ) = x"0A" then
+							cpuBP( breakpointReq ) <= unsigned( '1' & ARM_AD );
 
 						elsif addressReg( 7 downto 0 ) = x"10" then
 							keyboard( 9 downto 0 ) <= ARM_AD( 12 downto 8 ) & ARM_AD( 4 downto 0 );
@@ -1489,8 +1500,7 @@ begin
 							ARM_AD <= x"00" & cpuDout;
 						elsif addressReg( 7 downto 0 ) = x"1c" then
 							ARM_AD <= std_logic_vector( specTrdosCounter );
-						elsif addressReg( 7 downto 0 ) = x"1d" then
-							ARM_AD <= "00000" & divmmcCardSelect & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & divmmcSramPage( 5 downto 0 );
+
 						elsif addressReg( 7 downto 0 ) = x"61" then
 							ARM_AD <= trdosFifoWriteReady & "0000000" & trdosFifoWriteRdTmp;
 							if trdosFifoWriteReady = '1' then
@@ -1514,6 +1524,13 @@ begin
 
 						elsif addressReg( 7 downto 0 ) = x"40" then
 							ARM_AD <= x"00" & std_logic_vector(cpuTurbo) & std_logic_vector(syncMode) & std_logic_vector(specMode);
+
+						elsif addressReg( 7 downto 0 ) = x"42" then
+							if divmmcEnabled = '1' then
+								ARM_AD <= "00000" & divmmcCardSelect & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & divmmcSramPage;
+							elsif mb02Enabled = '1' then
+								ARM_AD <= x"00" & mb02MemEprom & mb02MemSram & mb02MemWriteRom & mb02SramPage;
+							end if;
 
 						elsif addressReg( 7 downto 0 ) = x"50" then
 							ARM_AD <= std_logic_vector( counter20( 15 downto 0 ) );
@@ -1590,13 +1607,12 @@ begin
 
 	end process;
 
-	--cpuDout <= cpuDin when cpuRD = '0' else "ZZZZZZZZ";
-
 	------------------------------------------------------------------------------
 
 	process(sysclk)
 
 		variable cpuSaveInt7_prev : std_logic := '0';
+		variable cpuBreakpointPC  : unsigned( 16 downto 0 ) := ( '0' & x"0000" );
 
 	begin
 		if sysclk'event and sysclk = '1' then
@@ -1609,16 +1625,23 @@ begin
 
 				cpuHaltAck <= '0';
 
-			elsif cpuHaltAck = '0' and cpuRegisters(212) = '0' and cpuSaveInt7_prev = '1' then
+			elsif cpuHaltAck = '0' and cpuRegisters(212) = '1' and cpuSaveInt7_prev = '0' then
 
 				if cpuHaltReq = '1' then
 					cpuHaltAck <= '1';
-				--elsif cpuBP0_en = '1' and cpuSavePC = cpuBP0 then
-					--cpuHaltAck <= '1';
 				end if;
+
+				for i in 0 to cpuBPMax loop
+
+					if ( cpuBP(i) = cpuBreakpointPC ) then
+						cpuHaltAck <= '1';
+					end if;
+
+				end loop;
 
 			end if;
 
+			cpuBreakpointPC := unsigned( '1' & cpuRegisters( 79 downto 64 ) );
 			cpuSaveInt7_prev := cpuRegisters(212);
 
 		end if;

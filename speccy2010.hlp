@@ -61,6 +61,14 @@ F11 - video test monoscope
 Debugger keys:
 --------------
 Tab - switch between sections
-Arrows - move cursor
+Arrows/PgUp/PgDown - move cursor
 Enter - modify value
+Quote - push cursor and goto inst.operand
+Backspace - pop cursor from jumpstack
+Space - toggle breakpoint on current PC
+Home - move cursor to current PC
+F4 - trace to cursor
 F7 - execute single step
+F8 - trace to next instruction
+G - push cursor and goto spec.address
+Z - set PC to current cursor position

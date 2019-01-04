@@ -13,6 +13,7 @@
 #include "specRtc.h"
 #include "specTape.h"
 #include "shell/screen.h"
+#include "shell/debugger.h"
 
 
 dword tickCounter = 0;
@@ -939,11 +940,13 @@ int main()
 	fdc_init();
 	mb02_init();
 	RTC_Init();
+	Debugger_Init();
 
 	while (true) {
 		Timer_Routine();
 		Serial_Routine();
 
+		Debugger_HandleBreakpoint();
 		Keyboard_Routine();
 		Tape_Routine();
 		DiskIF_Routine();

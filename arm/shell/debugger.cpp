@@ -1,5 +1,6 @@
 #include "debugger.h"
 #include "screen.h"
+#include "viewer.h"
 #include "../system.h"
 #include "../system/sdram.h"
 #include "../specConfig.h"
@@ -42,10 +43,10 @@ bool activeRegPanel = false;
 //---------------------------------------------------------------------------------------
 dword CalculateAddrAtCursor(word addr)
 {
-	byte specPort7ffd = SystemBus_Read(0xC00017);
-	byte specPort1ffd = SystemBus_Read(0xC00023);
-	byte specTrdos    = SystemBus_Read(0xC00018);
-	byte divmmcState  = SystemBus_Read(0xC0001d);
+	byte specPort7ffd = SystemBus_Read(0xc00017);
+	byte specPort1ffd = SystemBus_Read(0xc00023);
+	byte specTrdos    = SystemBus_Read(0xc00018);
+	byte diskIfState  = SystemBus_Read(0xc00042);
 
 	int page = 0;
 	if (addr < 0x4000) {
@@ -56,18 +57,24 @@ dword CalculateAddrAtCursor(word addr)
 
 		if (specConfig.specDiskIf == SpecDiskIf_DivMMC) {
 			if (addr < 0x2000) {
-				if ((divmmcState & 0x1c0) == 0x140) {
+				if ((diskIfState & 0x1c0) == 0x140) {
 					page  = 0x21; // 0000-1FFF > DivMMC bank #03
 					addr |= 0x2000;
 				}
-				else if ((divmmcState & 0x180))
+				else if ((diskIfState & 0x180))
 					page |= 3; // 0000-1FFF > DivMMC (E)EPROM (firmware in ROM3)
 			}
-			else if ((divmmcState & 0x180)) {
-				page = 0x40 | (divmmcState & 0x3f); // 2000-3FFF > DivMMC bank #00-#3F
+			else if ((diskIfState & 0x180)) {
+				page = 0x40 | (diskIfState & 0x3f); // 2000-3FFF > DivMMC bank #00-#3F
 				addr = (addr & 0x1fff) | ((page & 1) << 13);
 				page >>= 1;
 			}
+		}
+		else if (specConfig.specDiskIf == SpecDiskIf_MB02) {
+			if ((diskIfState & 0x40)) // 0000-3FFF > MB-02 SRAM bank #00-#1F
+				page = 0x20 | (diskIfState & 0x1f);
+			else if ((diskIfState & 0x80)) // 0000-3FFF > MB-02 EPROM (in ROM3 position)
+				page |= 3;
 		}
 		else if (specConfig.specMachine == SpecRom_Scorpion) {
 			if ((specPort1ffd & 2))
@@ -181,7 +188,7 @@ void Debugger_Screen0()
 	}
 
 	DrawStr(212, 7, "-2:");
-	DrawStr(212, 8, "SP:");
+	DrawStr(212, 8, "sp:");
 
 	byte offset = 2;
 	for (y = 9; y < 16; y++, offset += 2) {
@@ -201,15 +208,11 @@ void Debugger_UpdateRegs(bool updateCpuState = false)
 		for (i = 0; i < 14; i++) {
 			reg = SystemBus_Read(0xc001f0 + i);
 
-			if (i == 2) {
-				// IR
-				regBuffer[i] = (reg >> 8) | (reg << 8);
-			}
-			else if (i == 13) {
+			if (i == REG_IM) {
 				// IM
-				regBuffer[i++] = (reg & 0x03);
+				regBuffer[REG_IM] = (reg & 0x03);
 				// IFF in BCD
-				regBuffer[i] = ((reg & 0x08) << 1) | (reg & 0x04) >> 2;
+				regBuffer[REG_IFF] = ((reg & 0x08) << 1) | (reg & 0x04) >> 2;
 			}
 			else
 				regBuffer[i] = reg;
@@ -229,12 +232,12 @@ void Debugger_UpdateRegs(bool updateCpuState = false)
 			DrawAttr(r->x, r->y, c, r->width * 6);
 		}
 
-		if (i == 15)
+		if (i == REG_FLG)
 			break;
 
 		DrawHexNum(r->x, r->y, reg, r->width, 'A');
 
-		if (c == COL_EDITOR)
+		if (i != REG_IM && c == COL_EDITOR)
 			DrawChar(r->x + ((regPanelEditor - 1) * 6), r->y, ' ', true, true);
 	}
 
@@ -242,7 +245,7 @@ void Debugger_UpdateRegs(bool updateCpuState = false)
 		DrawChar(
 			r->x + (i * 6), r->y,
 			"SZ5H3PNCsz.h.pnc"[((reg & (0x80 >> i)) ? 0 : 8) + i],
-			false, (c == COL_EDITOR)
+			false, (c == COL_EDITOR) ? (i == (regPanelEditor - 1)) : false
 		);
 	}
 }
@@ -252,15 +255,26 @@ void Debugger_UpdateSidePanel()
 	word rom = CalculateAddrAtCursor(0x0000) >> 14;
 	byte ram = CalculateAddrAtCursor(0xC000) >> 14;
 	byte specPort7ffd = SystemBus_Read(0xC00017);
+	byte diskIfState  = SystemBus_Read(0xc00042);
 
 	const char *romTxt = "ROM??";
 	switch (rom) {
 		case 0:
 			romTxt = "RAM 0"; // Scorpion AllRAM
 			break;
+		case 0x20:
+			if (specConfig.specDiskIf == SpecDiskIf_MB02)
+				romTxt = "BSROM"; // MB-02 SRAM bank #00 (BS-ROM)
+			break;
 		case 0x21:
 			if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
-				romTxt = "MAPRM"; // DivMMC MAPRAM page 3
+				romTxt = "03\7ZX"; // DivMMC MAPRAM page 3
+			else if (specConfig.specDiskIf == SpecDiskIf_MB02)
+				romTxt = "BSDOS"; // MB-02 SRAM bank #01 (BS-DOS)
+			break;
+		case 0x22 ... 0x3F:
+			if (specConfig.specDiskIf == SpecDiskIf_MB02)
+				romTxt = "BNK"; // MB-02 SRAM bank #02-#1F
 			break;
 		case 0x100:
 			romTxt = "ZX128";
@@ -272,7 +286,12 @@ void Debugger_UpdateSidePanel()
 			romTxt = "RESET";
 			break;
 		case 0x103:
-			romTxt = (specConfig.specDiskIf == SpecDiskIf_DivMMC) ? "EPROM" : "TRDOS";
+			if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
+				romTxt = "E\xFD\7ZX";
+			else if (specConfig.specDiskIf == SpecDiskIf_MB02)
+				romTxt = "EPROM";
+			else
+				romTxt = "TRDOS";
 			break;
 	}
 
@@ -280,6 +299,11 @@ void Debugger_UpdateSidePanel()
 	DrawChar(248, 2, (specPort7ffd & 0x08) ? '7' : '5');
 	DrawChar(248, 3, '2');
 	DrawChar(248, 4, '0' + (ram & 7));
+
+	if (specConfig.specDiskIf == SpecDiskIf_DivMMC && (diskIfState & 0x180))
+		DrawHexNum(242, 1, (diskIfState & 0x3f), 2, 'A');
+	else if (specConfig.specDiskIf == SpecDiskIf_MB02 && rom >= 0x22)
+		DrawHexNum(242, 1, rom - 0x20, 2, 'A');
 
 	word addr, stack = 0xFFFF & (((int) regBuffer[REG_SP]) - 2); // sp
 	for (byte y = 7; y < 16; y++, stack += 2) {
@@ -315,7 +339,7 @@ bool Debugger_TestKeyRegs(byte key)
 			regPanelEditor--;
 		else if (key == K_RIGHT && regPanelEditor < r->width)
 			regPanelEditor++;
-		else if (regPanelCursor < 13 && (
+		else if (regPanelCursor < REG_IM && (
 				(key >= '0' && key <= '9') ||
 				(key >= 'a' && key <= 'f') ||
 				(key >= 'A' && key <= 'F'))) {
@@ -336,10 +360,20 @@ bool Debugger_TestKeyRegs(byte key)
 			if (regPanelEditor < 4)
 				regPanelEditor++;
 		}
+		else if (regPanelCursor == REG_IM && (key >= '0' && key <= '2'))
+			regBuffer[REG_IM] = (word) (key - '0');
+
+		else if (regPanelCursor == REG_IFF && (key == '0' || key == '1')) {
+			int shift = (r->width - regPanelEditor) * 4;
+			word masked = value & (0xFFFF ^ (0x0F << shift));
+
+			regBuffer[REG_IFF] = masked | ((key - '0') << shift);
+		}
+		else if (regPanelCursor == REG_FLG && key == ' ') {
+			regBuffer[r->i] ^= (0x100 >> regPanelEditor);
+		}
 		else if (key == K_RETURN) {
-			if (regPanelCursor == 12)
-				SystemBus_Write(0xc001f2, (value >> 8) | (value << 8)); // IR
-			else if (regPanelCursor == 13 || regPanelCursor == 14) {
+			if (regPanelCursor == REG_IM || regPanelCursor == REG_IFF) {
 				SystemBus_Write(0xc001fd,
 					(regBuffer[REG_IM] & 0x03) |
 					((regBuffer[REG_IFF] & 0x01) << 2) |
@@ -401,7 +435,13 @@ void Shell_Debugger()
 
 		key = GetKey(true);
 
-		if (key == K_TAB) {
+		if (key == K_F1) {
+			Shell_TextViewer("speccy2010.hlp", true);
+
+			Debugger_Screen0();
+			updateAll = true;
+		}
+		else if (key == K_TAB) {
 			activeRegPanel = !activeRegPanel;
 			Debugger_SwitchPanel();
 
@@ -410,13 +450,17 @@ void Shell_Debugger()
 		}
 		else if (activeRegPanel && Debugger_TestKeyRegs(key))
 			updateRegs = true;
-		else if (Debugger_TestKeyTrace(key, &updateAll))
-			updateTrace = true;
-		else if (key == K_ESC)
-			break;
-	}
+		else if (Debugger_TestKeyTrace(key, &updateAll)) {
+			if (key == K_F4 || key == K_F8)
+				break;
 
-	DelayMs(100);
+			updateTrace = true;
+		}
+		else if (key == K_ESC) {
+			DelayMs(100);
+			break;
+		}
+	}
 
 	CPU_Start();
 
