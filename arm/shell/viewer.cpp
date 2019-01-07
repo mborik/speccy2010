@@ -9,6 +9,7 @@
 
 static char wrkstr[12];
 static bool wrapLines = false;
+static bool allowFileEdit = false;
 
 const int SCREEN_WIDTH = 42;
 const int VIEWER_LINES = 21;
@@ -224,8 +225,7 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 				}
 
 				DrawHexNum(x1, y, wrkstr[i]);
-				DrawChar(x2, y, (wrkstr[i] >= ' ' ? wrkstr[i] : 7), false,
-						(editMode && rightPane && cursor == ptr));
+				DrawSaveChar(x2, y, wrkstr[i], false, (editMode && rightPane && cursor == ptr));
 
 				if (editMode && !rightPane && cursor == ptr) {
 					DrawAttr8(x1 >> 3, y, 0126, 2);
@@ -352,6 +352,16 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 			pos = maxPos;
 		}
 		else if (key >= ' ' && editMode) {
+			if (!allowFileEdit) {
+				allowFileEdit = Shell_MessageBox("Direct File Access",
+					"You are about to modify contents",
+					"of file directly on SD card.",
+					"You have been warned! Sure?", MB_YESNO);
+
+				if (!allowFileEdit)
+					continue;
+			}
+
 			f_lseek(&fil, pos + cursor);
 
 			if (rightPane) {
