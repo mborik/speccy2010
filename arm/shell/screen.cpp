@@ -166,6 +166,11 @@ void DrawChar(byte x, byte y, char c, bool over, bool inv)
 	}
 }
 //---------------------------------------------------------------------------------------
+void DrawSaveChar(byte x, byte y, byte c, bool over, bool inv)
+{
+	DrawChar(x, y, (c < 0x20) ? '\7' : ((c >= 0x80) ? '\xFE' : (char) c), over, inv);
+}
+//---------------------------------------------------------------------------------------
 void DrawAttr(byte x, byte y, byte attr, int w, bool incent)
 {
 	if (y < 24) {

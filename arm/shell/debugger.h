@@ -12,6 +12,7 @@
 #define COL_BREAKPT 0002
 #define COL_SIDEPAN 0140
 #define COL_SIDE_HI 0141
+#define COL_WTCHREG 0163
 
 #ifdef __cplusplus
 extern "C"

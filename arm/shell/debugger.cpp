@@ -40,6 +40,9 @@ word regBuffer[15];
 
 byte activeWindow = WIN_TRACE;
 bool activeRegPanel = false;
+bool dumpWindowAsciiMode = false;
+byte watcherMode = 0;
+byte lastWatcherMode = -1;
 //---------------------------------------------------------------------------------------
 dword CalculateAddrAtCursor(word addr)
 {
@@ -127,27 +130,31 @@ void Debugger_SwitchPanel()
 	for (y = 1; y < 5; y++)
 		DrawAttr8(0, y, activeRegPanel ? COL_ACTIVE : COL_NORMAL, 24);
 	for (++y; y < 24; y++) {
-		if (activeWindow == WIN_TRACE) {
+		if (activeWindow == WIN_TRACE)
 			DrawAttr8( 0, y, activeRegPanel ? COL_NORMAL : COL_ACTIVE, 24);
-			DrawAttr8(24, y, COL_BACKGND, 1);
-		}
 		else if (activeWindow == WIN_MEMDUMP) {
-			DrawAttr8( 0, y, activeRegPanel ? COL_NORMAL : COL_ACTIVE, 19);
-			DrawAttr8(19, y, (activeRegPanel ? COL_NORMAL : COL_ACTIVE) & ~3, 6);
+			byte w = dumpWindowAsciiMode ? 21 : 29;
+			DrawAttr8( 0, y, activeRegPanel ? COL_NORMAL : COL_ACTIVE, w);
+			DrawAttr8(w, y, (activeRegPanel ? COL_NORMAL : COL_ACTIVE) & ~3, (32 - w));
 		}
 	}
 }
 //---------------------------------------------------------------------------------------
-void Debugger_Screen0()
+void Debugger_Screen()
 {
 	ClrScr(COL_BACKGND);
 
 	DrawStrAttr(  1,  0, "regs",  COL_TITLE, 4);
-	DrawStrAttr(  1,  5, "trace", COL_TITLE, 5);
 	DrawStrAttr(209,  0, "pages", COL_TITLE, 5);
-	DrawStrAttr(209,  6, "stack", COL_TITLE, 5);
-	DrawStrAttr(209, 17, "ports", COL_TITLE, 5);
 
+	if (activeWindow == WIN_TRACE) {
+		DrawStrAttr(  1,  5, "trace", COL_TITLE, 5);
+		DrawStrAttr(209,  6, "stack", COL_TITLE, 5);
+	}
+	else
+		DrawStrAttr(  1,  5, "dump", COL_TITLE, 4);
+
+	lastWatcherMode = -1;
 	Debugger_SwitchPanel();
 
 	byte y;
@@ -155,12 +162,15 @@ void Debugger_Screen0()
 		DrawAttr8(26, y, COL_SIDE_HI, 2);
 		DrawAttr8(28, y, COL_SIDEPAN, 4);
 	}
-	for (y = 7; y < 16; y++) {
-		DrawAttr8(26, y, COL_SIDE_HI, 2);
-		DrawAttr8(28, y, COL_SIDEPAN, 4);
+
+	if (activeWindow == WIN_TRACE) {
+		for (y = 7; y < 14; y++) {
+			DrawAttr8(26, y, COL_SIDE_HI, 2);
+			DrawAttr8(28, y, COL_SIDEPAN, 4);
+		}
+		for (y = 16; y < 24; y++)
+			DrawAttr8(26, y, COL_SIDEPAN, 6);
 	}
-	for (y = 18; y < 24; y++)
-		DrawAttr8(26, y, COL_SIDEPAN, 6);
 
 	const char *exxRegs[9] = { "", "af", "bc", "de", "hl", "sp", "pc", "ix", "iy" };
 	for (y = 1; y <= 4; y++) {
@@ -187,14 +197,16 @@ void Debugger_Screen0()
 			DrawStr(224, y + 1, "RAM");
 	}
 
-	DrawStr(212, 7, "-2:");
-	DrawStr(212, 8, "sp:");
+	if (activeWindow == WIN_TRACE) {
+		DrawStr(212, 7, "-2:");
+		DrawStr(212, 8, "sp:");
 
-	byte offset = 2;
-	for (y = 9; y < 16; y++, offset += 2) {
-		DrawChar(212, y, '+');
-		DrawHexNum(218, y, offset, 1, 'A');
-		DrawChar(224, y, ':');
+		byte offset = 2;
+		for (y = 9; y < 14; y++, offset += 2) {
+			DrawChar(212, y, '+');
+			DrawHexNum(218, y, offset, 1, 'A');
+			DrawChar(224, y, ':');
+		}
 	}
 }
 //---------------------------------------------------------------------------------------
@@ -250,12 +262,97 @@ void Debugger_UpdateRegs(bool updateCpuState = false)
 	}
 }
 //---------------------------------------------------------------------------------------
+void Debugger_UpdateWatchers()
+{
+	byte y = 15;
+	bool advDiskIf = (
+		specConfig.specDiskIf == SpecDiskIf_DivMMC ||
+		specConfig.specDiskIf == SpecDiskIf_MB02);
+
+	if (lastWatcherMode != watcherMode) {
+		for (byte i = y; i < 24; i++)
+			DrawStr(208, i, "", 8);
+
+		if (watcherMode) {
+			DrawStrAttr(209, y, "watch", COL_TITLE, 5);
+
+			bool apos = false;
+			const char *sreg = "";
+
+			switch (watcherMode) {
+				case REG_BC_:
+					apos = true;
+				case REG_BC:
+					sreg = "bc"; break;
+				case REG_DE_:
+					apos = true;
+				case REG_DE:
+					sreg = "de"; break;
+				case REG_HL_:
+					apos = true;
+				case REG_HL:
+					sreg = "hl"; break;
+				case REG_IX:
+					sreg = "ix"; break;
+				case REG_IY:
+					sreg = "iy"; break;
+			}
+
+			DrawStr(242, y, sreg, 2);
+			if (apos)
+				DrawChar(252, y, '`', true);
+		}
+		else {
+			DrawStrAttr(209, y, "ports", COL_TITLE, 5);
+
+			DrawStr(212, y + 1, "xxFE:", 5);
+			DrawStr(212, y + 2, "7FFD:", 5);
+			DrawStr(212, y + 3, "1FFD:", 5);
+
+			if (advDiskIf)
+				DrawStr(212, y + 4,
+					(specConfig.specDiskIf == SpecDiskIf_MB02) ? "xx17:" : "xxE3:", 5);
+		}
+
+		DrawAttr8(30, y, watcherMode ? COL_WTCHREG : COL_BACKGND, 2);
+
+		lastWatcherMode = watcherMode;
+	}
+
+	if (watcherMode) {
+		word pc = regBuffer[watcherMode];
+
+		for (++y; y < 24; y++) {
+			byte buf0 = ReadByteAtCursor(pc++);
+			byte buf1 = ReadByteAtCursor(pc++);
+
+			DrawHexNum(212, y, buf0, 2, 'A');
+			DrawHexNum(227, y, buf1, 2, 'A');
+			DrawSaveChar(243, y, buf0);
+			DrawSaveChar(249, y, buf1);
+		}
+	}
+	else {
+		byte specPortFe   = SystemBus_Read(0xc00016);
+		byte specPort7ffd = SystemBus_Read(0xc00017);
+		byte specPort1ffd = SystemBus_Read(0xc00023);
+		byte diskIfState  = SystemBus_Read(0xc00042) & 0xFF;
+
+		DrawHexNum(242, y + 1, specPortFe, 2, 'A');
+		DrawHexNum(242, y + 2, specPort7ffd, 2, 'A');
+		DrawHexNum(242, y + 3, specPort1ffd, 2, 'A');
+
+		if (advDiskIf)
+			DrawHexNum(242, y + 4, diskIfState, 2, 'A');
+	}
+}
+//---------------------------------------------------------------------------------------
 void Debugger_UpdateSidePanel()
 {
 	word rom = CalculateAddrAtCursor(0x0000) >> 14;
 	byte ram = CalculateAddrAtCursor(0xC000) >> 14;
 	byte specPort7ffd = SystemBus_Read(0xC00017);
-	byte diskIfState  = SystemBus_Read(0xc00042);
+	word diskIfState  = SystemBus_Read(0xc00042);
 
 	const char *romTxt = "ROM??";
 	switch (rom) {
@@ -267,14 +364,12 @@ void Debugger_UpdateSidePanel()
 				romTxt = "BSROM"; // MB-02 SRAM bank #00 (BS-ROM)
 			break;
 		case 0x21:
-			if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
-				romTxt = "03\7ZX"; // DivMMC MAPRAM page 3
-			else if (specConfig.specDiskIf == SpecDiskIf_MB02)
+			if (specConfig.specDiskIf == SpecDiskIf_MB02)
 				romTxt = "BSDOS"; // MB-02 SRAM bank #01 (BS-DOS)
 			break;
 		case 0x22 ... 0x3F:
 			if (specConfig.specDiskIf == SpecDiskIf_MB02)
-				romTxt = "BNK"; // MB-02 SRAM bank #02-#1F
+				romTxt = "BNK";   // MB-02 SRAM bank #02-#1F
 			break;
 		case 0x100:
 			romTxt = "ZX128";
@@ -283,32 +378,35 @@ void Debugger_UpdateSidePanel()
 			romTxt = "ZXROM";
 			break;
 		case 0x102:
-			romTxt = "RESET";
+			romTxt = "GLKRS";
 			break;
 		case 0x103:
-			if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
-				romTxt = "E\xFD\7ZX";
-			else if (specConfig.specDiskIf == SpecDiskIf_MB02)
-				romTxt = "EPROM";
-			else
-				romTxt = "TRDOS";
+			romTxt = (specConfig.specDiskIf == SpecDiskIf_MB02) ? "EPROM" : "TRDOS";
 			break;
 	}
 
-	DrawStr (224, 1, romTxt, 5);
+	DrawStr (224, 1, romTxt);
 	DrawChar(248, 2, (specPort7ffd & 0x08) ? '7' : '5');
 	DrawChar(248, 3, '2');
 	DrawChar(248, 4, '0' + (ram & 7));
 
-	if (specConfig.specDiskIf == SpecDiskIf_DivMMC && (diskIfState & 0x180))
+	if (specConfig.specDiskIf == SpecDiskIf_DivMMC && (diskIfState & 0x180)) {
+		// 0000-1FFF > DivMMC (E)EPROM or MAPRAM R/O bank #03
+		DrawStr(224, 1, ((diskIfState & 0x1c0) == 0x140) ? "03\7" : "EP\7");
+		// 2000-3FFF > DivMMC bank #00-#3F (controlled by port #E3)
 		DrawHexNum(242, 1, (diskIfState & 0x3f), 2, 'A');
+	}
 	else if (specConfig.specDiskIf == SpecDiskIf_MB02 && rom >= 0x22)
-		DrawHexNum(242, 1, rom - 0x20, 2, 'A');
+		DrawHexNum(242, 1, (diskIfState & 0x1f), 2, 'A');
 
-	word addr, stack = 0xFFFF & (((int) regBuffer[REG_SP]) - 2); // sp
-	for (byte y = 7; y < 16; y++, stack += 2) {
-		addr = ReadByteAtCursor(stack) | ReadByteAtCursor(stack + 1) << 8;
-		DrawHexNum(230, y, addr, 4, 'A');
+	if (activeWindow == WIN_TRACE) {
+		word addr, stack = 0xFFFF & (((int) regBuffer[REG_SP]) - 2); // sp
+		for (byte y = 7; y < 14; y++, stack += 2) {
+			addr = ReadByteAtCursor(stack) | ReadByteAtCursor(stack + 1) << 8;
+			DrawHexNum(230, y, addr, 4, 'A');
+		}
+
+		Debugger_UpdateWatchers();
 	}
 }
 //---------------------------------------------------------------------------------------
@@ -403,7 +501,7 @@ void Shell_Debugger()
 	CPU_Stop();
 	SystemBus_Write(0xc00020, 0); // use bank 0
 
-	Debugger_Screen0();
+	Debugger_Screen();
 
 	SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
 	SystemBus_Write(0xc00022, 0x8000 | 0); // Enable shell border
@@ -425,7 +523,9 @@ void Shell_Debugger()
 			Debugger_RefreshRequested(firstTime);
 			firstTime = false;
 
-			Debugger_UpdateTrace();
+			if (activeWindow == WIN_TRACE)
+				Debugger_UpdateTrace();
+
 			updateTrace = false;
 		}
 		if (updateAll) {
@@ -438,8 +538,24 @@ void Shell_Debugger()
 		if (key == K_F1) {
 			Shell_TextViewer("speccy2010.hlp", true);
 
-			Debugger_Screen0();
+			Debugger_Screen();
 			updateAll = true;
+		}
+		else if (key == K_F2 && activeWindow == WIN_MEMDUMP) {
+			activeWindow = WIN_TRACE;
+			Debugger_Screen();
+			updateAll = true;
+		}
+		else if (key == K_F3) {
+			if (activeWindow == WIN_TRACE) {
+				activeWindow = WIN_MEMDUMP;
+				Debugger_Screen();
+				updateAll = true;
+			}
+			else {
+				dumpWindowAsciiMode = !dumpWindowAsciiMode;
+				Debugger_SwitchPanel();
+			}
 		}
 		else if (key == K_TAB) {
 			activeRegPanel = !activeRegPanel;
@@ -448,6 +564,48 @@ void Shell_Debugger()
 			updateRegs = true;
 			updateTrace = true;
 		}
+
+		else if ((ReadKeyFlags() & fKeyCtrl) != 0) {
+			switch (key) {
+				case 'h':
+					watcherMode = REG_HL;
+					updateAll = true;
+					break;
+				case 'H':
+					watcherMode = REG_HL_;
+					updateAll = true;
+					break;
+				case 'd':
+					watcherMode = REG_DE;
+					updateAll = true;
+					break;
+				case 'D':
+					watcherMode = REG_DE_;
+					updateAll = true;
+					break;
+				case 'b':
+					watcherMode = REG_BC;
+					updateAll = true;
+					break;
+				case 'B':
+					watcherMode = REG_BC_;
+					updateAll = true;
+					break;
+				case 'x':
+					watcherMode = REG_IX;
+					updateAll = true;
+					break;
+				case 'y':
+					watcherMode = REG_IY;
+					updateAll = true;
+					break;
+				case 'p':
+					watcherMode = 0;
+					updateAll = true;
+					break;
+			}
+		}
+
 		else if (activeRegPanel && Debugger_TestKeyRegs(key))
 			updateRegs = true;
 		else if (Debugger_TestKeyTrace(key, &updateAll)) {

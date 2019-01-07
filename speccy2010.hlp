@@ -67,8 +67,12 @@ Quote - push cursor and goto inst.operand
 Backspace - pop cursor from jumpstack
 Space - toggle breakpoint on current PC
 Home - move cursor to current PC
+F2 - trace window
+F3 - dump window / toggle hexdump/ASCII
 F4 - trace to cursor
 F7 - execute single step
 F8 - trace to next instruction
 G - push cursor and goto spec.address
 Z - set PC to current cursor position
+Ctrl+H/D/B/X/Y/P - watch HL/DE/BC/IX/IY or ports
+Ctrl+Shift+H/D/B - watch HL`/DE`/BC`

@@ -41,7 +41,11 @@ unsigned reqUpdateRefresh = 0;
 bool allowROMAccess = false;
 
 // cursor column / width / buf.offset / char.count
-static const byte cs[3][4] = { { 0, 4, 0, 4 }, { 4, 8, TABSTOP_DUMP, 10 }, { 12, 12, TABSTOP_INST, 16 } };
+static const byte cs[3][4] = {
+	{ 0, 4, 0, 4 },
+	{ 4, 8, TABSTOP_DUMP, 10 },
+	{ 12, 12, TABSTOP_INST, 16 }
+};
 static const byte flags[] = { 0x40, 0x01, 0x04, 0x80 }; // ZF,CF,PV,SF
 
 //---------------------------------------------------------------------------------------
