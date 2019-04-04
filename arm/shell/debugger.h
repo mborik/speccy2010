@@ -14,6 +14,9 @@
 #define COL_SIDE_HI 0141
 #define COL_WTCHREG 0163
 
+#define WINDOW_OFF_Y  6
+#define WINDOW_HEIGHT (24 - WINDOW_OFF_Y)
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -36,12 +39,14 @@ void Shell_Debugger();
 byte ReadByteAtCursor(word addr);
 void WriteByteAtCursor(word addr, byte data);
 
-bool IsRegPanel();
 word GetCPUState(byte reg);
 void SetCPUState(byte reg, word value);
 
 void Debugger_UpdateTrace();
+void Debugger_UpdateDump(bool forceRedraw = false);
+void Debugger_UpdateDumpAttrs();
 bool Debugger_TestKeyTrace(byte key, bool *updateAll);
+bool Debugger_TestKeyDump(byte key, bool *updateAll);
 void Debugger_RefreshRequested(bool firstTime = false);
 void Debugger_HandleBreakpoint();
 void Debugger_Init();

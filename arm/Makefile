@@ -133,6 +133,7 @@ CXX_SRCS = \
 	$(SRCDIR)/shell/viewer.cpp \
 	$(SRCDIR)/shell/commander.cpp \
 	$(SRCDIR)/shell/debugger.asm.cpp \
+	$(SRCDIR)/shell/debugger.dump.cpp \
 	$(SRCDIR)/shell/debugger.cpp
 
 ASM_SRCS = \

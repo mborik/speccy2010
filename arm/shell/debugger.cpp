@@ -40,9 +40,12 @@ word regBuffer[15];
 
 byte activeWindow = WIN_TRACE;
 bool activeRegPanel = false;
-bool dumpWindowAsciiMode = false;
+
 byte watcherMode = 0;
 byte lastWatcherMode = -1;
+
+extern bool dumpWindowAsciiMode;
+extern bool dumpWindowRightPane;
 //---------------------------------------------------------------------------------------
 dword CalculateAddrAtCursor(word addr)
 {
@@ -116,8 +119,6 @@ void WriteByteAtCursor(word addr, byte data)
 	SystemBus_Write(CalculateAddrAtCursor(addr), data);
 }
 //---------------------------------------------------------------------------------------
-bool IsRegPanel() { return activeRegPanel; }
-//---------------------------------------------------------------------------------------
 word GetCPUState(byte reg) { return regBuffer[reg]; }
 //---------------------------------------------------------------------------------------
 void SetCPUState(byte reg, word value) { regBuffer[reg] = value; }
@@ -129,15 +130,13 @@ void Debugger_SwitchPanel()
 	byte y;
 	for (y = 1; y < 5; y++)
 		DrawAttr8(0, y, activeRegPanel ? COL_ACTIVE : COL_NORMAL, 24);
-	for (++y; y < 24; y++) {
-		if (activeWindow == WIN_TRACE)
+
+	if (activeWindow == WIN_TRACE) {
+		for (++y; y < 24; y++)
 			DrawAttr8( 0, y, activeRegPanel ? COL_NORMAL : COL_ACTIVE, 24);
-		else if (activeWindow == WIN_MEMDUMP) {
-			byte w = dumpWindowAsciiMode ? 21 : 29;
-			DrawAttr8( 0, y, activeRegPanel ? COL_NORMAL : COL_ACTIVE, w);
-			DrawAttr8(w, y, (activeRegPanel ? COL_NORMAL : COL_ACTIVE) & ~3, (32 - w));
-		}
 	}
+	else if (activeWindow == WIN_MEMDUMP)
+		Debugger_UpdateDumpAttrs();
 }
 //---------------------------------------------------------------------------------------
 void Debugger_Screen()
@@ -512,21 +511,23 @@ void Shell_Debugger()
 	bool firstTime = true;
 	bool updateAll = true;
 	bool updateRegs = false;
-	bool updateTrace = false;
+	bool updateWindow = false;
 
 	while (true) {
 		if (updateRegs || updateAll) {
 			Debugger_UpdateRegs(updateAll);
 			updateRegs = false;
 		}
-		if (updateTrace || updateAll) {
+		if (updateWindow || updateAll) {
 			Debugger_RefreshRequested(firstTime);
 			firstTime = false;
 
 			if (activeWindow == WIN_TRACE)
 				Debugger_UpdateTrace();
+			else if (activeWindow == WIN_MEMDUMP)
+				Debugger_UpdateDump(updateAll);
 
-			updateTrace = false;
+			updateWindow = false;
 		}
 		if (updateAll) {
 			Debugger_UpdateSidePanel();
@@ -547,76 +548,38 @@ void Shell_Debugger()
 			updateAll = true;
 		}
 		else if (key == K_F3) {
-			if (activeWindow == WIN_TRACE) {
+			if (activeWindow == WIN_TRACE)
 				activeWindow = WIN_MEMDUMP;
-				Debugger_Screen();
-				updateAll = true;
-			}
-			else {
+			else
 				dumpWindowAsciiMode = !dumpWindowAsciiMode;
-				Debugger_SwitchPanel();
-			}
+
+			Debugger_Screen();
+			updateAll = true;
 		}
 		else if (key == K_TAB) {
-			activeRegPanel = !activeRegPanel;
+			if (activeWindow == WIN_MEMDUMP && !activeRegPanel && !dumpWindowAsciiMode && !dumpWindowRightPane)
+				dumpWindowRightPane = true;
+			else {
+				activeRegPanel = !activeRegPanel;
+				dumpWindowRightPane = false;
+			}
+
 			Debugger_SwitchPanel();
 
 			updateRegs = true;
-			updateTrace = true;
+			updateWindow = true;
 		}
-
-		else if ((ReadKeyFlags() & fKeyCtrl) != 0) {
-			switch (key) {
-				case 'h':
-					watcherMode = REG_HL;
-					updateAll = true;
-					break;
-				case 'H':
-					watcherMode = REG_HL_;
-					updateAll = true;
-					break;
-				case 'd':
-					watcherMode = REG_DE;
-					updateAll = true;
-					break;
-				case 'D':
-					watcherMode = REG_DE_;
-					updateAll = true;
-					break;
-				case 'b':
-					watcherMode = REG_BC;
-					updateAll = true;
-					break;
-				case 'B':
-					watcherMode = REG_BC_;
-					updateAll = true;
-					break;
-				case 'x':
-					watcherMode = REG_IX;
-					updateAll = true;
-					break;
-				case 'y':
-					watcherMode = REG_IY;
-					updateAll = true;
-					break;
-				case 'p':
-					watcherMode = 0;
-					updateAll = true;
-					break;
-			}
+		else if (key == K_ESC) {
+			DelayMs(100);
+			break;
 		}
-
 		else if (activeRegPanel && Debugger_TestKeyRegs(key))
 			updateRegs = true;
 		else if (Debugger_TestKeyTrace(key, &updateAll)) {
 			if (key == K_F4 || key == K_F8)
 				break;
 
-			updateTrace = true;
-		}
-		else if (key == K_ESC) {
-			DelayMs(100);
-			break;
+			updateWindow = true;
 		}
 	}
 
