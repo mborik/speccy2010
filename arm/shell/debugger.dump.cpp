@@ -154,6 +154,13 @@ bool Debugger_TestKeyDump(byte key, bool *updateAll)
 
 		if (reg > 0)
 			top = pos = GetCPUState(reg & 0xFF);
+		else if ((key == 'g' && (ReadKeyFlags() & fKeyCtrl) != 0) ||
+				(key == 'm' && (ReadKeyFlags() & fKeyCtrl) == 0)) {
+
+			if ((reg = Debugger_GetMemAddress(dumpTop)) >= 0)
+				top = pos = (unsigned) reg;
+			reg = -1;
+		}
 		else if (key == K_UP)
 			pos -= inc;
 		else if (key == K_DOWN)
@@ -175,7 +182,7 @@ bool Debugger_TestKeyDump(byte key, bool *updateAll)
 		else if (key == K_END)
 			pos |= (inc - 1);
 
-		else if (key >= ' ') {
+		else if (key >= ' ' && (ReadKeyFlags() & (fKeyCtrl | fKeyAlt)) == 0) {
 			if (dumpPos < 0x4000 && !allowROMAccess) {
 				allowROMAccess = Shell_MessageBox("ROM Access",
 					"You are about to modify contents",

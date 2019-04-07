@@ -566,6 +566,20 @@ movEdCur:
 	return result;
 }
 //---------------------------------------------------------------------------------------
+int Debugger_GetMemAddress(int defaultValue)
+{
+	int result = -1;
+
+	if (defaultValue >= 0)
+		sprintf(curline, "%04X", defaultValue);
+
+	cpuCursorY = cpuTraceCol = 0;
+	if (Debugger_Editor())
+		sscanf(curline, "%04X", &result);
+
+	return result;
+}
+//---------------------------------------------------------------------------------------
 bool Debugger_TestKeyTrace(byte key, bool *updateAll)
 {
 	unsigned i, curs = 0;
@@ -680,11 +694,10 @@ bool Debugger_TestKeyTrace(byte key, bool *updateAll)
 			else
 				Shell_Toast("No more breakpoint", "markers available.");
 		}
-		else if (key == 'g') {
-			cpuCursorY = cpuTraceCol = 0;
-			if (Debugger_Editor()) {
-				push_pos();
-				sscanf(curline, "%04X", &curs);
+		else if (key == 'g' || key == 'm') {
+			if ((curs = Debugger_GetMemAddress()) != -1U) {
+				if (key == 'g')
+					push_pos();
 				cpuTraceCur = cpuTraceTop = curs;
 			}
 		}

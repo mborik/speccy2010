@@ -8,7 +8,7 @@
 
 #include "types.h"
 
-#define VERSION "1.2.3"
+#define VERSION "1.2.4"
 #define PATH_SIZE 0x80
 
 #ifdef __cplusplus

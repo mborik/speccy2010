@@ -42,6 +42,7 @@ void WriteByteAtCursor(word addr, byte data);
 word GetCPUState(byte reg);
 void SetCPUState(byte reg, word value);
 
+int  Debugger_GetMemAddress(int defaultValue = -1);
 void Debugger_UpdateTrace();
 void Debugger_UpdateDump(bool forceRedraw = false);
 void Debugger_UpdateDumpAttrs();

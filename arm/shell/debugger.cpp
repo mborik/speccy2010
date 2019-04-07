@@ -38,6 +38,12 @@ word regPanelEditBak;
 
 word regBuffer[15];
 
+byte specPortFe;
+byte specPort7ffd;
+byte specPort1ffd;
+bool specTrdos;
+word diskIfState;
+
 byte activeWindow = WIN_TRACE;
 bool activeRegPanel = false;
 
@@ -49,11 +55,6 @@ extern bool dumpWindowRightPane;
 //---------------------------------------------------------------------------------------
 dword CalculateAddrAtCursor(word addr)
 {
-	byte specPort7ffd = SystemBus_Read(0xc00017);
-	byte specPort1ffd = SystemBus_Read(0xc00023);
-	byte specTrdos    = SystemBus_Read(0xc00018);
-	byte diskIfState  = SystemBus_Read(0xc00042);
-
 	int page = 0;
 	if (addr < 0x4000) {
 		page = 0x100;
@@ -68,19 +69,19 @@ dword CalculateAddrAtCursor(word addr)
 					addr |= 0x2000;
 				}
 				else if ((diskIfState & 0x180))
-					page |= 3; // 0000-1FFF > DivMMC (E)EPROM (firmware in ROM3)
+					page = 0x103; // 0000-1FFF > DivMMC (E)EPROM (firmware in ROM3)
 			}
 			else if ((diskIfState & 0x180)) {
-				page = 0x40 | (diskIfState & 0x3f); // 2000-3FFF > DivMMC bank #00-#3F
-				addr = (addr & 0x1fff) | ((page & 1) << 13);
-				page >>= 1;
+				// 2000-3FFF > DivMMC bank #00-#3F
+				page = 0x20 | ((diskIfState & 0x3E) >> 1);
+				addr = (addr & 0x1fff) | ((diskIfState & 1) << 13);
 			}
 		}
 		else if (specConfig.specDiskIf == SpecDiskIf_MB02) {
 			if ((diskIfState & 0x40)) // 0000-3FFF > MB-02 SRAM bank #00-#1F
 				page = 0x20 | (diskIfState & 0x1f);
 			else if ((diskIfState & 0x80)) // 0000-3FFF > MB-02 EPROM (in ROM3 position)
-				page |= 3;
+				page = 0x103;
 		}
 		else if (specConfig.specMachine == SpecRom_Scorpion) {
 			if ((specPort1ffd & 2))
@@ -216,6 +217,12 @@ void Debugger_UpdateRegs(bool updateCpuState = false)
 	byte i, c;
 
 	if (updateCpuState) {
+		specPortFe   = SystemBus_Read(0xc00016) & 0xFF;
+		specPort7ffd = SystemBus_Read(0xc00017) & 0xFF;
+		specPort1ffd = SystemBus_Read(0xc00023) & 0xFF;
+		specTrdos    = SystemBus_Read(0xc00018) & 1;
+		diskIfState  = SystemBus_Read(0xc00042);
+
 		for (i = 0; i < 14; i++) {
 			reg = SystemBus_Read(0xc001f0 + i);
 
@@ -332,17 +339,12 @@ void Debugger_UpdateWatchers()
 		}
 	}
 	else {
-		byte specPortFe   = SystemBus_Read(0xc00016);
-		byte specPort7ffd = SystemBus_Read(0xc00017);
-		byte specPort1ffd = SystemBus_Read(0xc00023);
-		byte diskIfState  = SystemBus_Read(0xc00042) & 0xFF;
-
 		DrawHexNum(242, y + 1, specPortFe, 2, 'A');
 		DrawHexNum(242, y + 2, specPort7ffd, 2, 'A');
 		DrawHexNum(242, y + 3, specPort1ffd, 2, 'A');
 
 		if (advDiskIf)
-			DrawHexNum(242, y + 4, diskIfState, 2, 'A');
+			DrawHexNum(242, y + 4, (diskIfState & 0xFF), 2, 'A');
 	}
 }
 //---------------------------------------------------------------------------------------
@@ -350,8 +352,6 @@ void Debugger_UpdateSidePanel()
 {
 	word rom = CalculateAddrAtCursor(0x0000) >> 14;
 	byte ram = CalculateAddrAtCursor(0xC000) >> 14;
-	byte specPort7ffd = SystemBus_Read(0xC00017);
-	word diskIfState  = SystemBus_Read(0xc00042);
 
 	const char *romTxt = "ROM??";
 	switch (rom) {
@@ -569,10 +569,6 @@ void Shell_Debugger()
 			updateRegs = true;
 			updateWindow = true;
 		}
-		else if (key == K_ESC) {
-			DelayMs(100);
-			break;
-		}
 		else if (activeRegPanel && Debugger_TestKeyRegs(key))
 			updateRegs = true;
 		else if (Debugger_TestKeyTrace(key, &updateAll)) {
@@ -580,6 +576,10 @@ void Shell_Debugger()
 				break;
 
 			updateWindow = true;
+		}
+		else if (key == K_ESC) {
+			DelayMs(100);
+			break;
 		}
 	}
 
