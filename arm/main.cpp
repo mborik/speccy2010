@@ -661,7 +661,7 @@ void DivMMC_Routine()
 	bool isActiveNow = (divmmcStatus & 1) != 0;
 
 	if (isActiveNow && diskIfWasActive == 0) {
-		SystemBus_Write(0xc00040, lastCpuConfig | 0x80); // full speed
+		SystemBus_Write(0xc00040, (lastCpuConfig & 0x3F) | 0x80); // near full speed
 		GPIO_WriteBit(GPIO1, GPIO_Pin_10, Bit_RESET);
 	}
 
@@ -708,7 +708,7 @@ void MB02_Routine()
 	bool isActiveNow = (mb02Status & 1) != 0;
 
 	if (isActiveNow && diskIfWasActive == 0)
-		SystemBus_Write(0xc00040, lastCpuConfig | 0x80); // full speed
+		SystemBus_Write(0xc00040, (lastCpuConfig & 0x3F) | 0x80); // near full speed
 
 	while ((mb02Status & 1) != 0) {
 		bool divmmcWr = (mb02Status & 0x02) != 0;

@@ -74,7 +74,7 @@ F7 - execute single step
 F8 - trace to next instruction
 G - push cursor and goto spec.address
 Z - set PC to current cursor position
-M - set cursor to addess (also in dump)
+M - set cursor to address (also in dump)
 Ctrl+Shift+H/D/B - watch HL`/DE`/BC`
 Ctrl+H/D/B/X/Y/P
   - watch HL/DE/BC/IX/IY/PC or ports

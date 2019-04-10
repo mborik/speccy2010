@@ -4,6 +4,7 @@
 #include "../betadisk/fdc.h"
 
 int cpuStopNesting = 0;
+extern word lastCpuConfig;
 
 //---------------------------------------------------------------------------------------
 void CPU_Start()
@@ -77,6 +78,19 @@ void CPU_Reset_Seq()
 	DelayMs(10);
 	CPU_Reset(false);
 	DelayMs(100);
+}
+//---------------------------------------------------------------------------------------
+void CPU_Quick_Reset()
+{
+	CPU_Start();
+	SystemBus_Write(0xc00040, (lastCpuConfig & 0x3F) | 0x80); // full speed
+
+	CPU_Reset_Seq();
+
+	DelayMs(500);
+	SystemBus_Write(0xc00040, lastCpuConfig);
+
+	CPU_Stop();
 }
 //---------------------------------------------------------------------------------------
 void CPU_ModifyPC(word pc, byte istate)

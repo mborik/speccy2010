@@ -668,6 +668,64 @@ bool Shell_CreateDiskImage()
 		Shell_EmptyTrd(newName.String(), false);
 }
 //---------------------------------------------------------------------------------------
+void Shell_AutoloadESXDOS(char *fullName, bool disk = false)
+{
+	FILINFO fi;
+	*dstName = '\0';
+	char *ptr = dstName;
+
+	for (char *token = strchr(fullName, '/'); token;
+			*token = '/', token = strchr(++token, '/')) {
+
+		strcpy(ptr++, "/");
+		*token = '\0';
+		f_stat(fullName, &fi);
+		ptr += sprintf(ptr, fi.fname);
+	}
+
+	f_stat(fullName, &fi);
+	sprintf(ptr, "/%s", fi.fname);
+	strlwr(dstName);
+
+	__TRACE("Autoloading \"%s\" file in ESXDOS...\n", dstName);
+
+	CPU_Quick_Reset();
+
+	SystemBus_Write(0xc00020, 0); // use bank 0
+	SystemBus_Write(0xC00017, 0x10); //specPort7ffd
+
+	static const byte esxAutoloader[] = {
+		// tapein
+		0x00, 0x00, 0xf3, 0x31, 0x80, 0x5b, 0x06, 0x01,
+		0xcf, 0x8b, 0xdd, 0x21, 0x98, 0x5b, 0x3e, 0x24,
+		0x06, 0x00, 0xcf, 0x8b, 0xd8, 0xaf, 0xcf, 0x90,
+
+		// trd
+		0x00, 0x00, 0xf3, 0x31, 0x80, 0x5b, 0xdd, 0x21,
+		0x90, 0x5b, 0x3e, 0xfd, 0xcf, 0x90, 0xd8, 0xc7
+	};
+
+	int i = disk ? 0x18 : 0,
+		l = disk ? 0x28 : 0x18;
+	dword addr = 0x800000 | (5 << 13) | (0x1B80 >> 1);
+	for (; i < l; i += 2)
+		SystemBus_Write(addr++, ((word) esxAutoloader[i]) | (esxAutoloader[i + 1] << 8));
+
+	l = strlen(dstName) + 1;
+	for (i = 0; i < l; i += 2)
+		SystemBus_Write(addr++, ((word) dstName[i]) | (dstName[i + 1] << 8));
+
+	SystemBus_Write(0xc001f4, 0x5b82);
+	SystemBus_Write(0xc001fd, 1);
+
+	CPU_Start();
+	DelayUs(1);
+
+	// set PC again, for sure...
+	SystemBus_Write(0xc001f4, 0x5b82);
+	SystemBus_Write(0xc001ff, 0);
+}
+//---------------------------------------------------------------------------------------
 void Shell_ScreenBrowser(char *fullName)
 {
 	while (true) {
@@ -1115,7 +1173,12 @@ void Shell_Commander()
 					ext--;
 
 				if (strstr(".tap.tzx", ext)) {
-					Tape_SelectFile(fullName);
+					if (specConfig.specDiskIf == SpecDiskIf_DivMMC && strcmp(ext, ".tap") == 0)
+						Shell_AutoloadESXDOS(fullName);
+					else {
+						Tape_SelectFile(fullName);
+						Shell_Toast("Tape file mounted:", fr.name);
+					}
 					break;
 				}
 				else if (strcmp(ext, ".sna") == 0) {
@@ -1125,30 +1188,35 @@ void Shell_Commander()
 						break;
 				}
 				else if (strstr(".trd.fdi.scl", ext)) {
-					if (specConfig.specDiskIf != SpecDiskIf_Betadisk)
-						Shell_MessageBox("Mount disk error", "Cannot mount disk image", "to the current Disk IF");
+					if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
+						if (fdc_open_image(0, fullName)) {
+							floppy_disk_wp(0, &specConfig.specBdiImages[0].writeProtect);
 
-					else if (fdc_open_image(0, fullName)) {
-						floppy_disk_wp(0, &specConfig.specBdiImages[0].writeProtect);
+							strcpy(specConfig.specBdiImages[0].name, fullName);
+							SaveConfig();
 
-						strcpy(specConfig.specBdiImages[0].name, fullName);
-						SaveConfig();
+							CPU_Start();
+							CPU_Reset(true);
+							CPU_Reset(false);
+							CPU_Stop();
 
-						CPU_Start();
-						CPU_Reset(true);
-						CPU_Reset(false);
-						CPU_Stop();
+							CPU_ModifyPC(0, 0);
 
-						CPU_ModifyPC(0, 0);
+							SystemBus_Write(0xc00017, (1 << 4) |
+								(specConfig.specMachine == SpecRom_Classic48 ? (1 << 5) : 0));
 
-						SystemBus_Write(0xc00017, (1 << 4) |
-							(specConfig.specMachine == SpecRom_Classic48 ? (1 << 5) : 0));
-
-						SystemBus_Write(0xc00018, 0x0001);
+							SystemBus_Write(0xc00018, 0x0001);
+							break;
+						}
+						else
+							Shell_MessageBox("Mount disk error", "Invalid disk image");
+					}
+					else if (specConfig.specDiskIf == SpecDiskIf_DivMMC && strcmp(ext, ".trd") == 0) {
+						Shell_AutoloadESXDOS(fullName, true);
 						break;
 					}
 					else
-						Shell_MessageBox("Mount disk error", "Invalid disk image");
+						Shell_MessageBox("Mount disk error", "Cannot mount disk image", "to the current Disk IF");
 				}
 				else if (strstr(".mbd.mb2", ext)) {
 					if (specConfig.specDiskIf != SpecDiskIf_MB02)
