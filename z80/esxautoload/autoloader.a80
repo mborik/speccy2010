@@ -1,0 +1,61 @@
+		device	zxspectrum128
+
+		org	#8000
+
+ent
+;------------------------------------------------------------------------------
+	module tap
+		phase	#5b80
+
+working.sp:	dw	0
+start:		di
+		ld	sp,working.sp
+		ld	b,1	; 1 = in_close
+		rst	8
+		db	#8b	; M_TAPEIN
+		ld	ix,filename
+		ld	a,'$'
+		ld	b,0	; 0 = in_open
+		rst	8
+		db	#8b	; M_TAPEIN
+		ret	c
+		xor	a	; 0 = tape
+		rst	8
+		db	#90	; M_AUTOLOAD
+
+		align	2
+filename
+
+		display "TAP part length: ",/D,($-working.sp),"..."
+		dephase
+	endmodule
+
+;------------------------------------------------------------------------------
+	module trd
+		phase	#5b80
+
+working.sp:	dw	0
+start:		di
+		ld	sp,working.sp
+		ld	a,#60	; DEV_VIRTUAL
+		rst	8
+		db	#85	; M_DEINITDEVICE
+		ld	ix,filename
+		ld	a,#60	; DEV_VIRTUAL
+		ld	bc,'*'
+		rst	8
+		db	#80	; M_INITDEVICE
+		ret	c
+		ld	a,#fd	; FD = TR-DOS
+		rst	8
+		db	#90	; M_AUTOLOAD
+
+		align	2
+filename
+
+		display "TRD part length: ",/D,($-working.sp),"..."
+		dephase
+	endmodule
+
+
+		savebin "autoloader.bin",#8000,$-#8000

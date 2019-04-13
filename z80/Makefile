@@ -21,7 +21,7 @@ FNT_CLASSIC_DST = ../arm/shell/font0.h
 #------------------------------------------------------------------------------
 default: all
 
-all: bootlogo fonts snaploader bsdos mb02
+all: bootlogo fonts snaploader esxautoload bsdos mb02
 
 
 mb02: bsdos
@@ -34,6 +34,10 @@ bsdos: bsdos308s/bsdos308s.a80
 snaploader: snaploader/loader.a80
 	$(CD) snaploader; $(SJASMPLUS) loader.a80
 	$(BIN2H) snaploader/loader.bin "snapshotBootstrap" "SPEC_SNAPSHOT_BOOTSTRAP_H_INCLUDED" > snaploader/loader.h
+
+esxautoload: esxautoload/autoloader.a80
+	$(CD) esxautoload; $(SJASMPLUS) autoloader.a80
+	$(BIN2H) esxautoload/autoloader.bin "esxAutoloader" "SPEC_ESXDOS_AUTOLOADER_H_INCLUDED" > esxautoload/autoloader.h
 
 fonts: bin2h fntex
 	$(FNTEX) $(FNT_CLASSIC_SRC)
