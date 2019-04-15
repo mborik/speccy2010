@@ -235,123 +235,7 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 		}
 
 		key = GetKey();
-		if (key == K_ESC || key == K_F3 || key == K_F10)
-			break;
-		else if (key == K_F4 && fromTextView) {
-			DrawStr(52, 23, "", 34);
-			return false;
-		}
-		else if (key == K_TAB && editMode) {
-			rightPane = !rightPane;
-			lowNibble = false;
-		}
-		else if (key == K_UP) {
-			lowNibble = false;
-
-			if (editMode && cursor >= 8) {
-				cursor -= 8;
-				continue;
-			}
-
-			pos = max(pos - 8, 0);
-		}
-		else if (key == K_DOWN) {
-			lowNibble = false;
-
-			if (editMode &&
-				(cursor < (signed) fil.fsize || cursor < (VIEWER_BYTES - 8))) {
-
-				cursor += 8;
-
-				if ((pos + cursor) > fil.fsize)
-					cursor = fil.fsize - pos;
-				continue;
-			}
-			else if (fil.fsize < (signed) VIEWER_BYTES)
-				continue;
-
-			pos = min(pos + 8, maxPos);
-		}
-		else if (key == K_LEFT) {
-			if (editMode) {
-				lowNibble = false;
-
-				if (cursor > 0)
-					cursor--;
-				else {
-					pos = max(pos - 8, 0);
-					if (pos > 0)
-						cursor += 7;
-				}
-			}
-			else
-				pos = max(pos - VIEWER_BYTES, 0);
-		}
-		else if (key == K_RIGHT) {
-			if (editMode) {
-				lowNibble = false;
-
-				if (cursor < VIEWER_BYTES - 1)
-					cursor++;
-				else {
-					pos = min(pos + 8, maxPos);
-					if (pos < maxPos)
-						cursor -= 7;
-				}
-
-				if ((pos + cursor) > fil.fsize)
-					cursor = fil.fsize - pos;
-			}
-			else
-				pos = min(pos + VIEWER_BYTES, maxPos);
-		}
-		else if (key == K_PAGEUP) {
-			lowNibble = false;
-
-			if (editMode && pos == 0) {
-				cursor &= 7;
-				continue;
-			}
-
-			pos = max(pos - VIEWER_BYTES, 0);
-		}
-		else if (key == K_PAGEDOWN) {
-			lowNibble = false;
-
-			if (editMode && pos == maxPos) {
-				cursor = fil.fsize - pos;
-				continue;
-			}
-
-			pos = min(pos + VIEWER_BYTES, maxPos);
-		}
-		else if (key == K_HOME) {
-			lowNibble = false;
-
-			if (editMode && !(ReadKeyFlags() & fKeyCtrl)) {
-				cursor &= ~7;
-				continue;
-			}
-
-			pos = 0;
-		}
-		else if (key == K_END) {
-			lowNibble = false;
-
-			if (editMode) {
-				if (!(ReadKeyFlags() & fKeyCtrl)) {
-					cursor |= 7;
-					continue;
-				}
-				if (pos == maxPos) {
-					cursor = fil.fsize - pos;
-					continue;
-				}
-			}
-
-			pos = maxPos;
-		}
-		else if (key >= ' ' && editMode) {
+		if (ModComb(MOD_ALT_0 | MOD_CTRL_0) && key >= ' ' && editMode) {
 			if (!allowFileEdit) {
 				allowFileEdit = Shell_MessageBox("Direct File Access",
 					"You are about to modify contents",
@@ -395,6 +279,127 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 
 				f_write(&fil, &c, 1, &res);
 				lowNibble = !lowNibble;
+			}
+		}
+		else if (ModComb(MOD_ALT_0 | MOD_SHIFT_0) && (key == K_HOME || key == K_END)) {
+			if (key == K_HOME) {
+				lowNibble = false;
+
+				if (editMode && !ModComb(MOD_CTRL_1)) {
+					cursor &= ~7;
+					continue;
+				}
+
+				pos = 0;
+			}
+			else if (key == K_END) {
+				lowNibble = false;
+
+				if (editMode) {
+					if (!ModComb(MOD_CTRL_1)) {
+						cursor |= 7;
+						continue;
+					}
+					if (pos == maxPos) {
+						cursor = fil.fsize - pos;
+						continue;
+					}
+				}
+
+				pos = maxPos;
+			}
+		}
+		else if (ModComb(MOD_ALT_0 | MOD_CTRL_0 | MOD_SHIFT_0)) {
+			if (key == K_ESC || key == K_F3 || key == K_F10)
+				break;
+
+			else if (key == K_F4 && fromTextView) {
+				DrawStr(52, 23, "", 34);
+				return false;
+			}
+			else if (key == K_TAB && editMode) {
+				rightPane = !rightPane;
+				lowNibble = false;
+			}
+			else if (key == K_UP) {
+				lowNibble = false;
+
+				if (editMode && cursor >= 8) {
+					cursor -= 8;
+					continue;
+				}
+
+				pos = max(pos - 8, 0);
+			}
+			else if (key == K_DOWN) {
+				lowNibble = false;
+
+				if (editMode &&
+					(cursor < (signed) fil.fsize || cursor < (VIEWER_BYTES - 8))) {
+
+					cursor += 8;
+
+					if ((pos + cursor) > fil.fsize)
+						cursor = fil.fsize - pos;
+					continue;
+				}
+				else if (fil.fsize < (signed) VIEWER_BYTES)
+					continue;
+
+				pos = min(pos + 8, maxPos);
+			}
+			else if (key == K_LEFT) {
+				if (editMode) {
+					lowNibble = false;
+
+					if (cursor > 0)
+						cursor--;
+					else {
+						pos = max(pos - 8, 0);
+						if (pos > 0)
+							cursor += 7;
+					}
+				}
+				else
+					pos = max(pos - VIEWER_BYTES, 0);
+			}
+			else if (key == K_RIGHT) {
+				if (editMode) {
+					lowNibble = false;
+
+					if (cursor < VIEWER_BYTES - 1)
+						cursor++;
+					else {
+						pos = min(pos + 8, maxPos);
+						if (pos < maxPos)
+							cursor -= 7;
+					}
+
+					if ((pos + cursor) > fil.fsize)
+						cursor = fil.fsize - pos;
+				}
+				else
+					pos = min(pos + VIEWER_BYTES, maxPos);
+			}
+			else if (key == K_PAGEUP) {
+				lowNibble = false;
+
+				if (editMode && pos == 0) {
+					cursor &= 7;
+					continue;
+				}
+
+				pos = max(pos - VIEWER_BYTES, 0);
+			}
+			else if (key == K_PAGEDOWN) {
+				lowNibble = false;
+
+				if (editMode && pos == maxPos) {
+					cursor = fil.fsize - pos;
+					continue;
+				}
+
+				pos = min(pos + VIEWER_BYTES, maxPos);
 			}
 		}
 	}

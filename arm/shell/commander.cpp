@@ -343,7 +343,7 @@ bool Shell_Copy(const char *_name, bool move)
 {
 	CString name;
 
-	if ((ReadKeyFlags() & fKeyShift) != 0)
+	if (ModComb(MOD_SHIFT_1))
 		name = _name;
 	else
 		name = destinationPath;
@@ -908,8 +908,10 @@ void Shell_Commander()
 
 	while (true) {
 		byte key = GetKey();
-		char fullName[PATH_SIZE];
+		if (!ModComb(MOD_ALT_0 | MOD_CTRL_0))
+			continue;
 
+		char fullName[PATH_SIZE];
 		FRECORD fr;
 		Read(&fr, table_buffer, files_sel);
 

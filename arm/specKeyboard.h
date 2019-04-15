@@ -52,6 +52,13 @@ const word fKeyAlt = fKeyAltLeft | fKeyAltRight;
 const word fKeyCaps = (1 << 10);
 const word fKeyPCEmu = (1 << 11);
 
+const byte MOD_ALT_1 = 1;
+const byte MOD_ALT_0 = 2;
+const byte MOD_CTRL_1 = 4;
+const byte MOD_CTRL_0 = 8;
+const byte MOD_SHIFT_1 = 16;
+const byte MOD_SHIFT_0 = 32;
+
 const int KBD_OK = 2;
 
 extern int kbdInited;
@@ -62,6 +69,7 @@ extern CFifo joystick;
 
 //---------------------------------------------------------------------------------------
 word ReadKeyFlags();
+bool ModComb(byte mask);
 
 void ResetKeyboard();
 void UpdateKeyPort();

@@ -39,6 +39,28 @@ word ReadKeyFlags() {
 	return keyFlags;
 }
 //---------------------------------------------------------------------------------------
+bool ModComb(byte mask)
+{
+	bool resAlt = true, resCtrl = true, resShift = true;
+
+	if ((mask & MOD_ALT_1) && !(keyFlags & fKeyAlt))
+		resAlt = false;
+	else if ((mask & MOD_ALT_0) && (keyFlags & fKeyAlt))
+		resAlt = false;
+
+	if ((mask & MOD_CTRL_1) && !(keyFlags & fKeyCtrl))
+		resCtrl = false;
+	else if ((mask & MOD_CTRL_0) && (keyFlags & fKeyCtrl))
+		resCtrl = false;
+
+	if ((mask & MOD_SHIFT_1) && !(keyFlags & fKeyShift))
+		resShift = false;
+	else if ((mask & MOD_SHIFT_0) && (keyFlags & fKeyShift))
+		resShift = false;
+
+	return resAlt && resCtrl && resShift;
+}
+//---------------------------------------------------------------------------------------
 void UpdateKeyPort()
 {
 	byte *keyPortPtr = keyPort;
@@ -202,70 +224,85 @@ void DecodeKey(word keyCode, word keyFlags)
 {
 	bool flagKeyRelease = (keyFlags & fKeyRelease) != 0;
 	int videoMode = 0;
+
 	if (!flagKeyRelease) {
-		if ((keyFlags & fKeyAlt) != 0) {
-			switch (keyCode) {
-				case KEY_5:
-					videoMode++;
-				case KEY_4:
-					videoMode++;
-				case KEY_3:
-					videoMode++;
-				case KEY_2:
-					videoMode++;
-				case KEY_1:
-					specConfig.specVideoMode = videoMode;
-					Spectrum_UpdateConfig();
-					SaveConfig();
-					break;
+		if (ModComb(MOD_ALT_1 | MOD_SHIFT_0)) {
+			if (!(keyFlags & fKeyCtrl)) {
+				switch (keyCode) {
+					case KEY_5:
+						videoMode++;
+					case KEY_4:
+						videoMode++;
+					case KEY_3:
+						videoMode++;
+					case KEY_2:
+						videoMode++;
+					case KEY_1:
+						specConfig.specVideoMode = videoMode;
+						Spectrum_UpdateConfig();
+						SaveConfig();
+						break;
 
-				case KEY_F4:
-					SystemBus_Write(0xc00000, 0x00004);
-					break;
+					case KEY_F4:
+						SystemBus_Write(0xc00000, 0x00004);
+						break;
 
-				case KEY_F5:
-					CPU_Reset_Seq();
-					break;
+					case KEY_F5:
+						CPU_Reset_Seq();
+						break;
 
-				case KEY_F7:
-					Shell_SaveSnapshot();
-					break;
+					case KEY_F7:
+						Shell_SaveSnapshot();
+						break;
 
-				case KEY_F8: {
-					CPU_Stop();
+					case KEY_F8: {
+						CPU_Stop();
 
-					byte specPort7ffd = SystemBus_Read(0xc00017);
+						byte specPort7ffd = SystemBus_Read(0xc00017);
 
-					byte page = (specPort7ffd & (1 << 3)) != 0 ? 7 : 5;
-					dword addr = 0x800000 | (page << 13);
+						byte page = (specPort7ffd & (1 << 3)) != 0 ? 7 : 5;
+						dword addr = 0x800000 | (page << 13);
 
-					SystemBus_Write(0xc00020, 0); // use bank 0
+						SystemBus_Write(0xc00020, 0); // use bank 0
 
-					for (int i = 0x1800; i < 0x1b00; i += 2) {
-						SystemBus_Write(addr + (i >> 1), 0x3838);
+						for (int i = 0x1800; i < 0x1b00; i += 2) {
+							SystemBus_Write(addr + (i >> 1), 0x3838);
+						}
+
+						CPU_Start();
 					}
+					break;
 
-					CPU_Start();
+					case KEY_F9:
+						Shell_RomCfgMenu();
+						break;
+
+					case KEY_F12:
+						Shell_Debugger();
+						break;
 				}
-				break;
-
-				case KEY_F9:
-					Shell_RomCfgMenu();
-					break;
-
-				case KEY_F12:
-					Shell_Debugger();
-					break;
+			}
+			else {
+				int i = -1;
+				switch (keyCode) {
+					case KEY_F10:	i++;
+					case KEY_F9:	i++;
+					case KEY_F8:	i++;
+					case KEY_F7:	i++;
+					case KEY_F6:	i++;
+					case KEY_F5:	i++;
+					case KEY_F4:	i++;
+					case KEY_F3:	i++;
+					case KEY_F2:	i++;
+					case KEY_F1:	i++;
+						char snaName[0x10];
+						sniprintf(snaName, sizeof(snaName), "!slot_%.1d.sna", i);
+						SaveSnapshot(snaName);
+						break;
+				}
 			}
 		}
-		else if ((keyFlags & (fKeyAlt | fKeyCtrl)) != 0) {
-			if (keyCode >= KEY_F1 && keyCode <= KEY_F10) {
-				char snaName[0x10];
-				sniprintf(snaName, sizeof(snaName), "!slot_%.1d.sna", keyCode - KEY_F1);
-				SaveSnapshot(snaName);
-			}
-		}
-		else {
+		else if (ModComb(MOD_CTRL_0)) {
 			switch (keyCode) {
 				case KEY_PAUSE:
 					WaitKey();
@@ -581,11 +618,7 @@ bool ReadKey(word &_keyCode, word &_keyFlags)
 					if (keyCode == KEY_SCROLLOCK)
 						keyFlags = keyFlags ^ fKeyPCEmu;
 
-					if (!(keyFlags & fKeyPCEmu)) {
-						if (keyCode == KEY_HOME)
-							keyFlags = keyFlags ^ fKeyCaps;
-					}
-					else if (keyCode == KEY_BACKQUOTE)
+					if ((keyFlags & fKeyPCEmu) != 0 && keyCode == KEY_BACKQUOTE)
 						keyFlags = keyFlags ^ fKeyCaps;
 				}
 

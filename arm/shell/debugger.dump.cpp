@@ -20,6 +20,21 @@ extern bool activeRegPanel;
 extern byte watcherMode;
 extern bool allowROMAccess;
 //---------------------------------------------------------------------------------------
+bool Debugger_TestROMAccess(unsigned pos)
+{
+	if (pos < 0x4000 && !allowROMAccess) {
+		allowROMAccess = Shell_MessageBox("ROM Access",
+			"You are about to modify contents",
+			"of (EP)ROM directly in SD-RAM.",
+			"You have been warned! Sure?", MB_YESNO);
+
+		if (!allowROMAccess)
+			return true;
+	}
+
+	return false;
+}
+//---------------------------------------------------------------------------------------
 void Debugger_UpdateDump(bool forceRedraw)
 {
 	if (lastDumpTop != dumpTop || forceRedraw) {
@@ -104,7 +119,7 @@ bool Debugger_TestKeyDump(byte key, bool *updateAll)
 	bool isDump = (activeWindow == WIN_MEMDUMP);
 	int reg = -1;
 
-	if ((ReadKeyFlags() & fKeyCtrl) != 0) {
+	if (ModComb(MOD_ALT_0 | MOD_CTRL_1)) {
 		switch (key) {
 			case 'h':
 				reg = REG_HL;
@@ -152,48 +167,16 @@ bool Debugger_TestKeyDump(byte key, bool *updateAll)
 		unsigned top = (dumpTop < (0x10000 - page)) ? (dumpTop + 0x10000) : dumpTop;
 		unsigned pos = (dumpPos < (0x10000 - page)) ? (dumpPos + 0x10000) : dumpPos;
 
+		bool noMod = ModComb(MOD_ALT_0 | MOD_CTRL_0 | MOD_SHIFT_0);
+
 		if (reg > 0)
 			top = pos = GetCPUState(reg & 0xFF);
-		else if ((key == 'g' && (ReadKeyFlags() & fKeyCtrl) != 0) ||
-				(key == 'm' && (ReadKeyFlags() & fKeyCtrl) == 0)) {
 
-			if ((reg = Debugger_GetMemAddress(dumpTop)) >= 0)
-				top = pos = (unsigned) reg;
-			reg = -1;
-		}
-		else if (key == K_UP)
-			pos -= inc;
-		else if (key == K_DOWN)
-			pos += inc;
-		else if (key == K_LEFT)
-			pos--;
-		else if (key == K_RIGHT)
-			pos++;
-		else if (key == K_PAGEUP) {
-			pos -= page;
-			top -= page;
-		}
-		else if (key == K_PAGEDOWN) {
-			pos += page;
-			top += page;
-		}
-		else if (key == K_HOME)
-			pos &= ~(inc - 1);
-		else if (key == K_END)
-			pos |= (inc - 1);
-
-		else if (key >= ' ' && (ReadKeyFlags() & (fKeyCtrl | fKeyAlt)) == 0) {
-			if (dumpPos < 0x4000 && !allowROMAccess) {
-				allowROMAccess = Shell_MessageBox("ROM Access",
-					"You are about to modify contents",
-					"of (EP)ROM directly in SD-RAM.",
-					"You have been warned! Sure?", MB_YESNO);
-
-				if (!allowROMAccess)
-					return true;
-			}
-
+		else if (ModComb(MOD_ALT_0 | MOD_CTRL_0) && key >= ' ') {
 			if (dumpWindowAsciiMode || dumpWindowRightPane) {
+				if (Debugger_TestROMAccess(dumpPos))
+					return true;
+
 				WriteByteAtCursor(pos++, key);
 				*updateAll = true;
 			}
@@ -206,6 +189,9 @@ bool Debugger_TestKeyDump(byte key, bool *updateAll)
 					key -= ('a' - 10);
 				else
 					return false;
+
+				if (Debugger_TestROMAccess(dumpPos))
+					return true;
 
 				byte c = ReadByteAtCursor(pos);
 				if (lowNibble)
@@ -222,6 +208,34 @@ bool Debugger_TestKeyDump(byte key, bool *updateAll)
 				else
 					return (*updateAll = lowNibble = true);
 			}
+		}
+		else if (((ModComb(MOD_ALT_0 | MOD_CTRL_1 | MOD_SHIFT_0) && key == 'g') ||
+			(noMod && key == 'm')) && (reg = Debugger_GetMemAddress(dumpTop)) >= 0) {
+
+			top = pos = (unsigned) reg;
+		}
+		else if (noMod) {
+			if (key == K_UP)
+				pos -= inc;
+			else if (key == K_DOWN)
+				pos += inc;
+			else if (key == K_LEFT ||
+					(key == K_BACKSPACE && (dumpWindowAsciiMode || dumpWindowRightPane)))
+				pos--;
+			else if (key == K_RIGHT)
+				pos++;
+			else if (key == K_PAGEUP) {
+				pos -= page;
+				top -= page;
+			}
+			else if (key == K_PAGEDOWN) {
+				pos += page;
+				top += page;
+			}
+			else if (key == K_HOME)
+				pos &= ~(inc - 1);
+			else if (key == K_END)
+				pos |= (inc - 1);
 		}
 		else
 			return false;
