@@ -124,7 +124,6 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 {
 	static tm time;
 	static dword tickCounter = 0;
-	static byte testVideo = 0;
 
 	CPU_Stop();
 
@@ -284,10 +283,6 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 				}
 			}
 		}
-		else if (menu == mainMenu && key == K_F11) {
-			testVideo = (testVideo + 1) & 0x07;
-			SystemBus_Write(0xc00049, testVideo);
-		}
 		else if (menu == mainMenu && key == K_F5) {
 			hardReset = true;
 			break;
@@ -322,9 +317,6 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 	if (menu == mainMenu) {
 		if (mmLastMachineCfg != mmNewMachineCfg)
 			hardReset = true;
-
-		if (testVideo != 0)
-			SystemBus_Write(0xc00049, (testVideo = 0));
 	}
 
 	SaveConfig();

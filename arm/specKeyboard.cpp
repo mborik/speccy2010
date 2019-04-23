@@ -9,7 +9,6 @@
 #include "specKeyboard.h"
 #include "specKeyMap.h"
 #include "specConfig.h"
-#include "specSnapshot.h"
 #include "specTape.h"
 
 #include "shell/commander.h"
@@ -252,7 +251,7 @@ void DecodeKey(word keyCode, word keyFlags)
 						break;
 
 					case KEY_F7:
-						Shell_SaveSnapshot();
+						SaveSnapshotAs();
 						break;
 
 					case KEY_F8: {

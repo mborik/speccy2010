@@ -1,5 +1,6 @@
 #include "commander.h"
 #include "screen.h"
+#include "snapshot.h"
 #include "dialog.h"
 #include "viewer.h"
 #include "../system.h"
@@ -11,7 +12,6 @@
 #include "../specMB02.h"
 #include "../specConfig.h"
 #include "../specKeyboard.h"
-#include "../specSnapshot.h"
 #include "../specTape.h"
 
 
@@ -717,15 +717,7 @@ void Shell_AutoloadESXDOS(char *fullName, bool disk = false)
 	for (i = 0; i < l; i += 2)
 		SystemBus_Write(addr++, ((word) dstName[i]) | (dstName[i + 1] << 8));
 
-	SystemBus_Write(0xc001f4, 0x5b82);
-	SystemBus_Write(0xc001fd, 1);
-
-	CPU_Start();
-	DelayUs(1);
-
-	// set PC again, for sure...
-	SystemBus_Write(0xc001f4, 0x5b82);
-	SystemBus_Write(0xc001ff, 0);
+	CPU_ModifyPC(0x5b82, 1);
 }
 //---------------------------------------------------------------------------------------
 void Shell_ScreenBrowser(char *fullName)
@@ -1188,7 +1180,7 @@ void Shell_Commander()
 				else if (strcmp(ext, ".sna") == 0) {
 					sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s", fullName);
 
-					if (LoadSnapshot(fullName))
+					if (LoadSnapshot(fullName, fr.name))
 						break;
 				}
 				else if (strstr(".trd.fdi.scl", ext)) {

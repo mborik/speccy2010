@@ -206,8 +206,6 @@ architecture rtl of speccy2010_top is
 	signal ayymMode     : std_logic := '0';              -- 0: YM  | 1: AY
 	signal ayMode       : unsigned(2 downto 0) := "000"; -- 1: ABC | 2: ACB | 3: Mono
 
-	signal testVideo    : unsigned(7 downto 0) := x"00";
-
 	signal borderAttr   : std_logic_vector(2 downto 0);
 	signal speaker      : std_logic;
 
@@ -1429,8 +1427,6 @@ begin
 						elsif addressReg( 7 downto 0 ) = x"46" then
 							covoxMode  <= unsigned( ARM_AD(2 downto 0) );
 							dacMode    <= unsigned( ARM_AD(4 downto 3) );
-						elsif addressReg( 7 downto 0 ) = x"49" then
-							testVideo  <= unsigned( ARM_AD(7 downto 0) );
 
 						elsif addressReg( 7 downto 0 ) = x"50" then
 							counter20_en <= ARM_AD(0);
@@ -1542,7 +1538,7 @@ begin
 							ARM_AD <= std_logic_vector( counterMem( 31 downto 16 ) );
 
 						elsif addressReg( 7 downto 0 ) = x"f0" then
-							ARM_AD <= x"f004"; -- for firmware version >= 1.2.3
+							ARM_AD <= x"f124"; -- for firmware version >= 1.2.4
 
 						else
 							ARM_AD <= x"ffff";
@@ -1625,20 +1621,24 @@ begin
 
 				cpuHaltAck <= '0';
 
-			elsif cpuHaltAck = '0' and cpuRegisters(212) = '1' and cpuSaveInt7_prev = '0' then
+			elsif cpuHaltAck = '0' then
+				if cpuRegisters(212) = '0' and cpuSaveInt7_prev = '1' then
 
-				if cpuHaltReq = '1' then
-					cpuHaltAck <= '1';
-				end if;
-
-				for i in 0 to cpuBPMax loop
-
-					if ( cpuBP(i) = cpuBreakpointPC ) then
+					if cpuHaltReq = '1' then
 						cpuHaltAck <= '1';
 					end if;
 
-				end loop;
+				elsif cpuRegisters(212) = '1' and cpuSaveInt7_prev = '0' then
 
+					for i in 0 to cpuBPMax loop
+
+						if ( cpuBP(i) = cpuBreakpointPC ) then
+							cpuHaltAck <= '1';
+						end if;
+
+					end loop;
+
+				end if;
 			end if;
 
 			cpuBreakpointPC := unsigned( '1' & cpuRegisters( 79 downto 64 ) );
@@ -1759,7 +1759,7 @@ begin
 
 	ulaContendentMem <= '1' when cpuA( 15 downto 14 ) = "01" or ( cpuA( 15 downto 14 ) = "11" and specPort7ffd( 0 ) = '1' ) else '0';
 
-	ulaWait <= '1' when ( cpuTurbo = 0 and syncMode <= 1 ) and
+	ulaWait <= '1' when ( cpuTurbo = 0 and ( syncMode = 0 or syncMode = 1 ) ) and
 		paper = '0' and
 		(
 			( cpuMREQ = '0' and ulaContendentMem = '1' and ulaWaitMem = '1' and ulaWaitCancel = '0' )
@@ -1895,9 +1895,14 @@ begin
 						specIntCounter <= x"00000000";
 						cpuIntSkip := '0';
 					end if;
+				elsif syncMode = 1 then
+					if vCnt = 248 and hCnt = 8 then
+						cpuINT <= cpuIntSkip;
+						specIntCounter <= x"00000000";
+						cpuIntSkip := '0';
+					end if;
 				else
-					if vCnt = 248 and hCnt = 444 then
-					--if vCnt = 248 and hCnt = 442 then
+					if vCnt = 248 and hCnt = 2 then
 						cpuINT <= cpuIntSkip;
 						specIntCounter <= x"00000000";
 						cpuIntSkip := '0';
@@ -1952,7 +1957,7 @@ begin
 
 				end if;
 
-				if vidReq = '1' and memReq2 = '0' and ( ( videoMode = x"04" and vidReadPos(0) = '1' ) or cpuCLK_nowait_prev = '1' ) then
+				if vidReq = '1' and memReq2 = '0' and ( ( videoMode = 4 and vidReadPos(0) = '1' ) or cpuCLK_nowait_prev = '1' ) then
 
 					memWr2 <= '0';
 					memReq2 <= '1';
@@ -2003,16 +2008,16 @@ begin
 
 			end if;
 
-			if syncMode >= 2 or cpuTurbo /= 0 then
-				vidReqUla := '0';
-			else
+			if cpuTurbo = 0 and ( syncMode = 0 or syncMode = 1 ) then
 				vidReqUla := '1';
+			else
+				vidReqUla := '0';
 			end if;
 
 			if vid_mode_arm = '1' then
-				videoPage  := armVideoPage( 10 downto 0 );
+				videoPage := armVideoPage( 10 downto 0 );
 			else
-				videoPage  := "000" & vramPage;
+				videoPage := "000" & vramPage;
 			end if;
 
 			specPortFF <= portFfTemp;
@@ -2033,7 +2038,7 @@ begin
 
 	begin
 
-		if sysclk'event and sysclk = '1' and clk7m = '1' then
+		if sysclk'event and sysclk = '0' and clk7m = '1' then
 			if ChrC_Cnt = 7 then
 
 				if Hor_Cnt(0) = '0' then
@@ -2350,41 +2355,14 @@ begin
 	begin
 		if sysclk'event and sysclk = '1' then
 			if clk7m = '1' then
-				if testVideo = 0 then
-					if specY = '0' then
-
-						rgbR <= specR & "000000";
-						rgbG <= specG & "000000";
-						rgbB <= specB & "000000";
-
-					else
-
-						rgbR <= specR & specR & specR & specR;
-						rgbG <= specG & specG & specG & specG;
-						rgbB <= specB & specB & specB & specB;
-
-					end if;
-
+				if specY = '0' then
+					rgbR <= specR & "000000";
+					rgbG <= specG & "000000";
+					rgbB <= specB & "000000";
 				else
-
-					rgbR <= x"00";
-					rgbG <= x"00";
-					rgbB <= x"00";
-
-					if Paper = '0' then
-
-						if testVideo( 0 ) = '1' then rgbB <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
-						if testVideo( 1 ) = '1' then rgbR <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
-						if testVideo( 2 ) = '1' then rgbG <= std_logic_vector( hCnt( 7 downto 0 ) ); end if;
-
-					elsif Blank_r = '1' and ( hCnt(3) xor vCnt(3) ) = '1' then
-
-						rgbR <= x"FF";
-						rgbG <= x"FF";
-						rgbB <= x"FF";
-
-					end if;
-
+					rgbR <= specR & specR & specR & specR;
+					rgbG <= specG & specG & specG & specG;
+					rgbB <= specB & specB & specB & specB;
 				end if;
 			end if;
 

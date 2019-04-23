@@ -93,9 +93,10 @@ void CPU_Quick_Reset()
 	CPU_Stop();
 }
 //---------------------------------------------------------------------------------------
-void CPU_ModifyPC(word pc, byte istate)
+void CPU_ModifyPC(word pc, byte istate, bool stopped)
 {
-	CPU_Stop();
+	if (!stopped)
+		CPU_Stop();
 
 	SystemBus_Write(0xc001f4, pc);
 	DelayUs(1);
@@ -103,8 +104,9 @@ void CPU_ModifyPC(word pc, byte istate)
 
 	DelayUs(1);
 	SystemBus_Write(0xc00000, 0x0001);
-
-	CPU_Start();
 	SystemBus_Write(0xc001ff, 0);
+
+	if (!stopped)
+		CPU_Start();
 }
 //---------------------------------------------------------------------------------------

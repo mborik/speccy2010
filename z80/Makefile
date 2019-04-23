@@ -21,7 +21,7 @@ FNT_CLASSIC_DST = ../arm/shell/font0.h
 #------------------------------------------------------------------------------
 default: all
 
-all: bootlogo fonts snaploader esxautoload bsdos mb02
+all: bootlogo fonts esxautoload bsdos mb02
 
 
 mb02: bsdos
@@ -30,10 +30,6 @@ mb02: bsdos
 bsdos: bsdos308s/bsdos308s.a80
 	$(CD) bsdos308s; $(SJASMPLUS) --lst=bsdos308s.lst bsdos308s.a80; \
 	$(CAT) Xch140x1.bin bsdos308s.bin > bsdos308s.rom
-
-snaploader: snaploader/loader.a80
-	$(CD) snaploader; $(SJASMPLUS) loader.a80
-	$(BIN2H) snaploader/loader.bin "snapshotBootstrap" "SPEC_SNAPSHOT_BOOTSTRAP_H_INCLUDED" > snaploader/loader.h
 
 esxautoload: esxautoload/autoloader.a80
 	$(CD) esxautoload; $(SJASMPLUS) autoloader.a80
@@ -60,8 +56,8 @@ clean:
 	@$(RM) \
 		$(BOOTLOGO_SRC).bin \
 		$(FNT_CLASSIC_SRC).bin \
-		snaploader/loader.bin \
-		snaploader/loader.h \
+		esxautoload/autoloader.bin \
+		esxautoload/autoloader.h \
 		bsdos308s/bsdos308s.lst \
 		bsdos308s/bsdos308s.bin \
 		bsdos308s/bsdos308s.rom \
@@ -71,5 +67,5 @@ clean:
 distclean: clean
 	$(RM) $(BIN2H) $(FNTEX) $(SCRPACK)
 
-.PHONY: bin2h fntex scrpack snaploader bsdos clean distclean
+.PHONY: bin2h fntex scrpack esxautoload bsdos clean distclean
 .SUFFIXES: .c .a80

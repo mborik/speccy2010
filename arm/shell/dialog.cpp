@@ -236,7 +236,7 @@ void Shell_ProgressBar(const char *title, const char *str, byte attr)
 
 	Shell_MessageBox(title, str, progressBarBuffer, "", MB_PROGRESS, attr);
 
-	for (i = 0; i < 24; i++)
+	for (i = 0; i < PROGRESSBAR_SIZE; i++)
 		progressBarBuffer[i]++;
 }
 //---------------------------------------------------------------------------------------

@@ -11,6 +11,6 @@ void CPU_NMI();
 void CPU_Reset(bool res);
 void CPU_Reset_Seq();
 void CPU_Quick_Reset();
-void CPU_ModifyPC(word pc, byte istate);
+void CPU_ModifyPC(word pc, byte istate, bool stopped = false);
 
 #endif

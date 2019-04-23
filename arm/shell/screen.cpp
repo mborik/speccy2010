@@ -179,7 +179,7 @@ void DrawAttr(byte x, byte y, byte attr, int w, bool incent)
 
 		if (incent && mod > 4) {
 			col++;
-			w -= mod;
+			w -= (8 - mod);
 		}
 
 		dword address = VIDEO_PAGE_PTR + 0x1800 + col + y * 32;
