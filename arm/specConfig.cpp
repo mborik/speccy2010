@@ -23,7 +23,7 @@ const CParameter iniParameters[] = {
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Joystick 2", "Kempston|Sinclair I|Sinclair II|Cursor|QAOPM", &specConfig.specJoyMode2),
 	CParameter(PTYPE_INT,  PGRP_GENERAL, "Mouse Sensitivity", "1|6|1", &specConfig.specMouseSensitivity),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Swap mouse buttons", "Off|On", &specConfig.specMouseSwap),
-	CParameter(PTYPE_LIST, PGRP_GENERAL, "Font", "Classic|Bold", &specConfig.specFont),
+	CParameter(PTYPE_LIST, PGRP_GENERAL, "Font", "Thin|Bold", &specConfig.specFont),
 
 	CParameter(PTYPE_LIST,   PGRP_TRDOS, "BDI mode", "Slow|Fast", &specConfig.specBdiMode),
 	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk A", (char *) sizeof(specConfig.specBdiImages[0].name), specConfig.specBdiImages[0].name),

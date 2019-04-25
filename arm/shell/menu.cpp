@@ -35,7 +35,9 @@ CMenuItem mainMenu[] = {
 
 	CMenuItem(  8, 17, "Video mode:", GetParam(iniParameters, "Video mode", PGRP_GENERAL)),
 	CMenuItem(  8, 18, "Video aspect ratio:", GetParam(iniParameters, "Video aspect ratio", PGRP_GENERAL)),
-	CMenuItem(  8, 19, "TV Interlace emulation:", GetParam(iniParameters, "Video interlace", PGRP_GENERAL))
+	CMenuItem(  8, 19, "TV Interlace emulation:", GetParam(iniParameters, "Video interlace", PGRP_GENERAL)),
+
+	CMenuItem(190, 19, "Font:", GetParam(iniParameters, "Font", PGRP_GENERAL))
 };
 //---------------------------------------------------------------------------------------
 CMenuItem trdosDisksMenu[] = {

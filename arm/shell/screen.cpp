@@ -1,5 +1,6 @@
 #include "screen.h"
 #include "font0.h"
+#include "font1.h"
 #include "logo.h"
 
 #include "../system.h"
@@ -132,7 +133,14 @@ void DrawChar(byte x, byte y, char c, bool over, bool inv)
 	word copy;
 
 	dword address = VIDEO_PAGE_PTR + (col + (y & 0x07) * 32 + (y & 0x18) * 256);
-	const byte *tablePos = &shellFont0[(byte) c * 8];
+
+	const byte *charTable = shellFont0;
+	if (specConfig.specFont == 1 && c >= '\x20' && c <= '\xA8') {
+		charTable = shellFont1;
+		c -= 0x20;
+	}
+
+	const byte *tablePos = &charTable[(byte) c * 8];
 
 	for (byte i = 0; i < 8; i++) {
 		data = (*tablePos++) << rot;
@@ -168,7 +176,17 @@ void DrawChar(byte x, byte y, char c, bool over, bool inv)
 //---------------------------------------------------------------------------------------
 void DrawSaveChar(byte x, byte y, byte c, bool over, bool inv)
 {
-	DrawChar(x, y, (c < 0x20) ? '\7' : ((c >= 0xB0) ? '\11' : (char) c), over, inv);
+	char ch = (char) c;
+	if (c >= 0xA0)
+		ch = (char) (c - 0x80);
+	else if (c < 0x20 || c >= 0x80)
+		ch = '\7'; // middle-dot
+	if (ch == '\x7f')
+		ch = '\11'; // square
+	if (c >= 0x80)
+		inv = !inv;
+
+	DrawChar(x, y, ch, over, inv);
 }
 //---------------------------------------------------------------------------------------
 void DrawAttr(byte x, byte y, byte attr, int w, bool incent)

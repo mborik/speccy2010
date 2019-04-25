@@ -18,6 +18,9 @@ BOOTLOGO_DST = ../arm/shell/logo.h
 FNT_CLASSIC_SRC = fonts/classic.fnt
 FNT_CLASSIC_DST = ../arm/shell/font0.h
 
+FNT_BOLD_SRC = fonts/bold.fnt
+FNT_BOLD_DST = ../arm/shell/font1.h
+
 #------------------------------------------------------------------------------
 default: all
 
@@ -38,6 +41,8 @@ esxautoload: esxautoload/autoloader.a80
 fonts: bin2h fntex
 	$(FNTEX) $(FNT_CLASSIC_SRC)
 	$(BIN2H) "$(FNT_CLASSIC_SRC).bin" "shellFont0" "SHELL_FONT0_H_INCLUDED" > $(FNT_CLASSIC_DST)
+	$(FNTEX) $(FNT_BOLD_SRC)
+	$(BIN2H) "$(FNT_BOLD_SRC).bin" "shellFont1" "SHELL_FONT1_H_INCLUDED" > $(FNT_BOLD_DST)
 
 bootlogo: bin2h scrpack
 	$(SCRPACK) $(BOOTLOGO_SRC)
@@ -56,6 +61,7 @@ clean:
 	@$(RM) \
 		$(BOOTLOGO_SRC).bin \
 		$(FNT_CLASSIC_SRC).bin \
+		$(FNT_BOLD_SRC).bin \
 		esxautoload/autoloader.bin \
 		esxautoload/autoloader.h \
 		bsdos308s/bsdos308s.lst \
