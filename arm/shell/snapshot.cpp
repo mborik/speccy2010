@@ -42,15 +42,15 @@ void IncrementName(char *name)
 
 const char *UpdateSnaName()
 {
-	dstName[0] = '\0';
+	*dstName = '\0';
 
-	if (specConfig.snaName[0] != 0) {
-		if (specConfig.snaName[0] == '/')
+	if (*specConfig.snaName != '\0') {
+		if (*specConfig.snaName == '/')
 			sniprintf(dstName, sizeof(dstName), "%s", specConfig.snaName + 1);
 		else
 			sniprintf(dstName, sizeof(dstName), "%s%s", get_current_dir(), specConfig.snaName);
 
-		while (dstName[0] != 0 && FileExists(dstName)) {
+		while (*dstName != '\0' && FileExists(dstName)) {
 			IncrementName(dstName);
 			IncrementName(specConfig.snaName);
 		}
@@ -162,7 +162,7 @@ bool LoadSnapshot(const char *fileName, const char *title)
 		LoadPage(&snaFile, specPort7ffd & 0x07);
 
 		if (snaFile.fsize > SNA_48K_LENGTH) {
-			f_lseek(&snaFile, 0xC01F);
+			f_lseek(&snaFile, SNA_48K_LENGTH + 4);
 
 			for (byte page = 0; page < 8; page++) {
 				if (page != 0x05 && page != 0x02 && page != (specPort7ffd & 0x07))
@@ -193,23 +193,32 @@ bool LoadSnapshot(const char *fileName, const char *title)
 		SystemBus_Write(0xc00017, specPort7ffd);
 		SystemBus_Write(0xc00018, specTrdosFlag & 1);
 
-		RegLoad(REG_IR,  0x00, 0x14);
+		RegLoad(REG_IR,  0x14, 0x00);
 		RegLoad(REG_HL_, 0x02, 0x01);
 		RegLoad(REG_DE_, 0x04, 0x03);
 		RegLoad(REG_BC_, 0x06, 0x05);
-		RegLoad(REG_AF_, 0x08, 0x07);
+		RegLoad(REG_AF_, 0x07, 0x08);
+
+		DelayUs(1);
+		SystemBus_Write(0xc001ff, 0);
+
 		RegLoad(REG_HL,  0x0A, 0x09);
 		RegLoad(REG_DE,  0x0C, 0x0B);
 		RegLoad(REG_BC,  0x0E, 0x0D);
 		RegLoad(REG_IY,  0x10, 0x0F);
 		RegLoad(REG_IX,  0x12, 0x11);
-		RegLoad(REG_AF,  0x16, 0x15);
+		RegLoad(REG_AF,  0x15, 0x16);
 		RegLoad(REG_SP,  0x18, 0x17);
 
+		DelayUs(1);
+		SystemBus_Write(0xc001ff, 0);
 		SystemBus_Write(0xc00021, 0);
 		SystemBus_Write(0xc00022, 0);
 
-		CPU_ModifyPC(specPc, (header[0x19] & 0x03) | 0x04 | ((header[0x13] & 0x04) << 1), stopped);
+		CPU_ModifyPC(specPc,
+			((header[0x19] & 0x03) | (header[0x13] & 0x04) |
+			((header[0x13] & 0x04) << 1)), stopped);
+
 		result = true;
 	}
 
@@ -224,16 +233,16 @@ void SaveSnapshot(const char *name)
 	if (!stopped)
 		CPU_Stop();
 
-	dstName[0] = '\0';
-	if (name != NULL && name[0] != '\0') {
-		if (name[0] == '/')
+	*dstName = '\0';
+	if (name != NULL && *name != '\0') {
+		if (*name == '/')
 			sniprintf(dstName, sizeof(dstName), "%s", name + 1);
 		else
 			sniprintf(dstName, sizeof(dstName), "%s%s", get_current_dir(), name);
 	}
 	else {
 		sniprintf(dstName, sizeof(dstName), "%sshot0000.sna", get_current_dir());
-		while (dstName[0] != '\0' && FileExists(dstName))
+		while (*dstName != '\0' && FileExists(dstName))
 			IncrementName(dstName);
 	}
 
@@ -284,10 +293,10 @@ void SaveSnapshot(const char *name)
 		RegStore(REG_PC,  0x1C, 0x1B);
 
 		data = SystemBus_Read(0xc001f0 + REG_IM);
-		header[0x13] = (data & 0x08) >> 1;
-		header[0x19] = (data & 0x03);
-		header[0x1A] = specPortFe & 0x07;
-		header[0x1D] = specPort7ffd & 0x1F;
+		header[0x13] = data & 0x04;
+		header[0x19] = data & 0x03;
+		header[0x1A] = specPortFe & 7;
+		header[0x1D] = specPort7ffd;
 		header[0x1E] = specTrdosFlag & 1;
 
 		f_write(&snaFile, header, 0x1B, &res);
@@ -337,7 +346,7 @@ void SaveSnapshotAs()
 	SystemBus_Write(0xc00022, 0x8000 | (specPortFe & 0x07)); // Enable shell border
 
 	CString name = UpdateSnaName();
-	bool result = Shell_InputBox("Save snapshot", "Enter name :", name);
+	bool result = Shell_InputBox("Save snapshot", "Enter name:", name);
 
 	SystemBus_Write(0xc00021, 0); //armVideoPage
 	SystemBus_Write(0xc00022, 0); //armBorder

@@ -1016,8 +1016,8 @@ void Shell_Commander()
 					if (imgValid) {
 						char successMsg[2][36];
 
-						make_short_name(successMsg[0], 36, fr.name);
-						sniprintf(successMsg[1], 36, "mounted into %s drive...", mountPoint);
+						make_short_name(successMsg[0], 35, fr.name);
+						sniprintf(successMsg[1], 35, "mounted into %s drive...", mountPoint);
 
 						Shell_Toast(successMsg[0], successMsg[1]);
 					}
