@@ -15,6 +15,7 @@
 #include "shell/debugger.h"
 #include "shell/menu.h"
 #include "shell/snapshot.h"
+#include "shell/viewer.h"
 
 int kbdInited = 0;
 int kbdResetTimer = 0;
@@ -222,32 +223,38 @@ void DecodeKeySpec(word keyCode, word keyFlags)
 void DecodeKey(word keyCode, word keyFlags)
 {
 	bool flagKeyRelease = (keyFlags & fKeyRelease) != 0;
-	int videoMode = 0;
 
 	if (!flagKeyRelease) {
 		if (ModComb(MOD_ALT_1 | MOD_SHIFT_0)) {
+			int i = -1;
+
 			if (!(keyFlags & fKeyCtrl)) {
 				switch (keyCode) {
-					case KEY_5:
-						videoMode++;
-					case KEY_4:
-						videoMode++;
-					case KEY_3:
-						videoMode++;
-					case KEY_2:
-						videoMode++;
-					case KEY_1:
-						specConfig.specVideoMode = videoMode;
+					case KEY_5: 	i++;
+					case KEY_4: 	i++;
+					case KEY_3: 	i++;
+					case KEY_2: 	i++;
+					case KEY_1: 	i++;
+						specConfig.specVideoMode = i;
 						Spectrum_UpdateConfig();
 						SaveConfig();
+						ResetKeyboard();
 						break;
 
-					case KEY_F4:
-						SystemBus_Write(0xc00000, 0x00004);
+					case KEY_F4: 	i++;
+					case KEY_F3: 	i++;
+					case KEY_F2: 	i++;
+					case KEY_F1: 	i++;
+						specConfig.specTurbo = i;
+						Spectrum_UpdateConfig();
 						break;
 
 					case KEY_F5:
 						CPU_Reset_Seq();
+						break;
+
+					case KEY_F6:
+						LoadSnapshotName();
 						break;
 
 					case KEY_F7:
@@ -276,13 +283,16 @@ void DecodeKey(word keyCode, word keyFlags)
 						Shell_RomCfgMenu();
 						break;
 
+					case KEY_F11:
+						SystemBus_Write(0xc00000, 0x00004);
+						break;
+
 					case KEY_F12:
 						Shell_Debugger();
 						break;
 				}
 			}
 			else {
-				int i = -1;
 				switch (keyCode) {
 					case KEY_F10:	i++;
 					case KEY_F9:	i++;
@@ -308,23 +318,7 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_F1:
-					specConfig.specTurbo = specConfig.specTurbo ? 0 : 3;
-					Spectrum_UpdateConfig();
-					break;
-
-				case KEY_F2:
-					specConfig.specTurbo = 1;
-					Spectrum_UpdateConfig();
-					break;
-
-				case KEY_F3:
-					specConfig.specTurbo = 2;
-					Spectrum_UpdateConfig();
-					break;
-
-				case KEY_F4:
-					specConfig.specTurbo = 3;
-					Spectrum_UpdateConfig();
+					Shell_HelpViewer(true);
 					break;
 
 				case KEY_F5:
@@ -337,7 +331,7 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_F7:
-					SaveSnapshot(UpdateSnaName());
+					SaveSnapshot();
 					break;
 
 				case KEY_F9:

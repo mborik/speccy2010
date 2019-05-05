@@ -233,8 +233,11 @@ void SaveSnapshot(const char *name)
 	if (!stopped)
 		CPU_Stop();
 
+	if (name == NULL)
+		name = UpdateSnaName();
+
 	*dstName = '\0';
-	if (name != NULL && *name != '\0') {
+	if (*name != '\0') {
 		if (*name == '/')
 			sniprintf(dstName, sizeof(dstName), "%s", name + 1);
 		else
@@ -322,9 +325,56 @@ void SaveSnapshot(const char *name)
 		CPU_Start();
 }
 //---------------------------------------------------------------------------------------
+void LoadSnapshotName(bool showScreen)
+{
+	bool stopped = CPU_Stopped();
+	if (!stopped)
+		CPU_Stop();
+
+	if (showScreen) {
+		SystemBus_Write(0xc00020, 0); // use bank 0
+
+		byte specPortFe = SystemBus_Read(0xc00016);
+		byte specPort7ffd = SystemBus_Read(0xc00017);
+
+		byte page = (specPort7ffd & (1 << 3)) != 0 ? 7 : 5;
+
+		dword src = 0x800000 | (page << 13);
+		dword dst = 0x800000 | (VIDEO_PAGE << 13);
+
+		word data;
+		for (int i = 0x0000; i < 0x1b00; i += 2) {
+			data = SystemBus_Read(src++);
+			SystemBus_Write(dst++, data);
+		}
+
+		SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
+		SystemBus_Write(0xc00022, 0x8000 | (specPortFe & 0x07)); // Enable shell border
+	}
+
+	CString name = (const char *) specConfig.snaName;
+	bool result = Shell_InputBox("Load snapshot", "Enter filename:", name);
+
+	if (result) {
+		sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "%s", name.String());
+		LoadSnapshot((const char *) specConfig.snaName, (const char *) specConfig.snaName);
+	}
+
+	if (showScreen) {
+		SystemBus_Write(0xc00021, 0); //armVideoPage
+		SystemBus_Write(0xc00022, 0); //armBorder
+	}
+
+	if (!stopped)
+		CPU_Start();
+}
+//---------------------------------------------------------------------------------------
 void SaveSnapshotAs()
 {
-	CPU_Stop();
+	bool stopped = CPU_Stopped();
+	if (!stopped)
+		CPU_Stop();
+
 	SystemBus_Write(0xc00020, 0); // use bank 0
 
 	byte specPortFe = SystemBus_Read(0xc00016);
@@ -336,7 +386,6 @@ void SaveSnapshotAs()
 	dword dst = 0x800000 | (VIDEO_PAGE << 13);
 
 	word data;
-
 	for (int i = 0x0000; i < 0x1b00; i += 2) {
 		data = SystemBus_Read(src++);
 		SystemBus_Write(dst++, data);
@@ -346,7 +395,7 @@ void SaveSnapshotAs()
 	SystemBus_Write(0xc00022, 0x8000 | (specPortFe & 0x07)); // Enable shell border
 
 	CString name = (const char *) UpdateSnaName();
-	bool result = Shell_InputBox("Save snapshot", "Enter name:", name);
+	bool result = Shell_InputBox("Save snapshot", "Enter filename:", name);
 
 	SystemBus_Write(0xc00021, 0); //armVideoPage
 	SystemBus_Write(0xc00022, 0); //armBorder
@@ -356,6 +405,7 @@ void SaveSnapshotAs()
 		SaveSnapshot(specConfig.snaName);
 	}
 
-	CPU_Start();
+	if (!stopped)
+		CPU_Start();
 }
 //---------------------------------------------------------------------------------------

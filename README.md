@@ -1,7 +1,10 @@
 # Speccy2010
 
 - **Speccy2010** is FPGA development board built for the implementation of various gaming computers (but originally focused on **ZX Spectrum and its clones**).
-- This project is **next iteration of the firmware** primarily aimed on implementation of various disk interfaces which was common in Central European region. [DivMMC](https://spectrumforeveryone.com/2017/04/history-esxdos-divmmc-divmmc-enjoy/) interface and objectively most advanced disk system [MB-02](http://www.benophetinternet.nl/hobby/mb02/) has been already implemeted in addition to build-it Betadisk interface.
+- This project is **next iteration of the firmware** primarily aimed on implementation of various disk interfaces which was common in Central European region. [DivMMC](https://spectrumforeveryone.com/2017/04/history-esxdos-divmmc-divmmc-enjoy/) interface and objectively most advanced disk system [MB-02](https://z00m.speccy.cz/?file=mb-02) has been already implemeted in addition to build-it Betadisk interface.
+- It brings you an improved **File Manager** which look like old good DOS commanders and let you to autoload snapshots, TAPs or disk images into the current machine configuration. Provides enhanced capabilities when the [ESXDOS](http://www.esxdos.org) is loaded into DivMMC to autoload TAP and TRD files directly, without accessing NMI menu.
+- It also includes a **full-featured debugger** built over the emulation core.
+- More info how to control this Speccy2010 firmware you can find [in wiki](https://github.com/mborik/speccy2010/wiki).
 
 ### Harware Key Features:
 * FPGA: EP2C8Q208C8N
@@ -22,7 +25,7 @@
   - **ZX Spectrum 48k**
   - **ZX Spectrum 128k**
   - **Pentagon** 128k/512k/1024k
-  - **Scorpion** 256 modes
+  - **Scorpion** 256k
 * Disk interfaces
   - **Betadisk** (real floppy disk controller emulation, supported TRD, SCL and FDI disk images)
   - **DivMMC** (basically [DivIDE](https://divide.speccy.cz/files/pgm_model.txt) control register and memory model with all 64 x 8kB SRAM pages)
@@ -38,6 +41,19 @@
 * Real-Time Clock (read-only)
   - [Gluk specification](http://bit.do/glukrtc)
   - MB-02 specification (ports `#0n03`, n = 0..F)
+
+## Acknowledgements:
+* **Syd** - thank you for bringing this project to life!
+* **poopisan** & **axc** - former improvements into FPGA core
+* **z00m** & **ikon** - undying support, beta-testing and production of a new batches
+* **RomBor** - support while my first steps in VHDL when DivMMC has been implemented
+* **Busy** - intensive support while MB-02 implementation and customizing BS-DOS
+* **ub880d** - improvements, suggestions and support while ESXDOS autoloader implementation
+* **lordcoxis** - ESXDOS support and access to API documentation
+* **Akio** - supply of stylish bold 6x8 font
+* **azesmbog** - snapshot testing and timing suggestions
+* **Sorgelig** - inspiration from his ULA implementation and timings
+
 
 ## Toolchain:
 

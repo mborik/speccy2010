@@ -236,6 +236,8 @@ bool Debugger_TestKeyDump(byte key, bool *updateAll)
 				pos &= ~(inc - 1);
 			else if (key == K_END)
 				pos |= (inc - 1);
+			else
+				return false;
 		}
 		else
 			return false;

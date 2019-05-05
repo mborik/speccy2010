@@ -1,5 +1,6 @@
 #include "debugger.h"
 #include "screen.h"
+#include "snapshot.h"
 #include "viewer.h"
 #include "../system.h"
 #include "../system/sdram.h"
@@ -508,6 +509,7 @@ void Shell_Debugger()
 	regPanelEditor = 0;
 
 	byte key;
+	bool noMod = true;
 	bool firstTime = true;
 	bool updateAll = true;
 	bool updateRegs = false;
@@ -535,19 +537,20 @@ void Shell_Debugger()
 		}
 
 		key = GetKey(true);
+		noMod = ModComb(MOD_ALT_0 | MOD_CTRL_0 | MOD_SHIFT_0);
 
-		if (key == K_F1) {
-			Shell_TextViewer("speccy2010.hlp", true);
+		if (key == K_F1 && noMod) {
+			Shell_HelpViewer();
 
 			Debugger_Screen();
 			updateAll = true;
 		}
-		else if (key == K_F2 && activeWindow == WIN_MEMDUMP) {
+		else if (key == K_F2 && noMod && activeWindow == WIN_MEMDUMP) {
 			activeWindow = WIN_TRACE;
 			Debugger_Screen();
 			updateAll = true;
 		}
-		else if (key == K_F3) {
+		else if (key == K_F3 && noMod) {
 			if (activeWindow == WIN_TRACE)
 				activeWindow = WIN_MEMDUMP;
 			else
@@ -555,6 +558,25 @@ void Shell_Debugger()
 
 			Debugger_Screen();
 			updateAll = true;
+		}
+		else if (key == K_F5 && ModComb(MOD_ALT_1 | MOD_CTRL_0 | MOD_SHIFT_0)) {
+			CPU_Start();
+			CPU_Reset(true);
+			CPU_Stop();
+			CPU_Reset(false);
+
+			Debugger_Screen();
+			updateAll = firstTime = true;
+		}
+		else if (key == K_F6 && ModComb(MOD_ALT_1 | MOD_CTRL_0 | MOD_SHIFT_0)) {
+			LoadSnapshotName(false);
+
+			Debugger_Screen();
+
+			SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
+			SystemBus_Write(0xc00022, 0x8000); // Enable shell border
+
+			updateAll = firstTime = true;
 		}
 		else if (key == K_TAB) {
 			if (activeWindow == WIN_MEMDUMP && !activeRegPanel && !dumpWindowAsciiMode && !dumpWindowRightPane)

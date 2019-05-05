@@ -136,6 +136,8 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 		menu[i].UpdateState(0);
 	}
 
+	byte key;
+	bool noMod = true;
 	bool editMode = false;
 	bool hardReset = false;
 	int mmLastMachineCfg = -1;
@@ -149,10 +151,11 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 	menu[menuPos].UpdateState(1);
 
 	while (true) {
-		byte key = GetKey(false);
+		key = GetKey(false);
+		noMod = ModComb(MOD_ALT_0 | MOD_CTRL_0 | MOD_SHIFT_0);
 
 		if (!editMode) {
-			if (key == K_UP || key == K_DOWN || key == K_LEFT || key == K_RIGHT) {
+			if (noMod && (key == K_UP || key == K_DOWN || key == K_LEFT || key == K_RIGHT)) {
 				menu[menuPos].UpdateState(0);
 
 				if (key == K_LEFT || key == K_UP)
@@ -164,7 +167,7 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 			}
 		}
 		else {
-			if (key == K_UP || key == K_DOWN || key == K_LEFT || key == K_RIGHT) {
+			if (noMod && (key == K_UP || key == K_DOWN || key == K_LEFT || key == K_RIGHT)) {
 				int delta;
 				if (key == K_LEFT || key == K_DOWN)
 					delta = -1;
@@ -205,7 +208,8 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 				}
 			}
 		}
-		if (key == K_RETURN) {
+
+		if (key == K_RETURN && noMod) {
 			if (menu == mainMenu && menuPos >= 0 && menuPos < 6) {
 				editMode = !editMode;
 
@@ -274,7 +278,7 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 				}
 			}
 		}
-		else if (key == K_BACKSPACE) {
+		else if (key == K_BACKSPACE && noMod) {
 			const CParameter *param = menu[menuPos].GetParam();
 			if (param != NULL) {
 				if (param->GetType() == PTYPE_STRING) {
@@ -285,7 +289,7 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 				}
 			}
 		}
-		else if (menu == mainMenu && key == K_F5) {
+		else if (menu == mainMenu && key == K_F5 && ModComb(MOD_ALT_1 | MOD_CTRL_0 | MOD_SHIFT_0)) {
 			hardReset = true;
 			break;
 		}

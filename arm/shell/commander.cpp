@@ -36,6 +36,7 @@ const char *fatErrorMsg[] = {
 	"FR_NOT_ENOUGH_CORE",
 };
 //---------------------------------------------------------------------------------------
+FIL dst;
 char destinationPath[PATH_SIZE] = "/";
 char srcName[PATH_SIZE], dstName[PATH_SIZE], shortName[45];
 //---------------------------------------------------------------------------------------
@@ -274,8 +275,7 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 			res = f_rename(srcName, dstName);
 		}
 		else {
-			FIL src, dst;
-
+			FIL src;
 			res = f_open(&src, srcName, FA_READ);
 			if (res != FR_OK) {
 				break;
@@ -511,7 +511,6 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 
 	int res;
 	UINT r;
-	FIL dst;
 	BYTE flags = FA_WRITE | (format ? FA_OPEN_EXISTING : FA_CREATE_ALWAYS);
 
 	{
@@ -727,13 +726,12 @@ void Shell_ScreenBrowser(char *fullName)
 		for (; pos < 0x1b00; pos++)
 			SystemBus_Write(addr + pos, 0);
 
-		FIL image;
-		if (f_open(&image, fullName, FA_READ) == FR_OK) {
+		if (f_open(&dst, fullName, FA_READ) == FR_OK) {
 			byte data;
 			UINT res;
 
 			for (pos = 0; pos < 0x1b00; pos++) {
-				if (f_read(&image, &data, 1, &res) != FR_OK)
+				if (f_read(&dst, &data, 1, &res) != FR_OK)
 					break;
 				if (res == 0)
 					break;
@@ -741,7 +739,7 @@ void Shell_ScreenBrowser(char *fullName)
 				SystemBus_Write(addr++, data);
 			}
 
-			f_close(&image);
+			f_close(&dst);
 
 			// missing attributes filled with base color...
 			for (; pos < 0x1b00; pos++)
@@ -781,13 +779,12 @@ void Shell_ScreenBrowser(char *fullName)
 //---------------------------------------------------------------------------------------
 bool Shell_Viewer(char *fullName)
 {
-	FIL file;
-	if (f_open(&file, fullName, FA_READ) == FR_OK) {
+	if (f_open(&dst, fullName, FA_READ) == FR_OK) {
 		byte data;
 		UINT res, total, ascii;
 
 		for (total = 0, ascii = 0; total < 1024; total++) {
-			if (f_read(&file, &data, 1, &res) != FR_OK)
+			if (f_read(&dst, &data, 1, &res) != FR_OK)
 				break;
 			if (res == 0)
 				break;
@@ -796,7 +793,7 @@ bool Shell_Viewer(char *fullName)
 				ascii++;
 		}
 
-		f_close(&file);
+		f_close(&dst);
 
 		if ((100.0f / ((float) total / ascii)) > 80.0f) {
 			Shell_TextViewer(fullName);
@@ -824,12 +821,11 @@ bool Shell_Receiver(const char *inputName)
 
 	sniprintf(srcName, PATH_SIZE, "%s%lo.tmp", get_current_dir(), get_fattime());
 
-	FIL file;
-	if (f_open(&file, srcName, FA_READ | FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
+	if (f_open(&dst, srcName, FA_READ | FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
 		Shell_MessageBox(title, "Receiving transmission...", "", "", MB_PROGRESS, 0070);
 
 		char status = 0;
-		XModem modem(&file);
+		XModem modem(&dst);
 
 		modem.init();
 
@@ -845,14 +841,14 @@ bool Shell_Receiver(const char *inputName)
 		ScreenPop();
 
 		if (status > 0) {
-			DWORD dc = file.fsize;
+			DWORD dc = dst.fsize;
 			byte c;
 			UINT r;
 
 			// try to find proper ending
 			for (int i = 0; dc > 1 && i < 127; i++) {
-				f_lseek(&file, --dc);
-				f_read(&file, &c, 1, &r);
+				f_lseek(&dst, --dc);
+				f_read(&dst, &c, 1, &r);
 
 				if (c != 0x1A)
 					break;
@@ -863,19 +859,19 @@ bool Shell_Receiver(const char *inputName)
 			if (Shell_InputBox(title, "Confirm file size:", value))
 				sscanf(value.String(), "%lu", &dc);
 
-			if (dc > 0 && dc < file.fsize) {
-				f_lseek(&file, dc);
-				f_truncate(&file);
+			if (dc > 0 && dc < dst.fsize) {
+				f_lseek(&dst, dc);
+				f_truncate(&dst);
 			}
 
-			f_close(&file);
+			f_close(&dst);
 
 			if (FileExists(dstName))
 				f_unlink(dstName);
 			f_rename(srcName, dstName);
 		}
 		else {
-			f_close(&file);
+			f_close(&dst);
 			f_unlink(srcName);
 
 			Shell_MessageBox("Error", "Transmission failed!", shortName);
@@ -1035,7 +1031,7 @@ void Shell_Commander()
 			show_sel();
 		}
 		else if (key == K_F1) {
-			Shell_TextViewer("speccy2010.hlp", true);
+			Shell_HelpViewer();
 
 			init_screen();
 			show_table();

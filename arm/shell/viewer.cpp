@@ -14,13 +14,41 @@ static bool allowFileEdit = false;
 const int SCREEN_WIDTH = 42;
 const int VIEWER_LINES = 21;
 const int VIEWER_BYTES = (VIEWER_LINES * 8);
+
+int pos = 0;
+//---------------------------------------------------------------------------------------
+void Shell_HelpViewer(bool running)
+{
+	static int helpPos = 0;
+
+	if (running) {
+		CPU_Stop();
+		SystemBus_Write(0xc00020, 0); // use bank 0
+
+		ClrScr(0117);
+
+		SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
+		SystemBus_Write(0xc00022, 0x8000 | 0); // Enable shell border
+	}
+
+	pos = helpPos;
+	Shell_TextViewer("speccy2010.hlp", true, "Controls & Keymapping");
+	helpPos = pos;
+
+	if (running) {
+		SystemBus_Write(0xc00021, 0); //armVideoPage
+		SystemBus_Write(0xc00022, 0); //armBorder
+
+		CPU_Start();
+	}
+}
 //---------------------------------------------------------------------------------------
 void Shell_TextViewer(const char *fullName, bool simpleMode, const char *description)
 {
 	bool wrap = wrapLines;
 	CTextReader reader(fullName, (simpleMode || wrap) ? SCREEN_WIDTH : -1);
 	if (reader.GetLines() < 0) {
-		Shell_MessageBox("Error", "Cannot open file!");
+		Shell_MessageBox("Error", "Cannot open file!", fullName);
 		return;
 	}
 
@@ -33,11 +61,10 @@ void Shell_TextViewer(const char *fullName, bool simpleMode, const char *descrip
 	if (simpleMode) {
 		DrawAttr8(0, 23, 0006, 32);
 
-		if (!description)
-			description = fullName;
+		DrawStr(2, 0, "Speccy2010 v" VERSION " \7 ");
+		DrawStr(122, 0, description ? description : "Simple Textfile Viewer", 22);
 
-		DrawStr(2, 0, "Speccy2010 Commander v" VERSION " \7 File Manager");
-		DrawStr(0, 23, description, 36);
+		display_path(fullName, 0, 23, 36);
 
 		wrap = true;
 	}
@@ -58,9 +85,11 @@ restart:
 
 		if (reader.GetLines() >= reader.LINES_MAX)
 			Shell_MessageBox("Error", "Too many lines!");
+
+		pos = 0;
 	}
 
-	int pos = 0, hshift = 0;
+	int hshift = 0;
 	int maxPos = max(0, reader.GetLines() - VIEWER_LINES);
 
 	byte key = 0;
