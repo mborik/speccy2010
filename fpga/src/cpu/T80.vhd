@@ -255,7 +255,9 @@ architecture rtl of T80 is
 	signal SetDI                : std_logic;
 	signal SetEI                : std_logic;
 	signal SetReg               : std_logic := '0';
+	signal SetRegValue          : std_logic_vector(15 downto 0);
 	signal SetRegNumber         : std_logic_vector(2 downto 0);
+	signal ImdtRegNum           : std_logic_vector(2 downto 0);
 	signal IMode                : std_logic_vector(1 downto 0);
 	signal Halt                 : std_logic;
 	signal XYbit_undoc          : std_logic;
@@ -376,7 +378,6 @@ begin
 	process (RESET_n, CLK_n, DIRSet_n)
 		variable n : std_logic_vector(7 downto 0);
 		variable ioq : std_logic_vector(8 downto 0);
-		variable imdtRegn : unsigned(3 downto 0);
 	begin
 		if RESET_n = '0' then
 			PC <= (others => '0');  -- Program Counter
@@ -412,28 +413,46 @@ begin
 
 			if DIRSet_n = '0' then
 				case DIRNumber is
+					-- 0 = AF
 					when "0000" =>
-						ACC <= DIR(7 downto 0);
-						F   <= DIR(15 downto 8);
+						F   <= DIR(7 downto 0);
+						ACC <= DIR(15 downto 8);
+					-- 1 = AF'
 					when "0001" =>
-						Ap  <= DIR(7 downto 0);
-						Fp  <= DIR(15 downto 8);
+						Fp  <= DIR(7 downto 0);
+						Ap  <= DIR(15 downto 8);
+					-- 2 = IR
 					when "0010" =>
-						I   <= DIR(7 downto 0);
-						R   <= unsigned(DIR(15 downto 8));
+						R   <= unsigned(DIR(7 downto 0));
+						I   <= DIR(15 downto 8);
+					-- 3 = SP
 					when "0011" =>
 						SP  <= unsigned(DIR);
+					-- 4 = PC
 					when "0100" =>
 						PC  <= unsigned(DIR);
 						A   <= DIR;
-					when "0101"|"0110"|"0111"|"1000"|"1001"|"1010"|"1011"|"1100" =>
-						imdtRegn := unsigned(DIRNumber) - 5;
-						if Alternate = '1' and not ( imdtRegn = "011" or imdtRegn = "111" ) then
-							imdtRegn := imdtRegn xor "0100";
-						end if;
-
-						SetRegNumber <= std_logic_vector(resize(imdtRegn, SetRegNumber'length));
+					-- 5 / 9 = BC / BC'
+					when "0101"|"1001" =>
+						ImdtRegNum <= DIRNumber(3) & "00";
+						SetRegValue <= DIR;
 						SetReg <= '1';
+					-- 6 / 10 = DE / DE'
+					when "0110"|"1010" =>
+						ImdtRegNum <= DIRNumber(3) & "01";
+						SetRegValue <= DIR;
+						SetReg <= '1';
+					-- 7 / 11 = HL / HL'
+					when "0111"|"1011" =>
+						ImdtRegNum <= DIRNumber(3) & "10";
+						SetRegValue <= DIR;
+						SetReg <= '1';
+					-- 8 / 12 = IX / IY
+					when "1000"|"1100" =>
+						ImdtRegNum <= DIRNumber(2) & "11";
+						SetRegValue <= DIR;
+						SetReg <= '1';
+					-- 13 = IFF2 & IFF1 & IM
 					when "1101" =>
 						IStatus <= DIR(1 downto 0);
 
@@ -955,6 +974,9 @@ begin
 		end if;
 	end process;
 
+	SetRegNumber <= (not ImdtRegNum(2) & ImdtRegNum(1 downto 0)) when Alternate = '1'
+			and not ( ImdtRegNum = "011" or ImdtRegNum = "111" ) else ImdtRegNum(2 downto 0);
+
 	Regs : work.T80_Reg
 		port map(
 			Clk => CLK_n,
@@ -973,7 +995,7 @@ begin
 			DOCH => RegBusC(15 downto 8),
 			DOCL => RegBusC(7 downto 0),
 			DOR  => DOR,
-			DIR    => DIR,
+			DIR    => SetRegValue,
 			DIRNum => SetRegNumber,
 			DIRSet => SetReg
 		);

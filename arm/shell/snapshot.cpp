@@ -37,7 +37,7 @@ void IncrementName(char *name)
 			p--;
 	}
 
-	strcpy(name, "");
+	*name = '\0';
 }
 
 const char *UpdateSnaName()
@@ -50,13 +50,14 @@ const char *UpdateSnaName()
 		else
 			sniprintf(dstName, sizeof(dstName), "%s%s", get_current_dir(), specConfig.snaName);
 
-		while (*dstName != '\0' && FileExists(dstName)) {
+		while (*dstName != '\0' && FileExists(dstName))
 			IncrementName(dstName);
-			IncrementName(specConfig.snaName);
-		}
+
+		if (*dstName != '\0')
+			sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s", dstName);
 	}
 
-	return specConfig.snaName;
+	return (const char *) specConfig.snaName;
 }
 //---------------------------------------------------------------------------------------
 void LoadPage(FIL *file, byte page)
@@ -139,13 +140,12 @@ bool LoadSnapshot(const char *fileName, const char *title)
 		SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
 		SystemBus_Write(0xc00022, 0x8000); // Enable shell border
 
-		byte specPortFe, specPort7ffd, specTrdosFlag;
-		specPortFe = header[0x1A] & 0x07;
+		byte specTrdosFlag = 0;
+		byte specPort7ffd;
+		byte specPortFe = header[0x1A] & 0x07;
 
-		if (snaFile.fsize == SNA_48K_LENGTH) {
+		if (snaFile.fsize == SNA_48K_LENGTH)
 			specPort7ffd = 0x30; // disable 128k
-			specTrdosFlag = 0;
-		}
 		else {
 			f_lseek(&snaFile, SNA_48K_LENGTH);
 			f_read(&snaFile, header + 0x1B, 0x04, &res);
@@ -193,11 +193,11 @@ bool LoadSnapshot(const char *fileName, const char *title)
 		SystemBus_Write(0xc00017, specPort7ffd);
 		SystemBus_Write(0xc00018, specTrdosFlag & 1);
 
-		RegLoad(REG_IR,  0x14, 0x00);
+		RegLoad(REG_IR,  0x00, 0x14);
 		RegLoad(REG_HL_, 0x02, 0x01);
 		RegLoad(REG_DE_, 0x04, 0x03);
 		RegLoad(REG_BC_, 0x06, 0x05);
-		RegLoad(REG_AF_, 0x07, 0x08);
+		RegLoad(REG_AF_, 0x08, 0x07);
 
 		DelayUs(1);
 		SystemBus_Write(0xc001ff, 0);
@@ -207,7 +207,7 @@ bool LoadSnapshot(const char *fileName, const char *title)
 		RegLoad(REG_BC,  0x0E, 0x0D);
 		RegLoad(REG_IY,  0x10, 0x0F);
 		RegLoad(REG_IX,  0x12, 0x11);
-		RegLoad(REG_AF,  0x15, 0x16);
+		RegLoad(REG_AF,  0x16, 0x15);
 		RegLoad(REG_SP,  0x18, 0x17);
 
 		DelayUs(1);
@@ -295,7 +295,7 @@ void SaveSnapshot(const char *name)
 		data = SystemBus_Read(0xc001f0 + REG_IM);
 		header[0x13] = data & 0x04;
 		header[0x19] = data & 0x03;
-		header[0x1A] = specPortFe & 7;
+		header[0x1A] = specPortFe;
 		header[0x1D] = specPort7ffd;
 		header[0x1E] = specTrdosFlag & 1;
 
@@ -345,7 +345,7 @@ void SaveSnapshotAs()
 	SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
 	SystemBus_Write(0xc00022, 0x8000 | (specPortFe & 0x07)); // Enable shell border
 
-	CString name = UpdateSnaName();
+	CString name = (const char *) UpdateSnaName();
 	bool result = Shell_InputBox("Save snapshot", "Enter name:", name);
 
 	SystemBus_Write(0xc00021, 0); //armVideoPage
