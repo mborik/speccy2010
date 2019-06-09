@@ -66,31 +66,27 @@ void make_short_name(CString &str, word size, const char *name)
 //------------------------------------------------------------------
 byte comp_name(int a, int b)
 {
-	FRECORD ra, rb;
+	Read(&mem.ra, table_buffer, a);
+	Read(&mem.rb, table_buffer, b);
 
-	Read(&ra, table_buffer, a);
-	Read(&rb, table_buffer, b);
+	strlwr(mem.ra.name);
+	strlwr(mem.rb.name);
 
-	strlwr(ra.name);
-	strlwr(rb.name);
-
-	if ((ra.attr & AM_DIR) && !(rb.attr & AM_DIR))
+	if ((mem.ra.attr & AM_DIR) && !(mem.rb.attr & AM_DIR))
 		return true;
-	else if (!(ra.attr & AM_DIR) && (rb.attr & AM_DIR))
+	else if (!(mem.ra.attr & AM_DIR) && (mem.rb.attr & AM_DIR))
 		return false;
 	else
-		return strcmp(ra.name, rb.name) <= 0;
+		return strcmp(mem.ra.name, mem.rb.name) <= 0;
 }
 //---------------------------------------------------------------------------------------
 void swap_name(int a, int b)
 {
-	FRECORD ra, rb;
+	Read(&mem.ra, table_buffer, a);
+	Read(&mem.rb, table_buffer, b);
 
-	Read(&ra, table_buffer, a);
-	Read(&rb, table_buffer, b);
-
-	Write(&ra, table_buffer, b);
-	Write(&rb, table_buffer, a);
+	Write(&mem.ra, table_buffer, b);
+	Write(&mem.rb, table_buffer, a);
 }
 //---------------------------------------------------------------------------------------
 void qsort(int l, int h)
@@ -138,14 +134,12 @@ void read_dir()
 	files_sel = 0;
 	files_sel_number = 0;
 
-	FRECORD fr;
-
 	if (strlen(path) != 0) {
-		fr.attr = AM_DIR;
-		fr.sel = 0;
-		fr.size = 0;
-		strcpy(fr.name, "..");
-		Write(&fr, table_buffer, files_size++);
+		mem.rb.attr = AM_DIR;
+		mem.rb.sel = 0;
+		mem.rb.size = 0;
+		strcpy(mem.rb.name, "..");
+		Write(&mem.rb, table_buffer, files_size++);
 	}
 
 	DIR dir;
@@ -160,20 +154,19 @@ void read_dir()
 		path[pathSize - 1] = '/';
 
 	while (r == FR_OK) {
-		FILINFO fi;
 		char lfn[_MAX_LFN + 1];
-		fi.lfname = lfn;
-		fi.lfsize = sizeof(lfn);
+		mem.finfo.lfname = lfn;
+		mem.finfo.lfsize = sizeof(lfn);
 
-		r = f_readdir(&dir, &fi);
+		r = f_readdir(&dir, &mem.finfo);
 
-		if (r != FR_OK || fi.fname[0] == 0)
+		if (r != FR_OK || mem.finfo.fname[0] == 0)
 			break;
-		if (fi.fattrib & (AM_HID | AM_SYS))
+		if (mem.finfo.fattrib & (AM_HID | AM_SYS))
 			continue;
 
 		if (lfn[0] == 0)
-			strcpy(lfn, fi.fname);
+			strcpy(lfn, mem.finfo.fname);
 
 		if (files_size >= FILES_SIZE) {
 			too_many_files = true;
@@ -186,14 +179,14 @@ void read_dir()
 			break;
 		}
 
-		fr.sel = 0;
-		fr.attr = fi.fattrib;
-		fr.size = fi.fsize;
-		fr.date = fi.fdate;
-		fr.time = fi.ftime;
+		mem.rb.sel = 0;
+		mem.rb.attr = mem.finfo.fattrib;
+		mem.rb.size = mem.finfo.fsize;
+		mem.rb.date = mem.finfo.fdate;
+		mem.rb.time = mem.finfo.ftime;
 
-		strcpy(fr.name, lfn);
-		Write(&fr, table_buffer, files_size);
+		strcpy(mem.rb.name, lfn);
+		Write(&mem.rb, table_buffer, files_size);
 
 		files_size++;
 		WDT_Kick();
@@ -206,11 +199,9 @@ void read_dir()
 		qsort(0, files_size - 1);
 
 	if (strlen(files_lastName) != 0) {
-		FRECORD fr;
-
 		for (int i = 0; i < files_size; i++) {
-			Read(&fr, table_buffer, i);
-			if (strcmp(fr.name, files_lastName) == 0) {
+			Read(&mem.rb, table_buffer, i);
+			if (strcmp(mem.rb.name, files_lastName) == 0) {
 				files_sel = i;
 				break;
 			}
@@ -222,8 +213,6 @@ void read_dir()
 //---------------------------------------------------------------------------------------
 void leave_dir()
 {
-	FRECORD fr;
-
 	byte i = strlen(path);
 	char dir_name[_MAX_LFN + 1];
 
@@ -239,8 +228,8 @@ void leave_dir()
 		read_dir();
 
 		for (files_sel = 0; files_sel < files_size; files_sel++) {
-			Read(&fr, table_buffer, files_sel);
-			if (strcmp(fr.name, dir_name) == 0)
+			Read(&mem.rb, table_buffer, files_sel);
+			if (strcmp(mem.rb.name, dir_name) == 0)
 				break;
 		}
 

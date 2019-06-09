@@ -8,12 +8,14 @@
 
 #include "types.h"
 
-#define VERSION "1.2.4"
-#define PATH_SIZE 0x80
+#define VERSION "1.2.5"
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+	#include "mem.h"
+
 	#include "libstr/inc/75x_lib.h"
 	#include "specSerial.h"
 

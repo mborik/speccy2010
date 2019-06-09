@@ -14,7 +14,6 @@ private:
 	int  data; // holds readed byte
 	byte blockNo; // expected block number
 	int  retries; // retry counter for NACK
-	byte buffer[X_BLK_SIZE]; // buffer
 	bool repeatedBlock; // repeated block flag
 	byte errorCode;
 

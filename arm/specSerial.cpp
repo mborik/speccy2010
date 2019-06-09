@@ -2,7 +2,8 @@
 #include "specSerial.h"
 #include "specConfig.h"
 
-const int MAX_CMD_SIZE = 0x20;
+#define MAX_CMD_SIZE 0x20
+
 char cmd[MAX_CMD_SIZE + 1];
 int cmdSize = 0;
 bool traceNewLine = false;
@@ -79,7 +80,7 @@ bool XModem::receiveData()
 	for (int i = 0; i < X_BLK_SIZE; i++) {
 		int byte = dataRead(X_RECEIVEDELAY);
 		if (byte != -1)
-			buffer[i] = byte;
+			mem.sector[i] = byte;
 		else
 			return false;
 	}
@@ -91,7 +92,7 @@ bool XModem::checkCrc()
 
 	frame_crc |= (byte) dataRead(X_RECEIVEDELAY);
 	// now calculate crc on data
-	word crc = crc16_ccitt(buffer, X_BLK_SIZE);
+	word crc = crc16_ccitt(mem.sector, X_BLK_SIZE);
 
 	return (frame_crc == crc);
 }
@@ -102,7 +103,7 @@ bool XModem::checkChkSum()
 	// calculate chksum
 	byte chksum = 0;
 	for (int i = 0; i < X_BLK_SIZE; i++) {
-		chksum += buffer[i];
+		chksum += mem.sector[i];
 	}
 	return (frame_chksum == chksum);
 }
@@ -162,7 +163,7 @@ bool XModem::receiveFrames(bool crc)
 				}
 				//callback
 				if (!repeatedBlock)
-					f_write(dest, buffer, X_BLK_SIZE, &r);
+					f_write(dest, mem.sector, X_BLK_SIZE, &r);
 				//ack
 				dataWrite(X_ACK);
 				if (!repeatedBlock)
@@ -245,7 +246,7 @@ byte XModem::generateChkSum(void)
 	// calculate chksum
 	byte chksum = 0;
 	for (int i = 0; i < X_BLK_SIZE; i++) {
-		chksum += buffer[i];
+		chksum += mem.sector[i];
 	}
 	return chksum;
 }
@@ -289,11 +290,11 @@ void Serial_Routine()
 
 void __TRACE(const char *str, ...)
 {
-	static char fullStr[0x80];
+	char *fullStr = mem.trace;
 
 	va_list ap;
 	va_start(ap, str);
-	vsniprintf(fullStr, sizeof(fullStr), str, ap);
+	vsniprintf(fullStr, sizeof(mem.trace), str, ap);
 	va_end(ap);
 
 	if (traceNewLine) {

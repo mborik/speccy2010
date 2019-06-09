@@ -3,15 +3,6 @@
 
 #include "../system.h"
 
-struct FRECORD {
-	dword size;
-	byte attr;
-	byte sel;
-	word date;
-	word time;
-	char name[_MAX_LFN + 1];
-};
-
 const int FILES_PER_ROW = 16;
 const int FILES_SIZE = 4096;
 

@@ -107,11 +107,10 @@ void InitScreen(const char *title)
 	SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE);           // Enable shell videopage
 	SystemBus_Write(0xc00022, 0x8000 | ((attr >> 3) & 0x03)); // Enable shell border
 
-	static char str[43];
-	sniprintf(str, sizeof(str), "Speccy2010 v" VERSION " \7 %s Dialog", title);
+	sniprintf(mem.sname, 43, "Speccy2010 v" VERSION " \7 %s Dialog", title);
 
-	size_t len = strlen(str);
-	DrawStrAttr((256 - (len * 6)) / 2, 0, str, 0105, len);
+	size_t len = strlen(mem.sname);
+	DrawStrAttr((256 - (len * 6)) / 2, 0, mem.sname, 0105, len);
 
 	DrawAttr8(0, 1, 0002, 32);
 	DrawLine(1, 2);
@@ -126,6 +125,7 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 {
 	static tm time;
 	static dword tickCounter = 0;
+	static CString editBoxValue(PATH_SIZE);
 
 	CPU_Stop();
 
@@ -254,18 +254,15 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 					else if (param->GetType() == PTYPE_STRING) {
 						menu[menuPos].UpdateState(2);
 
-						bool inROMCfg = (menu == romCfgMenu);
-
-						CString value = "";
-						param->GetValueText(value);
-						if (Shell_InputBox(title, "Filename:", value)) {
-							if (!FileExists(value.String()))
+						param->GetValueText(editBoxValue);
+						if (Shell_InputBox(title, "Filename:", editBoxValue)) {
+							if (!FileExists(editBoxValue.String()))
 								Shell_MessageBox(title, "Invalid path or", "file not exists");
 
-							param->SetValueText(value);
+							param->SetValueText(editBoxValue);
 							menu[menuPos].UpdateData();
 
-							if (inROMCfg)
+							if (menu == romCfgMenu)
 								hardReset = true;
 						}
 

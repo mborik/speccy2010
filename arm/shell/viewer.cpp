@@ -7,15 +7,9 @@
 #include "../utils/dirent.h"
 #include "../specKeyboard.h"
 
-static char wrkstr[12];
-static bool wrapLines = false;
-static bool allowFileEdit = false;
-
-const int SCREEN_WIDTH = 42;
-const int VIEWER_LINES = 21;
-const int VIEWER_BYTES = (VIEWER_LINES * 8);
-
 int pos = 0;
+bool wrapLines = false;
+bool allowFileEdit = false;
 //---------------------------------------------------------------------------------------
 void Shell_HelpViewer(bool running)
 {
@@ -64,7 +58,7 @@ void Shell_TextViewer(const char *fullName, bool simpleMode, const char *descrip
 		DrawStr(2, 0, "Speccy2010 v" VERSION " \7 ");
 		DrawStr(122, 0, description ? description : "Simple Textfile Viewer", 22);
 
-		display_path(fullName, 0, 23, 36);
+		display_path(fullName, -6, 23, 36);
 
 		wrap = true;
 	}
@@ -79,8 +73,8 @@ restart:
 		if (wrap)
 			DrawFnKeys(1, 23, "2unwr", 5);
 
-		sniprintf(wrkstr, 12, "%d", reader.GetFileSize());
-		DrawStr(96, 23, wrkstr);
+		sniprintf(mem.sname, 12, "%d", reader.GetFileSize());
+		DrawStr(96, 23, mem.sname);
 		DrawStr(176, 23, "col 1");
 
 		if (reader.GetLines() >= reader.LINES_MAX)
@@ -98,8 +92,8 @@ restart:
 		if (maxPos > 0)
 			p = pos * 100 / maxPos;
 
-		sniprintf(wrkstr, 5, "%3d%%", p);
-		DrawStr(232, 23, wrkstr, 4);
+		sniprintf(mem.sname, 5, "%3d%%", p);
+		DrawStr(232, 23, mem.sname, 4);
 
 		for (int j = 0, i, x; j < VIEWER_LINES; j++) {
 			reader.SetLine(pos + j);
@@ -146,8 +140,8 @@ restart:
 				pos = max(pos - VIEWER_LINES, 0);
 			else if (!simpleMode) {
 				hshift = max(hshift - 1, 0);
-				sniprintf(wrkstr, 4, "%d", hshift + 1);
-				DrawStr(200, 23, wrkstr, 3);
+				sniprintf(mem.sname, 4, "%d", hshift + 1);
+				DrawStr(200, 23, mem.sname, 3);
 			}
 		}
 		else if (key == K_RIGHT) {
@@ -155,8 +149,8 @@ restart:
 				pos = min(pos + VIEWER_LINES, maxPos);
 			else if (!simpleMode) {
 				hshift = min(hshift + 1, 255);
-				sniprintf(wrkstr, 4, "%d", hshift + 1);
-				DrawStr(200, 23, wrkstr, 3);
+				sniprintf(mem.sname, 4, "%d", hshift + 1);
+				DrawStr(200, 23, mem.sname, 3);
 			}
 		}
 		else if (key == K_PAGEUP)
@@ -167,16 +161,16 @@ restart:
 			pos = 0;
 			if (!simpleMode && hshift > 0) {
 				hshift = 0;
-				sniprintf(wrkstr, 4, "%d", hshift + 1);
-				DrawStr(200, 23, wrkstr, 3);
+				sniprintf(mem.sname, 4, "%d", hshift + 1);
+				DrawStr(200, 23, mem.sname, 3);
 			}
 		}
 		else if (key == K_END) {
 			pos = maxPos;
 			if (!simpleMode && hshift > 0) {
 				hshift = 0;
-				sniprintf(wrkstr, 4, "%d", hshift + 1);
-				DrawStr(200, 23, wrkstr, 3);
+				sniprintf(mem.sname, 4, "%d", hshift + 1);
+				DrawStr(200, 23, mem.sname, 3);
 			}
 		}
 	}
@@ -187,8 +181,7 @@ restart:
 //---------------------------------------------------------------------------------------
 bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 {
-	FIL fil;
-	if (f_open(&fil, fullName, FA_READ | (editMode ? FA_WRITE : 0)) != FR_OK)
+	if (f_open(&mem.fsrc, fullName, FA_READ | (editMode ? FA_WRITE : 0)) != FR_OK)
 		return false;
 
 	ClrScr(0117);
@@ -203,13 +196,13 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 
 	if (fromTextView) {
 		DrawFnKeys(32, 23, "4text", 5);
-		sniprintf(wrkstr, 12, "%lu", fil.fsize);
-		DrawStr(96, 23, wrkstr);
+		sniprintf(mem.sname, 12, "%lu", mem.fsrc.fsize);
+		DrawStr(96, 23, mem.sname);
 	}
 	else if (editMode) {
 		DrawHexNum(152, 23, 0, 8);
 		DrawChar(201, 23, '/');
-		DrawHexNum(208, 23, fil.fsize, 8);
+		DrawHexNum(208, 23, mem.fsrc.fsize, 8);
 	}
 
 	UINT res;
@@ -217,8 +210,8 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 	int pos = 0, ptr = 0, cursor = 0;
 	int maxPos = 0;
 
-	if (fil.fsize > (signed) VIEWER_BYTES)
-		maxPos = max(0, (1 + (fil.fsize | 7)) - VIEWER_BYTES);
+	if (mem.fsrc.fsize > (signed) VIEWER_BYTES)
+		maxPos = max(0, (1 + (mem.fsrc.fsize | 7)) - VIEWER_BYTES);
 
 	byte key = 0, c;
 	while (true) {
@@ -229,14 +222,14 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 			if (maxPos > 0)
 				p = pos * 100 / maxPos;
 
-			sniprintf(wrkstr, 5, "%3d%%", p);
-			DrawStr(232, 23, wrkstr, 4);
+			sniprintf(mem.sname, 5, "%3d%%", p);
+			DrawStr(232, 23, mem.sname, 4);
 		}
 
 		for (int j = 0, y = 2; j < VIEWER_LINES; j++, y++) {
 			ptr = pos + (j << 3);
-			f_lseek(&fil, ptr);
-			f_read(&fil, wrkstr, 8, &res);
+			f_lseek(&mem.fsrc, ptr);
+			f_read(&mem.fsrc, mem.sname, 8, &res);
 
 			DrawHexNum(8, y, ptr, 8);
 			if (editMode) {
@@ -246,19 +239,19 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 
 			ptr -= pos;
 			for (int i = 0, x1 = 66, x2 = 200; i < 8; i++, ptr++, x1 += 16, x2 += 6) {
-				if (pos + ptr > (int) fil.fsize) {
+				if (pos + ptr > (int) mem.fsrc.fsize) {
 					DrawChar(x1, y, ' ');
 					DrawChar(x1 + 6, y, ' ');
 					DrawChar(x2, y, ' ');
 					continue;
 				}
 
-				DrawHexNum(x1, y, wrkstr[i]);
-				DrawSaveChar(x2, y, wrkstr[i], false, (editMode && rightPane && cursor == ptr));
+				DrawHexNum(x1, y, mem.sname[i]);
+				DrawSaveChar(x2, y, mem.sname[i], false, (editMode && rightPane && cursor == ptr));
 
 				if (editMode && !rightPane && cursor == ptr) {
 					DrawAttr8(x1 >> 3, y, 0126, 2);
-					c = wrkstr[i];
+					c = mem.sname[i];
 				}
 			}
 		}
@@ -275,10 +268,10 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 					continue;
 			}
 
-			f_lseek(&fil, pos + cursor);
+			f_lseek(&mem.fsrc, pos + cursor);
 
 			if (rightPane) {
-				f_write(&fil, &key, 1, &res);
+				f_write(&mem.fsrc, &key, 1, &res);
 
 				if (cursor < VIEWER_BYTES - 1)
 					cursor++;
@@ -288,8 +281,8 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 						cursor -= 7;
 				}
 
-				if ((pos + cursor) > fil.fsize)
-					cursor = fil.fsize - pos;
+				if ((pos + cursor) > mem.fsrc.fsize)
+					cursor = mem.fsrc.fsize - pos;
 			}
 			else {
 				if (key >= '0' && key <= '9')
@@ -306,7 +299,7 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 				else
 					c = key << 4;
 
-				f_write(&fil, &c, 1, &res);
+				f_write(&mem.fsrc, &c, 1, &res);
 				lowNibble = !lowNibble;
 			}
 		}
@@ -330,7 +323,7 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 						continue;
 					}
 					if (pos == maxPos) {
-						cursor = fil.fsize - pos;
+						cursor = mem.fsrc.fsize - pos;
 						continue;
 					}
 				}
@@ -364,15 +357,15 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 				lowNibble = false;
 
 				if (editMode &&
-					(cursor < (signed) fil.fsize || cursor < (VIEWER_BYTES - 8))) {
+					(cursor < (signed) mem.fsrc.fsize || cursor < (VIEWER_BYTES - 8))) {
 
 					cursor += 8;
 
-					if ((pos + cursor) > fil.fsize)
-						cursor = fil.fsize - pos;
+					if ((pos + cursor) > mem.fsrc.fsize)
+						cursor = mem.fsrc.fsize - pos;
 					continue;
 				}
-				else if (fil.fsize < (signed) VIEWER_BYTES)
+				else if (mem.fsrc.fsize < (signed) VIEWER_BYTES)
 					continue;
 
 				pos = min(pos + 8, maxPos);
@@ -404,8 +397,8 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 							cursor -= 7;
 					}
 
-					if ((pos + cursor) > fil.fsize)
-						cursor = fil.fsize - pos;
+					if ((pos + cursor) > mem.fsrc.fsize)
+						cursor = mem.fsrc.fsize - pos;
 				}
 				else
 					pos = min(pos + VIEWER_BYTES, maxPos);
@@ -424,7 +417,7 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 				lowNibble = false;
 
 				if (editMode && pos == maxPos) {
-					cursor = fil.fsize - pos;
+					cursor = mem.fsrc.fsize - pos;
 					continue;
 				}
 
@@ -433,7 +426,7 @@ bool Shell_HexViewer(const char *fullName, bool editMode, bool fromTextView)
 		}
 	}
 
-	f_close(&fil);
+	f_close(&mem.fsrc);
 	return true;
 }
 //---------------------------------------------------------------------------------------

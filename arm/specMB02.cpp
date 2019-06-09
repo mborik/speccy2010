@@ -53,9 +53,6 @@ const unsigned char epromBootstrap[168] = {
 const int bootEffectOffset = 112;
 const int bootEffectLength = 56;
 
-// tiny sector buffer
-byte secBuffer[0x100];
-
 enum {
 	MB02_IDLE = 0,
 	MB02_RDSEC = 4,
@@ -114,12 +111,9 @@ bool mb02_check_image(byte *bootsec)
 
 int mb02_open_image(byte drv_id, const char *filename)
 {
-	FIL f;
-	FILINFO fi;
-
 	char lfn[1];
-	fi.lfname = lfn;
-	fi.lfsize = 0;
+	mem.finfo.lfname = lfn;
+	mem.finfo.lfsize = 0;
 
 	if (filename == NULL || strlen(filename) < 4)
 		return 1;
@@ -140,26 +134,27 @@ int mb02_open_image(byte drv_id, const char *filename)
 	if (!(strlen(p_ext) == 4 && (strcasecmp(p_ext, ".mbd") == 0 || strcasecmp(p_ext, ".mb2") == 0)))
 		return 1;
 
-	if (f_stat(filename, &fi) != FR_OK)
+	if (f_stat(filename, &mem.finfo) != FR_OK)
 		return 2;
 
+	byte *secBuffer = mem.sector;
 	byte f_flags = FA_OPEN_EXISTING | FA_WRITE | FA_READ;
-	if ((fi.fattrib & AM_RDO) != 0)
+	if ((mem.finfo.fattrib & AM_RDO) != 0)
 		f_flags &= ~FA_WRITE;
 
-	if (f_open(&f, filename, f_flags) != FR_OK) {
-		__TRACE("MB-02 disk open failed\n");
+	if (f_open(&mem.fsrc, filename, f_flags) != FR_OK) {
+		// __TRACE("MB-02 disk open failed\n");
 		return 2;
 	}
 
-	if (!read_file(&f, secBuffer, 0x60)) {
-		f_close(&f);
+	if (!read_file(&mem.fsrc, secBuffer, 0x60)) {
+		f_close(&mem.fsrc);
 		return 2;
 	}
 
 	if (!mb02_check_image(secBuffer)) {
 		__TRACE("MB-02 invalid disk identifiers\n");
-		f_close(&f);
+		f_close(&mem.fsrc);
 		return 1;
 	}
 
@@ -167,9 +162,9 @@ int mb02_open_image(byte drv_id, const char *filename)
 	if (mb02_drives[drv_id].pr) {
 		f_close(&mb02_drives[drv_id].fd);
 	}
-	memcpy(&mb02_drives[drv_id].fd, &f, sizeof(FIL));
+	memcpy(&mb02_drives[drv_id].fd, &mem.fsrc, sizeof(FIL));
 
-	mb02_drives[drv_id].wp = ((fi.fattrib & AM_RDO) != 0) ? 1 : 0;
+	mb02_drives[drv_id].wp = ((mem.finfo.fattrib & AM_RDO) != 0) ? 1 : 0;
 	mb02_drives[drv_id].pr = 1;
 	mb02_drives[drv_id].activated = 0;
 	mb02_drives[drv_id].cyl_cnt = secBuffer[4];
@@ -177,14 +172,14 @@ int mb02_open_image(byte drv_id, const char *filename)
 	mb02_drives[drv_id].side_cnt = secBuffer[8];
 	mb02_drives[drv_id].cur_sec = 1;
 	mb02_drives[drv_id].cur_cyl = 0;
-
+/*
 	__TRACE("MB-02 disk @%u:'%s' loaded (wp:%u, cyls:%u, secs:%u, sides:%u)...\n",
 		drv_id + 1, filename,
 		mb02_drives[drv_id].wp,
 		mb02_drives[drv_id].cyl_cnt,
 		mb02_drives[drv_id].sec_cnt,
 		mb02_drives[drv_id].side_cnt);
-
+*/
 	return 0;
 }
 
@@ -465,19 +460,19 @@ byte mb02_is_disk_loaded(byte drv)
 //---------------------------------------------------------------------------------------
 bool mb02_checkfmt(const char *file_name, int *numtrk, int *numsec)
 {
-	FIL f;
-	if (f_open(&f, file_name, FA_OPEN_EXISTING | FA_READ) != FR_OK) {
-		__TRACE("MB-02 disk open failed\n");
+	if (f_open(&mem.fsrc, file_name, FA_OPEN_EXISTING | FA_READ) != FR_OK) {
+		// __TRACE("MB-02 disk open failed\n");
 		return false;
 	}
 
-	if (!read_file(&f, secBuffer, 0x30)) {
-		f_close(&f);
+	byte *secBuffer = mem.sector;
+	if (!read_file(&mem.fsrc, secBuffer, 0x30)) {
+		f_close(&mem.fsrc);
 		return false;
 	}
 
 	bool result = mb02_check_image(secBuffer);
-	f_close(&f);
+	f_close(&mem.fsrc);
 
 	if (!result)
 		return false;
@@ -486,18 +481,18 @@ bool mb02_checkfmt(const char *file_name, int *numtrk, int *numsec)
 	*numsec = secBuffer[0x06];
 
 	if (*numtrk < 1 || *numtrk > 255) {
-		__TRACE("MB-02 image: invalid number of tracks (%u not in range 1..255)", numtrk);
+		// __TRACE("MB-02 image: invalid number of tracks (%u not in range 1..255)", numtrk);
 		result = false;
 	}
 
 	if (*numsec < 1 || *numsec > 127) {
-		__TRACE("MB-02 image: invalid number of sectors (%u not in range 1..127)", numsec);
+		// __TRACE("MB-02 image: invalid number of sectors (%u not in range 1..127)", numsec);
 		result = false;
 	}
 
 	int disk_size = ((*numtrk) * (*numsec)) << 1;
 	if (disk_size < 5 || disk_size >= 2047) {
-		__TRACE("MB-02 image: invalid disk size (%u not in range 6..2046 kB)", disk_size);
+		// __TRACE("MB-02 image: invalid disk size (%u not in range 6..2046 kB)", disk_size);
 		result = false;
 	}
 
@@ -506,11 +501,13 @@ bool mb02_checkfmt(const char *file_name, int *numtrk, int *numsec)
 
 bool mb02_formatdisk(const char *file_name, int numtrk, int numsec, const char *disk_name)
 {
-	int i, secbLen = sizeof(secBuffer);
+	byte *secBuffer = mem.sector;
+
+	int i, secbLen = sizeof(mem.sector);
 	int disk_size = (numtrk * numsec) << 1;
 	int disk_length = disk_size << 10;
 
-	__TRACE("MB-02 CreateDisk: NumTrk:%u, NumSec:%u, DiskSize:%u kB\n", numtrk, numsec, disk_size);
+	// __TRACE("MB-02 CreateDisk: NumTrk:%u, NumSec:%u, DiskSize:%u kB\n", numtrk, numsec, disk_size);
 
 	memset(secBuffer, 0, secbLen);
 
@@ -556,7 +553,7 @@ bool mb02_formatdisk(const char *file_name, int numtrk, int numsec, const char *
 	int fat2sec = 3 + secfat;
 	int fat1pos = fat1sec << 10;
 
-	__TRACE("MB-02 CreateDisk: FAT Length: %u, FAT1 start: %u, FAT2 start: %u\n", secfat, fat1sec, fat2sec);
+	// __TRACE("MB-02 CreateDisk: FAT Length: %u, FAT1 start: %u, FAT2 start: %u\n", secfat, fat1sec, fat2sec);
 
 	secBuffer[0x0E] = secfat;
 	secBuffer[0x11] = secfat << 2;
@@ -568,12 +565,11 @@ bool mb02_formatdisk(const char *file_name, int numtrk, int numsec, const char *
 	}
 
 	UINT r;
-	FIL dst;
-	int res = f_open(&dst, file_name, FA_WRITE | FA_CREATE_ALWAYS);
+	int res = f_open(&mem.fsrc, file_name, FA_WRITE | FA_CREATE_ALWAYS);
 	if (res != FR_OK)
 		return false;
 
-	res = write_file(&dst, secBuffer, secbLen);
+	res = write_file(&mem.fsrc, secBuffer, secbLen);
 	if (res != secbLen)
 		return false;
 
@@ -581,7 +577,7 @@ bool mb02_formatdisk(const char *file_name, int numtrk, int numsec, const char *
 
 	float total = (disk_length / secbLen);
 	for (i = 0; i < (disk_length / secbLen) - 1; i++) {
-		res = write_file(&dst, secBuffer, secbLen);
+		res = write_file(&mem.fsrc, secBuffer, secbLen);
 		if (res != secbLen)
 			return false;
 
@@ -612,27 +608,27 @@ bool mb02_formatdisk(const char *file_name, int numtrk, int numsec, const char *
 
 	secBuffer[0x01] = chksum;
 
-	res = f_lseek(&dst, fat1pos);
+	res = f_lseek(&mem.fsrc, fat1pos);
 	if (res != FR_OK)
 		return false;
 
-	write_file(&dst, secBuffer, secbLen);
+	write_file(&mem.fsrc, secBuffer, secbLen);
 
-	f_lseek(&dst, fat1pos + fatsiz);
-	write_file(&dst, secBuffer, secbLen);
+	f_lseek(&mem.fsrc, fat1pos + fatsiz);
+	write_file(&mem.fsrc, secBuffer, secbLen);
 
 	Shell_UpdateProgress(1.0f);
 
 	secBuffer[0xFF] = 0xFF;
-	f_lseek(&dst, fat1pos + fatend);
+	f_lseek(&mem.fsrc, fat1pos + fatend);
 	for (i = fatend; i < fatsiz; i++)
-		f_write(&dst, &secBuffer[0xFF], 1, &r);
+		f_write(&mem.fsrc, &secBuffer[0xFF], 1, &r);
 
-	f_lseek(&dst, fat1pos + fatsiz + fatend);
+	f_lseek(&mem.fsrc, fat1pos + fatsiz + fatend);
 	for (i = fatend; i < fatsiz; i++)
-		f_write(&dst, &secBuffer[0xFF], 1, &r);
+		f_write(&mem.fsrc, &secBuffer[0xFF], 1, &r);
 
-	f_close(&dst);
+	f_close(&mem.fsrc);
 	return true;
 }
 //---------------------------------------------------------------------------------------

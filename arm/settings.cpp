@@ -176,9 +176,8 @@ int CParameter::GetValueMin() const
 		return 0;
 	}
 	else if (type == PTYPE_INT) {
-		char buff[16];
-		CopySubstring(buff, sizeof(buff), FindSubstring(options, 0));
-		return StrToInt(buff);
+		CopySubstring(mem.trace + 0x70, 16, FindSubstring(options, 0));
+		return StrToInt(mem.trace + 0x70);
 	}
 
 	return 0;
@@ -193,9 +192,8 @@ int CParameter::GetValueMax() const
 		return GetSubstringsCount(options) - 1;
 	}
 	else if (type == PTYPE_INT) {
-		char buff[16];
-		CopySubstring(buff, sizeof(buff), FindSubstring(options, 1));
-		return StrToInt(buff);
+		CopySubstring(mem.trace + 0x70, 16, FindSubstring(options, 1));
+		return StrToInt(mem.trace + 0x70);
 	}
 
 	return 0;
@@ -210,9 +208,8 @@ int CParameter::GetValueDelta() const
 		return 1;
 	}
 	else if (type == PTYPE_INT) {
-		char buff[16];
-		CopySubstring(buff, sizeof(buff), FindSubstring(options, 2));
-		return StrToInt(buff);
+		CopySubstring(mem.trace + 0x70, 16, FindSubstring(options, 2));
+		return StrToInt(mem.trace + 0x70);
 	}
 
 	return 1;

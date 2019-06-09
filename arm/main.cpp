@@ -132,24 +132,23 @@ bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbac
 	if (!(romFileName != NULL && strlen(romFileName) > 0))
 		return false;
 
-	FIL romImage;
 	const char *romImageFileName = romFileName;
 
-	if (f_open(&romImage, romFileName, FA_READ) != FR_OK) {
+	if (f_open(&mem.fsrc, romFileName, FA_READ) != FR_OK) {
 		__TRACE("Cannot open rom image '%s'\n", romFileName);
 
 		if (fallbackRomFile == NULL)
 			return false;
 
 		romImageFileName = fallbackRomFile;
-		if (f_open(&romImage, fallbackRomFile, FA_READ) != FR_OK) {
+		if (f_open(&mem.fsrc, fallbackRomFile, FA_READ) != FR_OK) {
 			__TRACE("Cannot open rom image '%s'\n", fallbackRomFile);
 			return false;
 		}
 	}
 
 	SystemBus_Write(0xc00020, 0); // use bank 0
-	f_lseek(&romImage, 0);
+	f_lseek(&mem.fsrc, 0);
 
 	bool result = true;
 	int writeErrors = 0;
@@ -160,8 +159,8 @@ bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbac
 
 	__TRACE("Loading '%s' into page %d (0x%x)\n", romImageFileName, page, addr << 1);
 
-	for (pos = 0; pos < romImage.fsize; pos += 2) {
-		if (f_read(&romImage, &data, 2, &res) != FR_OK)
+	for (pos = 0; pos < mem.fsrc.fsize; pos += 2) {
+		if (f_read(&mem.fsrc, &data, 2, &res) != FR_OK)
 			break;
 		if (res == 0)
 			break;
@@ -195,7 +194,7 @@ bool Spectrum_LoadRomPage(int page, const char *romFileName, const char *fallbac
 		result = false;
 	}
 
-	f_close(&romImage);
+	f_close(&mem.fsrc);
 	return result;
 }
 

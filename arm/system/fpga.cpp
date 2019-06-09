@@ -26,13 +26,13 @@ void FPGA_TestClock()
 	SystemBus_Write(0xc00050, 1);
 	DelayMs(100);
 	SystemBus_Write(0xc00050, 0);
-
+/*
 	dword counter20 = SystemBus_Read(0xc00050) | (SystemBus_Read(0xc00051) << 16);
 	dword counterMem = SystemBus_Read(0xc00052) | (SystemBus_Read(0xc00053) << 16);
 
 	__TRACE("FPGA clock - %d.%.5d MHz\n", counter20 / 100000, counter20 % 100000);
 	__TRACE("FPGA PLL clock - %d.%.5d MHz\n", counterMem / 100000, counterMem % 100000);
-
+*/
 	CPU_Start();
 }
 //---------------------------------------------------------------------------------------
@@ -43,22 +43,21 @@ void FPGA_Config()
 		return;
 	}
 
-	FILINFO fpgaConfigInfo;
 	char lfn[1];
-	fpgaConfigInfo.lfname = lfn;
-	fpgaConfigInfo.lfsize = 0;
+	mem.finfo.lfname = lfn;
+	mem.finfo.lfsize = 0;
 
-	if (f_stat(specConfig.fpgaConfigName, &fpgaConfigInfo) != FR_OK) {
+	if (f_stat(specConfig.fpgaConfigName, &mem.finfo) != FR_OK) {
 		__TRACE("FPGA_Config: '%s' not found, fallback to default...\n", specConfig.fpgaConfigName);
 		strcpy(specConfig.fpgaConfigName, "speccy2010.rbf");
 
-		if (f_stat(specConfig.fpgaConfigName, &fpgaConfigInfo) != FR_OK) {
+		if (f_stat(specConfig.fpgaConfigName, &mem.finfo) != FR_OK) {
 			__TRACE("FPGA_Config: Cannot open '%s'!\n", specConfig.fpgaConfigName);
 			return;
 		}
 	}
 
-	dword fpgaConfigVersion = (fpgaConfigInfo.fdate << 16) | fpgaConfigInfo.ftime;
+	dword fpgaConfigVersion = (mem.finfo.fdate << 16) | mem.finfo.ftime;
 
 	__TRACE("FPGA_Config: chkver [current: %08x > new: %08x]\n", fpgaConfigVersionPrev, fpgaConfigVersion);
 
@@ -67,8 +66,7 @@ void FPGA_Config()
 		return;
 	}
 
-	FIL fpgaConfig;
-	if (f_open(&fpgaConfig, specConfig.fpgaConfigName, FA_READ) != FR_OK) {
+	if (f_open(&mem.fsrc, specConfig.fpgaConfigName, FA_READ) != FR_OK) {
 		__TRACE("FPGA_Config: Cannot open '%s'!\n", specConfig.fpgaConfigName);
 		return;
 	}
@@ -114,11 +112,11 @@ void FPGA_Config()
 	if (nSTATUS() == Bit_RESET) {
 		__TRACE("FPGA_Config: Status OK...\n");
 
-		for (dword pos = 0; pos < fpgaConfig.fsize; pos++) {
+		for (dword pos = 0; pos < mem.fsrc.fsize; pos++) {
 			byte data8;
 
 			UINT res;
-			if (f_read(&fpgaConfig, &data8, 1, &res) != FR_OK)
+			if (f_read(&mem.fsrc, &data8, 1, &res) != FR_OK)
 				break;
 			if (res == 0)
 				break;
@@ -139,7 +137,7 @@ void FPGA_Config()
 		}
 	}
 
-	f_close(&fpgaConfig);
+	f_close(&mem.fsrc);
 	__TRACE("\nFPGA_Config: Flashing done...\n");
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;

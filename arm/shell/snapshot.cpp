@@ -9,10 +9,8 @@
 
 #define SNA_48K_LENGTH 49179
 
-FIL snaFile;
-byte header[0x20];
+byte *header = (mem.sector + 0xE0);
 int progressStep, progressTotal;
-extern char dstName[PATH_SIZE], shortName[45];
 //---------------------------------------------------------------------------------------
 #define RegLoad(R, H, L) \
 		SystemBus_Write(0xc001f0 + R, (header[H] << 8) | header[L]);
@@ -42,19 +40,20 @@ void IncrementName(char *name)
 
 const char *UpdateSnaName()
 {
-	*dstName = '\0';
+	char *ptr = mem.dstName;
+	*ptr = '\0';
 
 	if (*specConfig.snaName != '\0') {
 		if (*specConfig.snaName == '/')
-			sniprintf(dstName, sizeof(dstName), "%s", specConfig.snaName + 1);
+			sniprintf(ptr, sizeof(ptr), "%s", specConfig.snaName + 1);
 		else
-			sniprintf(dstName, sizeof(dstName), "%s%s", get_current_dir(), specConfig.snaName);
+			sniprintf(ptr, sizeof(ptr), "%s%s", get_current_dir(), specConfig.snaName);
 
-		while (*dstName != '\0' && FileExists(dstName))
-			IncrementName(dstName);
+		while (*ptr != '\0' && FileExists(ptr))
+			IncrementName(ptr);
 
-		if (*dstName != '\0')
-			sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s", dstName);
+		if (*ptr != '\0')
+			sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s", ptr);
 	}
 
 	return (const char *) specConfig.snaName;
@@ -122,20 +121,20 @@ bool LoadSnapshot(const char *fileName, const char *title)
 	word specPc = 0;
 	SystemBus_Write(0xc00020, 0); // use bank 0
 
-	if (f_open(&snaFile, fileName, FA_READ) == FR_OK && snaFile.fsize >= SNA_48K_LENGTH) {
+	if (f_open(&mem.fsrc, fileName, FA_READ) == FR_OK && mem.fsrc.fsize >= SNA_48K_LENGTH) {
 		dword addr;
 		word data;
 		int i;
 
 		UINT res;
-		f_lseek(&snaFile, 0);
-		f_read(&snaFile, header, 0x1B, &res);
+		f_lseek(&mem.fsrc, 0);
+		f_read(&mem.fsrc, header, 0x1B, &res);
 
 		progressStep = 0;
-		progressTotal = (snaFile.fsize >> 14) * 16;
+		progressTotal = (mem.fsrc.fsize >> 14) * 16;
 
-		make_short_name(shortName, 32, title);
-		Shell_ProgressBar("Loading snapshot", shortName);
+		make_short_name(mem.shortName, 32, title);
+		Shell_ProgressBar("Loading snapshot", mem.shortName);
 
 		SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
 		SystemBus_Write(0xc00022, 0x8000); // Enable shell border
@@ -144,29 +143,29 @@ bool LoadSnapshot(const char *fileName, const char *title)
 		byte specPort7ffd;
 		byte specPortFe = header[0x1A] & 0x07;
 
-		if (snaFile.fsize == SNA_48K_LENGTH)
+		if (mem.fsrc.fsize == SNA_48K_LENGTH)
 			specPort7ffd = 0x30; // disable 128k
 		else {
-			f_lseek(&snaFile, SNA_48K_LENGTH);
-			f_read(&snaFile, header + 0x1B, 0x04, &res);
+			f_lseek(&mem.fsrc, SNA_48K_LENGTH);
+			f_read(&mem.fsrc, header + 0x1B, 0x04, &res);
 
 			specPc = (header[0x1C] << 8) | header[0x1B];
 			specPort7ffd = header[0x1D];
 			specTrdosFlag = header[0x1E];
 		}
 
-		f_lseek(&snaFile, 0x1B);
+		f_lseek(&mem.fsrc, 0x1B);
 
-		LoadPage(&snaFile, 0x05);
-		LoadPage(&snaFile, 0x02);
-		LoadPage(&snaFile, specPort7ffd & 0x07);
+		LoadPage(&mem.fsrc, 0x05);
+		LoadPage(&mem.fsrc, 0x02);
+		LoadPage(&mem.fsrc, specPort7ffd & 0x07);
 
-		if (snaFile.fsize > SNA_48K_LENGTH) {
-			f_lseek(&snaFile, SNA_48K_LENGTH + 4);
+		if (mem.fsrc.fsize > SNA_48K_LENGTH) {
+			f_lseek(&mem.fsrc, SNA_48K_LENGTH + 4);
 
 			for (byte page = 0; page < 8; page++) {
 				if (page != 0x05 && page != 0x02 && page != (specPort7ffd & 0x07))
-					LoadPage(&snaFile, page);
+					LoadPage(&mem.fsrc, page);
 			}
 		}
 		else {
@@ -187,7 +186,7 @@ bool LoadSnapshot(const char *fileName, const char *title)
 			}
 		}
 
-		f_close(&snaFile);
+		f_close(&mem.fsrc);
 
 		SystemBus_Write(0xc00016, specPortFe);
 		SystemBus_Write(0xc00017, specPort7ffd);
@@ -236,17 +235,18 @@ void SaveSnapshot(const char *name)
 	if (name == NULL)
 		name = UpdateSnaName();
 
-	*dstName = '\0';
+	char *ptr = mem.dstName;
+	*ptr = '\0';
 	if (*name != '\0') {
 		if (*name == '/')
-			sniprintf(dstName, sizeof(dstName), "%s", name + 1);
+			sniprintf(ptr, PATH_SIZE, "%s", name + 1);
 		else
-			sniprintf(dstName, sizeof(dstName), "%s%s", get_current_dir(), name);
+			sniprintf(ptr, PATH_SIZE, "%s%s", get_current_dir(), name);
 	}
 	else {
-		sniprintf(dstName, sizeof(dstName), "%sshot0000.sna", get_current_dir());
-		while (*dstName != '\0' && FileExists(dstName))
-			IncrementName(dstName);
+		sniprintf(ptr, PATH_SIZE, "%sshot0000.sna", get_current_dir());
+		while (*ptr != '\0' && FileExists(ptr))
+			IncrementName(ptr);
 	}
 
 	SystemBus_Write(0xc00020, 0); // use bank 0
@@ -268,8 +268,8 @@ void SaveSnapshot(const char *name)
 
 	progressStep = 0;
 	progressTotal = 8 * 16;
-	make_short_name(shortName, 32, dstName);
-	Shell_ProgressBar("Saving snapshot", shortName);
+	make_short_name(mem.shortName, 32, ptr);
+	Shell_ProgressBar("Saving snapshot", mem.shortName);
 
 	page = specPort7ffd & 7;
 	if (page == 2 || page == 5)
@@ -278,7 +278,7 @@ void SaveSnapshot(const char *name)
 	SystemBus_Write(0xc00021, 0x8000 | VIDEO_PAGE); // Enable shell videopage
 	SystemBus_Write(0xc00022, 0x8000 | (specPortFe & 0x07)); // Enable shell border
 
-	if (f_open(&snaFile, dstName, FA_CREATE_ALWAYS | FA_READ | FA_WRITE) == FR_OK) {
+	if (f_open(&mem.fsrc, mem.dstName, FA_CREATE_ALWAYS | FA_READ | FA_WRITE) == FR_OK) {
 		UINT res;
 
 		RegStore(REG_IR,  0x00, 0x14);
@@ -302,20 +302,20 @@ void SaveSnapshot(const char *name)
 		header[0x1D] = specPort7ffd;
 		header[0x1E] = specTrdosFlag & 1;
 
-		f_write(&snaFile, header, 0x1B, &res);
+		f_write(&mem.fsrc, header, 0x1B, &res);
 
-		SavePage(&snaFile, 0x05);
-		SavePage(&snaFile, 0x02);
-		SavePage(&snaFile, specPort7ffd & 0x07);
+		SavePage(&mem.fsrc, 0x05);
+		SavePage(&mem.fsrc, 0x02);
+		SavePage(&mem.fsrc, specPort7ffd & 0x07);
 
-		f_write(&snaFile, header + 0x1B, 4, &res);
+		f_write(&mem.fsrc, header + 0x1B, 4, &res);
 
 		for (page = 0; page < 8; page++) {
 			if (page != 0x05 && page != 0x02 && page != (specPort7ffd & 0x07))
-				SavePage(&snaFile, page);
+				SavePage(&mem.fsrc, page);
 		}
 
-		f_close(&snaFile);
+		f_close(&mem.fsrc);
 
 		SystemBus_Write(0xc00021, 0);
 		SystemBus_Write(0xc00022, 0);

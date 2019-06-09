@@ -36,9 +36,7 @@ const char *fatErrorMsg[] = {
 	"FR_NOT_ENOUGH_CORE",
 };
 //---------------------------------------------------------------------------------------
-FIL dst;
 char destinationPath[PATH_SIZE] = "/";
-char srcName[PATH_SIZE], dstName[PATH_SIZE], shortName[45];
 //---------------------------------------------------------------------------------------
 void dynamic_bytes_text(dword size, char *buffer)
 {
@@ -83,9 +81,6 @@ void show_table()
 {
 	display_path(get_current_dir(), 0, 22, 42);
 
-	FRECORD fr;
-	char sname[20];
-
 	word i, j, x, col, row, pos;
 	for (i = 0; i < FILES_PER_ROW; i++) {
 		for (j = 0; j < 2; j++) {
@@ -94,11 +89,11 @@ void show_table()
 			row = i + 2;
 			pos = i + j * FILES_PER_ROW + files_table_start;
 
-			Read(&fr, table_buffer, pos);
-			make_short_name(sname, 19, fr.name);
+			Read(&mem.ra, table_buffer, pos);
+			make_short_name(mem.sname, 19, mem.ra.name);
 
 			if (pos < files_size) {
-				if (fr.sel) {
+				if (mem.ra.sel) {
 					DrawChar(x, row, 0xDD);
 					DrawAttr(x, row, 0116);
 				}
@@ -107,8 +102,8 @@ void show_table()
 					DrawAttr(x, row, 0117);
 				}
 
-				DrawStr(x + 6, row, sname, 19);
-				DrawAttr8(col, row, get_sel_attr(fr), 14);
+				DrawStr(x + 6, row, mem.sname, 19);
+				DrawAttr8(col, row, get_sel_attr(mem.ra), 14);
 			}
 			else {
 				DrawStr(x, row, "\xB3", 19);
@@ -126,14 +121,13 @@ void show_table()
 void hide_sel()
 {
 	if (!too_many_files && files_size != 0) {
-		FRECORD fr;
-		Read(&fr, table_buffer, files_sel);
+		Read(&mem.ra, table_buffer, files_sel);
 
 		word x = (files_sel_pos_x * 128) + 2;
 		word col = (x + 6) >> 3;
 		word row = files_sel_pos_y + 2;
 
-		if (fr.sel) {
+		if (mem.ra.sel) {
 			DrawChar(x, row, 0xDD);
 			DrawAttr(x, row, 0116);
 		}
@@ -142,7 +136,7 @@ void hide_sel()
 			DrawAttr(x, row, 0117);
 		}
 
-		DrawAttr8(col, row, get_sel_attr(fr), 14);
+		DrawAttr8(col, row, get_sel_attr(mem.ra), 14);
 		DrawStr(x + 6, row, "", 20, true, true);
 		DrawChar(x + 120, row, 0xB3);
 		DrawAttr(x + 120, row, 0117);
@@ -157,15 +151,14 @@ void show_sel(bool redraw = false)
 		show_table();
 
 	if (!too_many_files && files_size != 0) {
-		FRECORD fr;
-		Read(&fr, table_buffer, files_sel);
+		Read(&mem.ra, table_buffer, files_sel);
 
 		word x = (files_sel_pos_x * 128) + 2;
 		word col = files_sel_pos_x * 16;
 		word row = files_sel_pos_y + 2;
 		byte attr = 0117;
 
-		if (fr.sel) {
+		if (mem.ra.sel) {
 			DrawChar(x, row, 0xDB);
 			attr = 0116;
 		}
@@ -176,15 +169,14 @@ void show_sel(bool redraw = false)
 		DrawStr(x + 6, row, "", 20, true, true);
 		DrawChar(x + 120, row, 0xDD);
 
-		char sname[41];
-		make_short_name(sname, sizeof(sname), fr.name);
-		DrawStrAttr(8, 19, sname, get_sel_attr(fr), 40);
+		make_short_name(mem.sname, 41, mem.ra.name);
+		DrawStrAttr(8, 19, mem.sname, get_sel_attr(mem.ra), 40);
 		DrawStrAttr(206, 18, "\xC4\xC4\xC4\xC4\xC4\xC4", 0117, 6);
 
 		if (files_sel_number > 0) {
-			sniprintf(sname, sizeof(sname), " (%u)", files_sel_number);
-			size_t len = strlen(sname);
-			DrawStr(242 - (len * 6), 18, sname, len);
+			sniprintf(mem.sname, 41, " (%u)", files_sel_number);
+			size_t len = strlen(mem.sname);
+			DrawStr(242 - (len * 6), 18, mem.sname, len);
 			switch (len) {
 				case 4:  len = 2; break;
 				case 5:  len = 3; break;
@@ -195,25 +187,25 @@ void show_sel(bool redraw = false)
 			DrawAttr8(30 - len, 18, 0116, len);
 		}
 
-		if ((fr.date & 0x1ff) == 0 || strcmp(sname, "..") == 0) {
+		if ((mem.ra.date & 0x1ff) == 0 || strcmp(mem.sname, "..") == 0) {
 			DrawStr(8, 20, "---------- -----", 16);
 		}
 		else {
-			sniprintf(sname, sizeof(sname), "%04u-%02u-%02u %02u:%02u",
-				(1980 + (fr.date >> 9)),
-				(fr.date >> 5) & 0x0f,
-				(fr.date & 0x1f),
-				(fr.time >> 11) & 0x1f,
-				(fr.time >> 5) & 0x3f);
-			DrawStr(8, 20, sname, 16);
+			sniprintf(mem.sname, 41, "%04u-%02u-%02u %02u:%02u",
+				(1980 + (mem.ra.date >> 9)),
+				(mem.ra.date >> 5) & 0x0f,
+				(mem.ra.date & 0x1f),
+				(mem.ra.time >> 11) & 0x1f,
+				(mem.ra.time >> 5) & 0x3f);
+			DrawStr(8, 20, mem.sname, 16);
 		}
 
-		if ((fr.attr & AM_DIR) != 0)
-			sprintf(sname, "       <DIR>");
+		if ((mem.ra.attr & AM_DIR) != 0)
+			sprintf(mem.sname, "       <DIR>");
 		else
-			dynamic_bytes_text(fr.size, sname);
+			dynamic_bytes_text(mem.ra.size, mem.sname);
 
-		DrawStr(176, 20, sname, 12);
+		DrawStr(176, 20, mem.sname, 12);
 	}
 }
 //---------------------------------------------------------------------------------------
@@ -242,12 +234,12 @@ void init_screen()
 //---------------------------------------------------------------------------------------
 bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *askForOverwrite = NULL, bool *overwrite = NULL)
 {
-	const char *sname = &dstName[strlen(dstName)];
-	while (sname != dstName && sname[-1] != '/')
-		sname--;
+	const char *ptr = (const char *) &dstName[strlen(dstName)];
+	while (ptr != dstName && ptr[-1] != '/')
+		ptr--;
 
 	int res;
-	make_short_name(shortName, 32, sname);
+	make_short_name(mem.shortName, 32, ptr);
 
 	show_table();
 
@@ -261,7 +253,7 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 				if (*overwrite == false)
 					return false;
 			}
-			else if (!Shell_MessageBox("Overwrite", "Do you want to overwrite", shortName, "", MB_YESNO, 0050, 0115))
+			else if (!Shell_MessageBox("Overwrite", "Do you want to overwrite", mem.shortName, "", MB_YESNO, 0050, 0115))
 				return false;
 
 			res = f_unlink(dstName);
@@ -275,38 +267,37 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 			res = f_rename(srcName, dstName);
 		}
 		else {
-			FIL src;
-			res = f_open(&src, srcName, FA_READ);
+			res = f_open(&mem.fsrc, srcName, FA_READ);
 			if (res != FR_OK) {
 				break;
 			}
 
-			res = f_open(&dst, dstName, FA_WRITE | FA_CREATE_ALWAYS);
+			res = f_open(&mem.fdst, dstName, FA_WRITE | FA_CREATE_ALWAYS);
 			if (res != FR_OK) {
-				f_close(&src);
+				f_close(&mem.fsrc);
 				break;
 			}
 
-			Shell_ProgressBar("Processing", shortName);
+			Shell_ProgressBar("Processing", mem.shortName);
 
 			byte buff[0x100];
-			UINT size = src.fsize;
+			UINT size = mem.fsrc.fsize;
 			while (size > 0) {
 				UINT currentSize = min(size, sizeof(buff));
 				UINT r;
 
-				res = f_read(&src, buff, currentSize, &r);
+				res = f_read(&mem.fsrc, buff, currentSize, &r);
 				if (res != FR_OK)
 					break;
 
-				res = f_write(&dst, buff, currentSize, &r);
+				res = f_write(&mem.fdst, buff, currentSize, &r);
 				if (res != FR_OK)
 					break;
 
 				size -= currentSize;
-				if ((src.fptr & 0x300) == 0) {
-					float progress = src.fsize - size;
-					progress /= src.fsize;
+				if ((mem.fsrc.fptr & 0x300) == 0) {
+					float progress = mem.fsrc.fsize - size;
+					progress /= mem.fsrc.fsize;
 					Shell_UpdateProgress(progress);
 				}
 
@@ -318,11 +309,11 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 
 			ScreenPop();
 
-			f_close(&dst);
+			f_close(&mem.fdst);
 			if (res != FR_OK)
 				f_unlink(dstName);
 
-			f_close(&src);
+			f_close(&mem.fsrc);
 		}
 	} while (false);
 
@@ -331,7 +322,7 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 	else {
 		Shell_MessageBox("Error",
 			(move ? "Cannot move/rename to" : "Cannot copy to"),
-				shortName, fatErrorMsg[res]);
+				mem.shortName, fatErrorMsg[res]);
 	}
 
 	show_table();
@@ -361,36 +352,35 @@ bool Shell_Copy(const char *_name, bool move)
 	}
 
 	if (files_sel_number == 0 || !newPath) {
-		sniprintf(srcName, PATH_SIZE, "%s%s", get_current_dir(), _name);
+		sniprintf(mem.srcName, PATH_SIZE, "%s%s", get_current_dir(), _name);
 
 		if (newPath)
-			sniprintf(dstName, PATH_SIZE, "%s%s", name.String() + 1, _name);
+			sniprintf(mem.dstName, PATH_SIZE, "%s%s", name.String() + 1, _name);
 		else
-			sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
+			sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
 
-		if (Shell_CopyItem(srcName, dstName, move) && !newPath && move) {
+		if (Shell_CopyItem(mem.srcName, mem.dstName, move) && !newPath && move) {
 			sniprintf(files_lastName, sizeof(files_lastName), "%s", name.String());
 		}
 	}
 	else {
-		FRECORD fr;
 		bool overwrite = true;
 		bool askForOverwrite = true;
 
 		for (int i = 0; i < files_size; i++) {
-			Read(&fr, table_buffer, i);
+			Read(&mem.ra, table_buffer, i);
 
-			if (fr.sel) {
-				sniprintf(srcName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
-				sniprintf(dstName, PATH_SIZE, "%s%s", name.String() + 1, fr.name);
+			if (mem.ra.sel) {
+				sniprintf(mem.srcName, PATH_SIZE, "%s%s", get_current_dir(), mem.ra.name);
+				sniprintf(mem.dstName, PATH_SIZE, "%s%s", name.String() + 1, mem.ra.name);
 
-				if (!Shell_CopyItem(srcName, dstName, move, &askForOverwrite, &overwrite))
+				if (!Shell_CopyItem(mem.srcName, mem.dstName, move, &askForOverwrite, &overwrite))
 					break;
 
-				fr.sel = false;
+				mem.ra.sel = false;
 				files_sel_number--;
 
-				Write(&fr, table_buffer, i);
+				Write(&mem.ra, table_buffer, i);
 			}
 
 			if (GetKey(false) == K_ESC)
@@ -407,17 +397,17 @@ bool Shell_CreateFolder()
 	if (!Shell_InputBox("Create folder", "Enter name:", name))
 		return false;
 
-	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
+	sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
 
-	int res = f_mkdir(dstName);
+	int res = f_mkdir(mem.dstName);
 	if (res == FR_OK) {
 		sniprintf(files_lastName, sizeof(files_lastName), "%s", name.String());
 		return true;
 	}
 
-	make_short_name(shortName, 32, name);
+	make_short_name(mem.shortName, 32, name);
 
-	Shell_MessageBox("Error", "Cannot create the folder", shortName, fatErrorMsg[res]);
+	Shell_MessageBox("Error", "Cannot create the folder", mem.shortName, fatErrorMsg[res]);
 	show_table();
 
 	return false;
@@ -429,13 +419,13 @@ bool Shell_DeleteItem(const char *name)
 	if (res == FR_OK)
 		return true;
 
-	const char *sname = &name[strlen(name)];
-	while (sname != name && sname[-1] != '/')
-		sname--;
+	const char *ptr = (const char *) &name[strlen(name)];
+	while (ptr != name && ptr[-1] != '/')
+		ptr--;
 
-	make_short_name(shortName, 32, sname);
+	make_short_name(mem.shortName, 32, ptr);
 
-	Shell_MessageBox("Error", "Cannot delete the item", shortName, fatErrorMsg[res]);
+	Shell_MessageBox("Error", "Cannot delete the item", mem.shortName, fatErrorMsg[res]);
 	show_table();
 
 	return false;
@@ -447,27 +437,25 @@ bool Shell_Delete(const char *name)
 		return false;
 
 	if (files_sel_number > 0)
-		sniprintf(shortName, 24, "selected %u item%s", files_sel_number, files_sel_number > 1 ? "s" : "");
+		sniprintf(mem.shortName, 24, "selected %u item%s", files_sel_number, files_sel_number > 1 ? "s" : "");
 	else
-		make_short_name(shortName, 32, name);
-	strcat(shortName, "?");
+		make_short_name(mem.shortName, 32, name);
+	strcat(mem.shortName, "?");
 
-	if (!Shell_MessageBox("Delete", "Do you wish to delete", shortName, "", MB_YESNO))
+	if (!Shell_MessageBox("Delete", "Do you wish to delete", mem.shortName, "", MB_YESNO))
 		return false;
 
 	if (files_sel_number == 0) {
-		sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), name);
-		Shell_DeleteItem(dstName);
+		sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), name);
+		Shell_DeleteItem(mem.dstName);
 	}
 	else {
-		FRECORD fr;
-
 		for (int i = 0; i < files_size; i++) {
-			Read(&fr, table_buffer, i);
+			Read(&mem.ra, table_buffer, i);
 
-			if (fr.sel) {
-				sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
-				if (!Shell_DeleteItem(dstName))
+			if (mem.ra.sel) {
+				sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), mem.ra.name);
+				if (!Shell_DeleteItem(mem.dstName))
 					break;
 			}
 		}
@@ -479,7 +467,7 @@ bool Shell_Delete(const char *name)
 bool Shell_EmptyTrd(const char *_name, bool format = true)
 {
 	bool result = false;
-	make_short_name(shortName, 32, _name);
+	make_short_name(mem.shortName, 32, _name);
 
 	if (format) {
 		char *ext = (char *) (_name + strlen(_name));
@@ -489,8 +477,8 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 		if (strcasecmp(ext, ".trd") != 0)
 			return false;
 
-		strcat(shortName, "?");
-		if (!Shell_MessageBox("Format", "Do you wish to format", shortName, "", MB_YESNO, 0050, 0115))
+		strcat(mem.shortName, "?");
+		if (!Shell_MessageBox("Format", "Do you wish to format", mem.shortName, "", MB_YESNO, 0050, 0115))
 			return false;
 	}
 
@@ -502,63 +490,63 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 	if (!Shell_InputBox("Format", "Enter disk label:", label))
 		return false;
 
-	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), _name);
+	sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), _name);
 
 	const byte zero[0x10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	const byte sysArea[] = { 0x00, 0x00, 0x01, 0x16, 0x00, 0xf0, 0x09, 0x10 };
-	char sysLabel[8];
-	strncpy(sysLabel, label.String(), sizeof(sysLabel));
+	char *sysLabel = mem.sname + 32;
+	strncpy(sysLabel, label.String(), 8);
 
 	int res;
 	UINT r;
 	BYTE flags = FA_WRITE | (format ? FA_OPEN_EXISTING : FA_CREATE_ALWAYS);
 
 	{
-		res = f_open(&dst, dstName, flags);
+		res = f_open(&mem.fdst, mem.dstName, flags);
 		if (res != FR_OK)
 			goto formatExit1;
 
 		for (int i = 0; i < 256 * 16; i += sizeof(zero)) {
-			res = f_write(&dst, zero, sizeof(zero), &r);
+			res = f_write(&mem.fdst, zero, sizeof(zero), &r);
 			if (res != FR_OK)
 				break;
 		}
 		if (res != FR_OK)
 			goto formatExit2;
 
-		res = f_lseek(&dst, 0x8e0);
+		res = f_lseek(&mem.fdst, 0x8e0);
 		if (res != FR_OK)
 			goto formatExit2;
 
-		res = f_write(&dst, sysArea, sizeof(sysArea), &r);
+		res = f_write(&mem.fdst, sysArea, sizeof(sysArea), &r);
 		if (res != FR_OK)
 			goto formatExit2;
 
-		res = f_lseek(&dst, 0x8f5);
+		res = f_lseek(&mem.fdst, 0x8f5);
 		if (res != FR_OK)
 			goto formatExit2;
 
-		res = f_write(&dst, sysLabel, sizeof(sysLabel), &r);
+		res = f_write(&mem.fdst, sysLabel, 8, &r);
 		if (res != FR_OK)
 			goto formatExit2;
 
-		res = f_lseek(&dst, 256 * 16 * 2 * 80 - sizeof(zero));
+		res = f_lseek(&mem.fdst, 256 * 16 * 2 * 80 - sizeof(zero));
 		if (res != FR_OK)
 			goto formatExit2;
 
-		res = f_write(&dst, zero, sizeof(zero), &r);
+		res = f_write(&mem.fdst, zero, sizeof(zero), &r);
 		if (res != FR_OK)
 			goto formatExit2;
 
 	formatExit2:
-		f_close(&dst);
+		f_close(&mem.fdst);
 
 	formatExit1:;
 	}
 
 	if (res != FR_OK) {
-		make_short_name(shortName, 32, _name);
-		Shell_MessageBox("Error", "Cannot format", shortName, fatErrorMsg[res]);
+		make_short_name(mem.shortName, 32, _name);
+		Shell_MessageBox("Error", "Cannot format", mem.shortName, fatErrorMsg[res]);
 	}
 
 	return result;
@@ -573,20 +561,20 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 	int numsec = 0;
 	bool askForGeometry = true;
 
-	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), _name);
+	sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), _name);
 
 	if (format) {
-		make_short_name(shortName, 32, _name);
+		make_short_name(mem.shortName, 32, _name);
 
-		if (mb02_checkfmt(dstName, &numtrk, &numsec)) {
-			strcat(shortName, "?");
-			if (!Shell_MessageBox(title, "Do you wish to format", shortName, "", MB_YESNO, 0050, 0115))
+		if (mb02_checkfmt(mem.dstName, &numtrk, &numsec)) {
+			strcat(mem.shortName, "?");
+			if (!Shell_MessageBox(title, "Do you wish to format", mem.shortName, "", MB_YESNO, 0050, 0115))
 				return false;
 			askForGeometry = false;
 		}
 		else {
-			strcat(shortName, ".");
-			if (!Shell_MessageBox(title, "Invalid image format of", shortName, "Recreate image anyway?", MB_YESNO))
+			strcat(mem.shortName, ".");
+			if (!Shell_MessageBox(title, "Invalid image format of", mem.shortName, "Recreate image anyway?", MB_YESNO))
 				return false;
 		}
 	}
@@ -612,10 +600,10 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 			}
 
 			disk_size = (numtrk * numsec) << 1;
-			sniprintf(shortName, 30, "Invalid disk size %u kB", disk_size);
+			sniprintf(mem.shortName, 30, "Invalid disk size %u kB", disk_size);
 
 			if (disk_size < 5 || disk_size >= 2047) {
-				Shell_MessageBox(title, shortName, "(must be 6..2046 kB)");
+				Shell_MessageBox(title, mem.shortName, "(must be 6..2046 kB)");
 				continue;
 			}
 
@@ -633,7 +621,7 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 		label.TrimRight(label.Length() - 26);
 
 	Shell_ProgressBar(title, "Formatting...");
-	bool result = mb02_formatdisk(dstName, numtrk, numsec, label.String());
+	bool result = mb02_formatdisk(mem.dstName, numtrk, numsec, label.String());
 	ScreenPop();
 
 	return result;
@@ -669,24 +657,23 @@ bool Shell_CreateDiskImage()
 //---------------------------------------------------------------------------------------
 void Shell_AutoloadESXDOS(char *fullName, bool disk = false)
 {
-	FILINFO fi;
-	*dstName = '\0';
-	char *ptr = dstName;
+	char *ptr = mem.dstName;
+	*ptr = '\0';
 
 	for (char *token = strchr(fullName, '/'); token;
 			*token = '/', token = strchr(++token, '/')) {
 
 		strcpy(ptr++, "/");
 		*token = '\0';
-		f_stat(fullName, &fi);
-		ptr += sprintf(ptr, fi.fname);
+		f_stat(fullName, &mem.finfo);
+		ptr += sprintf(ptr, mem.finfo.fname);
 	}
 
-	f_stat(fullName, &fi);
-	sprintf(ptr, "/%s", fi.fname);
-	strlwr(dstName);
+	f_stat(fullName, &mem.finfo);
+	sprintf(ptr, "/%s", mem.finfo.fname);
+	strlwr(mem.dstName);
 
-	__TRACE("Autoloading \"%s\" file in ESXDOS...\n", dstName);
+	__TRACE("Autoloading \"%s\" file in ESXDOS...\n", mem.dstName);
 
 	CPU_Quick_Reset();
 
@@ -712,9 +699,10 @@ void Shell_AutoloadESXDOS(char *fullName, bool disk = false)
 	for (; i < l; i += 2)
 		SystemBus_Write(addr++, ((word) esxAutoloader[i]) | (esxAutoloader[i + 1] << 8));
 
-	l = strlen(dstName) + 1;
+	ptr = mem.dstName;
+	l = strlen(ptr) + 1;
 	for (i = 0; i < l; i += 2)
-		SystemBus_Write(addr++, ((word) dstName[i]) | (dstName[i + 1] << 8));
+		SystemBus_Write(addr++, ((word) ptr[i]) | (ptr[i + 1] << 8));
 
 	CPU_ModifyPC(0x5b82, 1);
 }
@@ -726,12 +714,12 @@ void Shell_ScreenBrowser(char *fullName)
 		for (; pos < 0x1b00; pos++)
 			SystemBus_Write(addr + pos, 0);
 
-		if (f_open(&dst, fullName, FA_READ) == FR_OK) {
+		if (f_open(&mem.fdst, fullName, FA_READ) == FR_OK) {
 			byte data;
 			UINT res;
 
 			for (pos = 0; pos < 0x1b00; pos++) {
-				if (f_read(&dst, &data, 1, &res) != FR_OK)
+				if (f_read(&mem.fdst, &data, 1, &res) != FR_OK)
 					break;
 				if (res == 0)
 					break;
@@ -739,7 +727,7 @@ void Shell_ScreenBrowser(char *fullName)
 				SystemBus_Write(addr++, data);
 			}
 
-			f_close(&dst);
+			f_close(&mem.fdst);
 
 			// missing attributes filled with base color...
 			for (; pos < 0x1b00; pos++)
@@ -758,16 +746,15 @@ void Shell_ScreenBrowser(char *fullName)
 			if (files_sel >= files_size)
 				files_sel = 0;
 
-			FRECORD fr;
-			Read(&fr, table_buffer, files_sel);
-			strlwr(fr.name);
+			Read(&mem.ra, table_buffer, files_sel);
+			strlwr(mem.ra.name);
 
-			char *ext = fr.name + strlen(fr.name);
-			while (ext > fr.name && *ext != '.')
+			char *ext = mem.ra.name + strlen(mem.ra.name);
+			while (ext > mem.ra.name && *ext != '.')
 				ext--;
 
-			if (strcmp(ext, ".scr") == 0 || fr.size == 6912 || fr.size == 6144) {
-				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
+			if (strcmp(ext, ".scr") == 0 || mem.ra.size == 6912 || mem.ra.size == 6144) {
+				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), mem.ra.name);
 				break;
 			}
 
@@ -779,12 +766,12 @@ void Shell_ScreenBrowser(char *fullName)
 //---------------------------------------------------------------------------------------
 bool Shell_Viewer(char *fullName)
 {
-	if (f_open(&dst, fullName, FA_READ) == FR_OK) {
+	if (f_open(&mem.fdst, fullName, FA_READ) == FR_OK) {
 		byte data;
 		UINT res, total, ascii;
 
 		for (total = 0, ascii = 0; total < 1024; total++) {
-			if (f_read(&dst, &data, 1, &res) != FR_OK)
+			if (f_read(&mem.fdst, &data, 1, &res) != FR_OK)
 				break;
 			if (res == 0)
 				break;
@@ -793,7 +780,7 @@ bool Shell_Viewer(char *fullName)
 				ascii++;
 		}
 
-		f_close(&dst);
+		f_close(&mem.fdst);
 
 		if ((100.0f / ((float) total / ascii)) > 80.0f) {
 			Shell_TextViewer(fullName);
@@ -813,19 +800,19 @@ bool Shell_Receiver(const char *inputName)
 	if (!Shell_InputBox(title, "Enter output name:", name) || name.Length() == 0)
 		return false;
 
-	make_short_name(shortName, 32, name.String());
-	sniprintf(dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
+	make_short_name(mem.shortName, 32, name.String());
+	sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
 
-	if (FileExists(dstName) && !Shell_MessageBox("Overwrite", "Do you want to overwrite", shortName, "", MB_YESNO, 0050, 0115))
+	if (FileExists(mem.dstName) && !Shell_MessageBox("Overwrite", "Do you want to overwrite", mem.shortName, "", MB_YESNO, 0050, 0115))
 		return false;
 
-	sniprintf(srcName, PATH_SIZE, "%s%lo.tmp", get_current_dir(), get_fattime());
+	sniprintf(mem.srcName, PATH_SIZE, "%s%lo.tmp", get_current_dir(), get_fattime());
 
-	if (f_open(&dst, srcName, FA_READ | FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
+	if (f_open(&mem.fdst, mem.srcName, FA_READ | FA_WRITE | FA_CREATE_ALWAYS) == FR_OK) {
 		Shell_MessageBox(title, "Receiving transmission...", "", "", MB_PROGRESS, 0070);
 
 		char status = 0;
-		XModem modem(&dst);
+		XModem modem(&mem.fdst);
 
 		modem.init();
 
@@ -841,14 +828,14 @@ bool Shell_Receiver(const char *inputName)
 		ScreenPop();
 
 		if (status > 0) {
-			DWORD dc = dst.fsize;
+			DWORD dc = mem.fdst.fsize;
 			byte c;
 			UINT r;
 
 			// try to find proper ending
 			for (int i = 0; dc > 1 && i < 127; i++) {
-				f_lseek(&dst, --dc);
-				f_read(&dst, &c, 1, &r);
+				f_lseek(&mem.fdst, --dc);
+				f_read(&mem.fdst, &c, 1, &r);
 
 				if (c != 0x1A)
 					break;
@@ -859,22 +846,22 @@ bool Shell_Receiver(const char *inputName)
 			if (Shell_InputBox(title, "Confirm file size:", value))
 				sscanf(value.String(), "%lu", &dc);
 
-			if (dc > 0 && dc < dst.fsize) {
-				f_lseek(&dst, dc);
-				f_truncate(&dst);
+			if (dc > 0 && dc < mem.fdst.fsize) {
+				f_lseek(&mem.fdst, dc);
+				f_truncate(&mem.fdst);
 			}
 
-			f_close(&dst);
+			f_close(&mem.fdst);
 
-			if (FileExists(dstName))
-				f_unlink(dstName);
-			f_rename(srcName, dstName);
+			if (FileExists(mem.dstName))
+				f_unlink(mem.dstName);
+			f_rename(mem.srcName, mem.dstName);
 		}
 		else {
-			f_close(&dst);
-			f_unlink(srcName);
+			f_close(&mem.fdst);
+			f_unlink(mem.srcName);
 
-			Shell_MessageBox("Error", "Transmission failed!", shortName);
+			Shell_MessageBox("Error", "Transmission failed!", mem.shortName);
 		}
 	}
 
@@ -899,11 +886,9 @@ void Shell_Commander()
 		if (!ModComb(MOD_ALT_0 | MOD_CTRL_0))
 			continue;
 
-		char fullName[PATH_SIZE];
-		FRECORD fr;
-		Read(&fr, table_buffer, files_sel);
+		Read(&mem.ra, table_buffer, files_sel);
 
-		sniprintf(files_lastName, sizeof(files_lastName), "%s", fr.name);
+		sniprintf(files_lastName, sizeof(files_lastName), "%s", mem.ra.name);
 
 		if ((key == K_UP || key == K_DOWN || key == K_LEFT || key == K_RIGHT) && files_size > 0) {
 			hide_sel();
@@ -920,14 +905,14 @@ void Shell_Commander()
 			show_sel();
 		}
 		else if (key == ' ' && files_size > 0) {
-			if (strcmp(fr.name, "..") != 0) {
-				if (fr.sel)
+			if (strcmp(mem.ra.name, "..") != 0) {
+				if (mem.ra.sel)
 					files_sel_number--;
 				else
 					files_sel_number++;
 
-				fr.sel = (fr.sel + 1) % 2;
-				Write(&fr, table_buffer, files_sel);
+				mem.ra.sel = (mem.ra.sel + 1) % 2;
+				Write(&mem.ra, table_buffer, files_sel);
 			}
 
 			hide_sel();
@@ -939,19 +924,19 @@ void Shell_Commander()
 			files_sel_number = 0;
 
 			for (int i = 0; i < files_size; i++) {
-				Read(&fr, table_buffer, i);
+				Read(&mem.ra, table_buffer, i);
 
-				if (strcmp(fr.name, "..") != 0) {
+				if (strcmp(mem.ra.name, "..") != 0) {
 					if (key == '+' || key == '=')
-						fr.sel = 1;
+						mem.ra.sel = 1;
 					else if (key == '-')
-						fr.sel = 0;
+						mem.ra.sel = 0;
 					else if (key == '/' || key == '\\')
-						fr.sel = (fr.sel + 1) % 2;
+						mem.ra.sel = (mem.ra.sel + 1) % 2;
 
-					if (fr.sel)
+					if (mem.ra.sel)
 						files_sel_number++;
-					Write(&fr, table_buffer, i);
+					Write(&mem.ra, table_buffer, i);
 				}
 
 				if ((i & 0x3f) == 0)
@@ -961,11 +946,11 @@ void Shell_Commander()
 			show_sel(true);
 		}
 		else if (key >= '1' && key <= '4') {
-			if (specConfig.specDiskIf != SpecDiskIf_DivMMC && (fr.attr & AM_DIR) == 0) {
-				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
+			if (specConfig.specDiskIf != SpecDiskIf_DivMMC && (mem.ra.attr & AM_DIR) == 0) {
+				sniprintf(mem.fullName, PATH_SIZE, "%s%s", get_current_dir(), mem.ra.name);
 
-				char *ext = fr.name + strlen(fr.name);
-				while (ext > fr.name && *ext != '.')
+				char *ext = mem.ra.name + strlen(mem.ra.name);
+				while (ext > mem.ra.name && *ext != '.')
 					ext--;
 
 				int i = key - '1';
@@ -978,10 +963,10 @@ void Shell_Commander()
 					if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
 						difValid = true;
 
-						if (fdc_open_image(i, fullName)) {
+						if (fdc_open_image(i, mem.fullName)) {
 							floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
 
-							strcpy(specConfig.specBdiImages[i].name, fullName);
+							strcpy(specConfig.specBdiImages[i].name, mem.fullName);
 							SaveConfig();
 
 							mountPoint = &"A:\0B:\0C:\0D:"[i * 3]; // TR-DOS drive letter
@@ -995,11 +980,11 @@ void Shell_Commander()
 					if (specConfig.specDiskIf == SpecDiskIf_MB02) {
 						difValid = true;
 
-						if (mb02_open_image(i, fullName) == 0) {
+						if (mb02_open_image(i, mem.fullName) == 0) {
 							specConfig.specMB2Images[i].writeProtect |= mb02_is_disk_wp(i);
 							mb02_set_disk_wp(i, (specConfig.specMB2Images[i].writeProtect != 0));
 
-							strcpy(specConfig.specMB2Images[i].name, fullName);
+							strcpy(specConfig.specMB2Images[i].name, mem.fullName);
 							SaveConfig();
 
 							mountPoint = &"@1\0@2\0@3\0@4"[i * 3]; // BS-DOS drive number
@@ -1010,12 +995,10 @@ void Shell_Commander()
 
 				if (extMatch) {
 					if (imgValid) {
-						char successMsg[2][36];
+						make_short_name(mem.shortName, 35, mem.ra.name);
+						sniprintf(mem.sname, 35, "mounted into %s drive...", mountPoint);
 
-						make_short_name(successMsg[0], 35, fr.name);
-						sniprintf(successMsg[1], 35, "mounted into %s drive...", mountPoint);
-
-						Shell_Toast(successMsg[0], successMsg[1]);
+						Shell_Toast(mem.shortName, mem.sname);
 					}
 					else if (difValid)
 						Shell_MessageBox("Mount disk error", "Invalid disk image");
@@ -1039,36 +1022,36 @@ void Shell_Commander()
 		}
 		else if (key == K_F2) {
 			sniprintf(destinationPath, sizeof(destinationPath), "/%s", get_current_dir());
-			make_short_name(shortName, 36, destinationPath);
-			Shell_Toast("Current working directory:", shortName, 0070);
+			make_short_name(mem.shortName, 36, destinationPath);
+			Shell_Toast("Current working directory:", mem.shortName, 0070);
 		}
 		else if (key == K_F3) {
-			if ((fr.attr & AM_DIR) == 0) {
-				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
+			if ((mem.ra.attr & AM_DIR) == 0) {
+				sniprintf(mem.fullName, PATH_SIZE, "%s%s", get_current_dir(), mem.ra.name);
 
-				char *ext = fr.name + strlen(fr.name);
-				while (ext > fr.name && *ext != '.')
+				char *ext = mem.ra.name + strlen(mem.ra.name);
+				while (ext > mem.ra.name && *ext != '.')
 					ext--;
 
 				strlwr(ext);
-				if (strcmp(ext, ".scr") == 0 || fr.size == 6912 || fr.size == 6144) {
-					Shell_ScreenBrowser(fullName);
-					init_screen();
-					show_table();
-				}
-				else if (Shell_Viewer(fullName)) {
-					init_screen();
-					show_table();
+				if (strcmp(ext, ".scr") == 0 || mem.ra.size == 6912 || mem.ra.size == 6144)
+					Shell_ScreenBrowser(mem.fullName);
+
+				else if (!Shell_Viewer(mem.fullName)) {
+					show_sel(true);
+					continue;
 				}
 
+				init_screen();
+				show_table();
 				show_sel(true);
 			}
 		}
 		else if (key == K_F4) {
-			if ((fr.attr & AM_DIR) == 0) {
-				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
+			if ((mem.ra.attr & AM_DIR) == 0) {
+				sniprintf(mem.fullName, PATH_SIZE, "%s%s", get_current_dir(), mem.ra.name);
 
-				if (Shell_HexViewer(fullName, true)) {
+				if (Shell_HexViewer(mem.fullName, true)) {
 					init_screen();
 					show_table();
 					show_sel(true);
@@ -1077,13 +1060,13 @@ void Shell_Commander()
 		}
 		else if (key == K_F5) {
 			hide_sel();
-			if (Shell_Copy(fr.name, false))
+			if (Shell_Copy(mem.ra.name, false))
 				read_dir();
 			show_sel(true);
 		}
 		else if (key == K_F6) {
 			hide_sel();
-			if (Shell_Copy(fr.name, true))
+			if (Shell_Copy(mem.ra.name, true))
 				read_dir();
 			show_sel(true);
 		}
@@ -1096,7 +1079,7 @@ void Shell_Commander()
 		else if (key == K_F8) {
 			hide_sel();
 
-			if (Shell_Delete(fr.name)) {
+			if (Shell_Delete(mem.ra.name)) {
 				int last_files_sel = files_sel;
 				read_dir();
 				files_sel = last_files_sel;
@@ -1106,20 +1089,20 @@ void Shell_Commander()
 		}
 		else if (key == K_F9) {
 			hide_sel();
-			bool createNew = ((fr.attr & AM_DIR) != 0), success = false;
+			bool createNew = ((mem.ra.attr & AM_DIR) != 0), success = false;
 
 			if (!createNew) {
-				char *ext = fr.name + strlen(fr.name);
-				while (ext > fr.name && *ext != '.')
+				char *ext = mem.ra.name + strlen(mem.ra.name);
+				while (ext > mem.ra.name && *ext != '.')
 					ext--;
 				strlwr(ext);
 
 				if (strcmp(ext, ".trd") == 0) {
-					if (Shell_EmptyTrd(fr.name))
+					if (Shell_EmptyTrd(mem.ra.name))
 						success = true;
 				}
 				else if (strstr(".mbd.mb2", ext)) {
-					if (Shell_EmptyMbd(fr.name))
+					if (Shell_EmptyMbd(mem.ra.name))
 						success = true;
 				}
 				else
@@ -1137,7 +1120,7 @@ void Shell_Commander()
 		else if (key == K_F11) {
 			hide_sel();
 
-			if (Shell_Receiver((fr.attr & AM_DIR) ? "" : fr.name)) {
+			if (Shell_Receiver((mem.ra.attr & AM_DIR) ? "" : mem.ra.name)) {
 				int last_files_sel = files_sel;
 				read_dir();
 				files_sel = last_files_sel;
@@ -1150,41 +1133,41 @@ void Shell_Commander()
 			break;
 		}
 		else if (key == K_RETURN) {
-			if ((fr.attr & AM_DIR) != 0) {
+			if ((mem.ra.attr & AM_DIR) != 0) {
 				hide_sel();
-				enter_dir(fr.name);
+				enter_dir(mem.ra.name);
 				show_table();
 				show_sel();
 			}
 			else {
-				sniprintf(fullName, PATH_SIZE, "%s%s", get_current_dir(), fr.name);
-				strlwr(fr.name);
+				sniprintf(mem.fullName, PATH_SIZE, "%s%s", get_current_dir(), mem.ra.name);
+				strlwr(mem.ra.name);
 
-				char *ext = fr.name + strlen(fr.name);
-				while (ext > fr.name && *ext != '.')
+				char *ext = mem.ra.name + strlen(mem.ra.name);
+				while (ext > mem.ra.name && *ext != '.')
 					ext--;
 
 				if (strstr(".tap.tzx", ext)) {
 					if (specConfig.specDiskIf == SpecDiskIf_DivMMC && strcmp(ext, ".tap") == 0)
-						Shell_AutoloadESXDOS(fullName);
+						Shell_AutoloadESXDOS(mem.fullName);
 					else {
-						Tape_SelectFile(fullName);
-						Shell_Toast("Tape file mounted:", fr.name);
+						Tape_SelectFile(mem.fullName);
+						Shell_Toast("Tape file mounted:", mem.ra.name);
 					}
 					break;
 				}
 				else if (strcmp(ext, ".sna") == 0) {
-					sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s", fullName);
+					sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s", mem.fullName);
 
-					if (LoadSnapshot(fullName, fr.name))
+					if (LoadSnapshot(mem.fullName, mem.ra.name))
 						break;
 				}
 				else if (strstr(".trd.fdi.scl", ext)) {
 					if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
-						if (fdc_open_image(0, fullName)) {
+						if (fdc_open_image(0, mem.fullName)) {
 							floppy_disk_wp(0, &specConfig.specBdiImages[0].writeProtect);
 
-							strcpy(specConfig.specBdiImages[0].name, fullName);
+							strcpy(specConfig.specBdiImages[0].name, mem.fullName);
 							SaveConfig();
 
 							CPU_Start();
@@ -1204,7 +1187,7 @@ void Shell_Commander()
 							Shell_MessageBox("Mount disk error", "Invalid disk image");
 					}
 					else if (specConfig.specDiskIf == SpecDiskIf_DivMMC && strcmp(ext, ".trd") == 0) {
-						Shell_AutoloadESXDOS(fullName, true);
+						Shell_AutoloadESXDOS(mem.fullName, true);
 						break;
 					}
 					else
@@ -1214,11 +1197,11 @@ void Shell_Commander()
 					if (specConfig.specDiskIf != SpecDiskIf_MB02)
 						Shell_MessageBox("Mount disk error", "Cannot mount disk image", "to the current Disk IF");
 
-					else if (mb02_open_image(0, fullName) == 0) {
+					else if (mb02_open_image(0, mem.fullName) == 0) {
 						specConfig.specMB2Images[0].writeProtect |= mb02_is_disk_wp(0);
 						mb02_set_disk_wp(0, (specConfig.specMB2Images[0].writeProtect != 0));
 
-						strcpy(specConfig.specMB2Images[0].name, fullName);
+						strcpy(specConfig.specMB2Images[0].name, mem.fullName);
 						SaveConfig();
 						break;
 					}
@@ -1226,7 +1209,7 @@ void Shell_Commander()
 						Shell_MessageBox("Mount disk error", "Invalid disk image");
 				}
 				else if (strcmp(ext, ".scr") == 0) {
-					Shell_ScreenBrowser(fullName);
+					Shell_ScreenBrowser(mem.fullName);
 
 					init_screen();
 					show_table();

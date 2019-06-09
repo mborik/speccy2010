@@ -2,15 +2,11 @@
 
 bool FileExists(const char *str)
 {
-	FILINFO finfo;
 	char lfn[1];
-	finfo.lfname = lfn;
-	finfo.lfsize = 0;
+	mem.finfo.lfname = lfn;
+	mem.finfo.lfsize = 0;
 
-	if (f_stat(str, &finfo) == FR_OK)
-		return true;
-	else
-		return false;
+	return (f_stat(str, &mem.finfo) == FR_OK);
 }
 
 bool ReadLine(FIL *file, CString &str)

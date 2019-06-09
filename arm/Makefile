@@ -46,6 +46,7 @@ DIR_TARGETS = \
 	$(BUILDDIR)
 
 CC_SRCS = \
+	$(SRCDIR)/mem.c \
 	$(SRCDIR)/utils/crc16.c \
 	$(SRCDIR)/betadisk/bdi.c \
 	$(SRCDIR)/betadisk/fdc.c \

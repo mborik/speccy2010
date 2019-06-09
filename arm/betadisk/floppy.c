@@ -67,25 +67,24 @@ static inline int my_strcasecmp(const char *str1, const char *str2)
 
 int floppy_open(int drv, const char *filename)
 {
-	FILINFO fi;
 	struct flp_ops *ops;
 	const char *p_ext;
 	byte open_mode;
 	int i;
 
 	char lfn[1];
-	fi.lfsize = 0;
-	fi.lfname = lfn;
+	mem.finfo.lfsize = 0;
+	mem.finfo.lfname = lfn;
 
 	floppy_close(drv);
 	if( strcmp( filename, "" ) == 0 ) return FLPO_ERR_READ;
 
-	if (f_stat(filename, &fi) != FR_OK) {
+	if (f_stat(filename, &mem.finfo) != FR_OK) {
 		FLP_TRACE(("flp: FLPO_ERR_READ"));
 		return FLPO_ERR_READ;
 	}
 
-	p_ext = strchr(fi.fname, '.');
+	p_ext = strchr(mem.finfo.fname, '.');
 	if (p_ext == 0 || strlen(p_ext) > 4) {
 		FLP_TRACE(("flp: FLPO_ERR_FORMAT"));
 		return FLPO_ERR_FORMAT;
@@ -108,7 +107,7 @@ int floppy_open(int drv, const char *filename)
   	open_mode = FA_OPEN_EXISTING|FA_READ;
 
 #if !_FS_READONLY
-  	if ( ( disk_status( 0 ) & STA_PROTECT ) == 0 && ( fi.fattrib & AM_RDO ) == 0 && ( ops->flags & FLP_FLAGS_RO ) == 0 )
+  	if ( ( disk_status( 0 ) & STA_PROTECT ) == 0 && ( mem.finfo.fattrib & AM_RDO ) == 0 && ( ops->flags & FLP_FLAGS_RO ) == 0 )
   	{
   		open_mode |= FA_WRITE;
   	}
@@ -132,18 +131,18 @@ int floppy_open(int drv, const char *filename)
 	strcpy(drives[drv].fname, p_file + (i < 0 ? 0 : i));
 	*/
 
-	strcpy( drives[drv].fname, fi.fname );
+	strcpy( drives[drv].fname, mem.finfo.fname );
 	FLP_TRACE(("flp: filename = \"%s\"\n", drives[drv].fname));
 
 	drives[drv].img_wp = 0;
 
-	i = ops->open(drives + drv, fi.fsize);
+	i = ops->open(drives + drv, mem.finfo.fsize);
 	if (i != FLPO_ERR_OK) {
 		f_close(&drives[drv].fp);
 		return i;
 	}
 
-	drives[drv].fs_wp = ( disk_status( 0 ) & STA_PROTECT ) != 0 || ( fi.fattrib & AM_RDO ) != 0 || ( ops->flags & FLP_FLAGS_RO ) != 0 || _FS_READONLY;
+	drives[drv].fs_wp = ( disk_status( 0 ) & STA_PROTECT ) != 0 || ( mem.finfo.fattrib & AM_RDO ) != 0 || ( ops->flags & FLP_FLAGS_RO ) != 0 || _FS_READONLY;
 	drives[drv].stat &= ~FLP_STAT_DEL;
 	drives[drv].ops = ops;
 	drives[drv].data_left = 0;
