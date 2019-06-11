@@ -1,8 +1,6 @@
 #include "fpga.h"
 #include "bus.h"
 #include "cpu.h"
-#include "../specConfig.h"
-#include "../specKeyboard.h"
 
 #define DCLK(x) GPIO_WriteBit(GPIO1, GPIO_Pin_6, x)
 #define DATA(x) GPIO_WriteBit(GPIO1, GPIO_Pin_7, x)
@@ -16,30 +14,9 @@ byte timer_flag_1Hz = 0;
 byte timer_flag_100Hz = 0;
 
 dword fpgaConfigVersionPrev = 0;
-dword fpgaStatus = FPGA_NONE;
-
 dword romConfigPrev = -1;
-//---------------------------------------------------------------------------------------
-void FPGA_TestClock()
-{
-	if (fpgaStatus != FPGA_SPECCY2010)
-		return;
 
-	CPU_Stop();
-
-	SystemBus_Write(0xc00050, 0);
-	SystemBus_Write(0xc00050, 1);
-	DelayMs(100);
-	SystemBus_Write(0xc00050, 0);
-
-	dword counter20 = SystemBus_Read(0xc00050) | (SystemBus_Read(0xc00051) << 16);
-	dword counterMem = SystemBus_Read(0xc00052) | (SystemBus_Read(0xc00053) << 16);
-
-	__TRACE("FPGA clock - %d.%.5d MHz\n", counter20 / 100000, counter20 % 100000);
-	__TRACE("FPGA PLL clock - %d.%.5d MHz\n", counterMem / 100000, counterMem % 100000);
-
-	CPU_Start();
-}
+static const char *fpgaConfigName = "speccy2010.rbf";
 //---------------------------------------------------------------------------------------
 void FPGA_Config()
 {
@@ -53,14 +30,9 @@ void FPGA_Config()
 	fpgaConfigInfo.lfname = lfn;
 	fpgaConfigInfo.lfsize = 0;
 
-	if (f_stat(specConfig.fpgaConfigName, &fpgaConfigInfo) != FR_OK) {
-		__TRACE("FPGA_Config: '%s' not found, fallback to default...\n", specConfig.fpgaConfigName);
-		strcpy(specConfig.fpgaConfigName, "speccy2010.rbf");
-
-		if (f_stat(specConfig.fpgaConfigName, &fpgaConfigInfo) != FR_OK) {
-			__TRACE("FPGA_Config: Cannot open '%s'!\n", specConfig.fpgaConfigName);
-			return;
-		}
+	if (f_stat(fpgaConfigName, &fpgaConfigInfo) != FR_OK) {
+		__TRACE("FPGA_Config: Cannot open '%s'!\n", fpgaConfigName);
+		return;
 	}
 
 	dword fpgaConfigVersion = (fpgaConfigInfo.fdate << 16) | fpgaConfigInfo.ftime;
@@ -68,22 +40,21 @@ void FPGA_Config()
 	__TRACE("FPGA_Config: chkver [current: %08x > new: %08x]\n", fpgaConfigVersionPrev, fpgaConfigVersion);
 
 	if (fpgaConfigVersionPrev == fpgaConfigVersion) {
-		__TRACE("FPGA_Config: The version of '%s' is match...\n", specConfig.fpgaConfigName);
+		__TRACE("FPGA_Config: The version of '%s' is match...\n", fpgaConfigName);
 		return;
 	}
 
 	FIL fpgaConfig;
-	if (f_open(&fpgaConfig, specConfig.fpgaConfigName, FA_READ) != FR_OK) {
-		__TRACE("FPGA_Config: Cannot open '%s'!\n", specConfig.fpgaConfigName);
+	if (f_open(&fpgaConfig, fpgaConfigName, FA_READ) != FR_OK) {
+		__TRACE("FPGA_Config: Cannot open '%s'!\n", fpgaConfigName);
 		return;
 	}
 	else {
-		__TRACE("FPGA_Config: '%s' is opened...\n", specConfig.fpgaConfigName);
+		__TRACE("FPGA_Config: '%s' is opened...\n", fpgaConfigName);
 	}
 	//--------------------------------------------------------------------------
 
 	__TRACE("FPGA_Config: Flashing started...\n");
-	fpgaStatus = FPGA_NONE;
 
 	GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -146,7 +117,7 @@ void FPGA_Config()
 	}
 
 	f_close(&fpgaConfig);
-	__TRACE("FPGA_Config: Flashing done...\n");
+	__TRACE("\nFPGA_Config: Flashing done...\n");
 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_9;
@@ -172,20 +143,7 @@ void FPGA_Config()
 
 	romConfigPrev = -1;
 	SystemBus_TestConfiguration();
-
-	if (fpgaStatus == FPGA_SPECCY2010) {
-		__TRACE("Speccy2010 FPGA configuration found...\n");
-
-		FPGA_TestClock();
-		Keyboard_Reset();
-		Mouse_Reset();
-
-		Spectrum_UpdateConfig();
-		Spectrum_UpdateDisks();
-	}
-	else {
-		__TRACE("Wrong FPGA configuration...\n");
-	}
+	__TRACE("Speccy2010 FPGA configuration found...\n");
 
 	WDT_Kick();
 

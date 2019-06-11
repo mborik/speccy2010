@@ -8,7 +8,7 @@
 
 #include "types.h"
 
-#define VERSION "1.2.0"
+#define VERSION "MEMTEST"
 #define PATH_SIZE 0x80
 
 #ifdef __cplusplus
@@ -19,30 +19,13 @@ extern "C" {
 	#include "fatfs/diskio.h"
 	#include "fatfs/ff.h"
 
-	#include "ps2scancodes.h"
-	#include "utils/crc16.h"
-
 	#include <stdio.h>
 	#include <string.h>
 	#include <time.h>
 
 //-------------------------------------------------------------------------
 
-	void Mouse_Reset();
-
-	void Spectrum_UpdateConfig();
-	void Spectrum_UpdateDisks();
-
-	void BDI_Routine();
-	void BDI_ResetWrite();
-	void BDI_Write(byte data);
-	void BDI_ResetRead(word counter);
-	bool BDI_Read(byte *data);
-	void BDI_StopTimer();
-	void BDI_StartTimer();
-
 	void WDT_Kick();
-
 	void DelayUs(dword);
 	void DelayMs(dword);
 
@@ -58,9 +41,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 
-	#include "utils/cstring.h"
-	#include "utils/fifo.h"
-	#include "utils/file.h"
 	#include "system/bus.h"
 	#include "system/core.h"
 	#include "system/cpu.h"

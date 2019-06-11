@@ -36,25 +36,13 @@ DIR_TARGETS = \
 	$(OBJDIR)/core \
 	$(OBJDIR)/fatfs/option \
 	$(OBJDIR)/fatfs \
-	$(OBJDIR)/betadisk \
 	$(OBJDIR)/libnosys \
 	$(OBJDIR)/libstr/src \
-	$(OBJDIR)/utils \
 	$(OBJDIR)/system \
 	$(OBJDIR) \
 	$(BUILDDIR)
 
 CC_SRCS = \
-	$(SRCDIR)/utils/crc16.c \
-	$(SRCDIR)/betadisk/bdi.c \
-	$(SRCDIR)/betadisk/fdc.c \
-	$(SRCDIR)/betadisk/floppy.c \
-	$(SRCDIR)/betadisk/img_fdi.c \
-	$(SRCDIR)/betadisk/img_odi.c \
-	$(SRCDIR)/betadisk/img_scl.c \
-	$(SRCDIR)/betadisk/img_trd.c \
-	$(SRCDIR)/betadisk/trace.c \
-	$(SRCDIR)/betadisk/wd1793.c \
 	$(SRCDIR)/fatfs/diskio.c \
 	$(SRCDIR)/fatfs/ff.c \
 	$(SRCDIR)/fatfs/option/ccsbcs.c \
@@ -102,25 +90,12 @@ CC_SRCS = \
 	$(SRCDIR)/libstr/src/75x_wdg.c
 
 CXX_SRCS = \
-	$(SRCDIR)/utils/cstring.cpp \
-	$(SRCDIR)/utils/fifo.cpp \
-	$(SRCDIR)/utils/file.cpp \
 	$(SRCDIR)/system/bus.cpp \
 	$(SRCDIR)/system/core.cpp \
 	$(SRCDIR)/system/cpu.cpp \
 	$(SRCDIR)/system/fpga.cpp \
 	$(SRCDIR)/system/uarts.cpp \
-	$(SRCDIR)/main.cpp \
-	$(SRCDIR)/ramFile.cpp \
-	$(SRCDIR)/settings.cpp \
-	$(SRCDIR)/specBetadisk.cpp \
-	$(SRCDIR)/specConfig.cpp \
-	$(SRCDIR)/specKeyboard.cpp \
-	$(SRCDIR)/specKeyMap.cpp \
-	$(SRCDIR)/specRtc.cpp \
-	$(SRCDIR)/specShell.cpp \
-	$(SRCDIR)/specSnapshot.cpp \
-	$(SRCDIR)/specTape.cpp
+	$(SRCDIR)/main.cpp
 
 ASM_SRCS = \
 	$(SRCDIR)/core/str750_crt0.s

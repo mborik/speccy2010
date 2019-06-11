@@ -9,8 +9,6 @@ const dword ARM_ALE = 1 << 10;
 //---------------------------------------------------------------------------------------
 bool SystemBus_TestConfiguration()
 {
-	fpgaStatus = FPGA_NONE;
-
 	portENTER_CRITICAL();
 
 	SystemBus_SetAddress(0xc000f0);
@@ -36,10 +34,7 @@ bool SystemBus_TestConfiguration()
 
 	portEXIT_CRITICAL();
 
-	if (result == 0xf001)
-		fpgaStatus = FPGA_SPECCY2010;
-
-	return fpgaStatus != FPGA_NONE;
+	return (result > 0xf000);
 }
 //---------------------------------------------------------------------------------------
 void SystemBus_SetAddress(dword address)
@@ -63,9 +58,6 @@ void SystemBus_SetAddress(dword address)
 //---------------------------------------------------------------------------------------
 word SystemBus_Read()
 {
-	if (fpgaStatus == FPGA_NONE)
-		return 0;
-
 	portENTER_CRITICAL();
 
 	GPIO0->PM = ~0xffff0000;
@@ -105,9 +97,6 @@ word SystemBus_Read(dword address)
 //---------------------------------------------------------------------------------------
 void SystemBus_Write(word data)
 {
-	if (fpgaStatus == FPGA_NONE)
-		return;
-
 	portENTER_CRITICAL();
 
 	GPIO0->PM = ~0xffff0000;
