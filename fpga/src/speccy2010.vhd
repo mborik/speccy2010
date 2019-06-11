@@ -5,7 +5,6 @@ use IEEE.numeric_std.all;
 entity speccy2010_top is
 	port(
 		CLK_20      : in std_logic;
-		CLK_20_ALT  : in std_logic;
 
 		SOUND_LEFT  : out std_logic_vector(7 downto 0) := "10000000";
 		SOUND_RIGHT : out std_logic_vector(7 downto 0) := "10000000";
@@ -26,9 +25,7 @@ entity speccy2010_top is
 		ARM_WAIT    : out std_logic := '0';
 
 		JOY0        : in std_logic_vector(5 downto 0);
-		JOY0_SEL    : out std_logic := '0';
 		JOY1        : in std_logic_vector(5 downto 0);
-		JOY1_SEL    : out std_logic := '0';
 
 		KEYS_CLK    : inout std_logic := 'Z';
 		KEYS_DATA   : inout std_logic := 'Z';

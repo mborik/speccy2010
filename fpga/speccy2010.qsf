@@ -86,7 +86,7 @@ set_location_assignment PIN_33 -to ARM_AD[7]
 set_location_assignment PIN_30 -to ARM_AD[6]
 set_location_assignment PIN_132 -to CLK_20
 set_location_assignment PIN_57 -to ARM_WAIT
-set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
+set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "NO HEAT SINK WITH STILL AIR"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 set_global_assignment -name MISC_FILE "D:/workSvn/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
 set_location_assignment PIN_152 -to pMemUdq
