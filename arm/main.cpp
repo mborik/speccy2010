@@ -5,8 +5,7 @@
 #include <string.h>
 
 #include "system.h"
-#include "betadisk/fdc.h"
-#include "betadisk/floppy.h"
+#include "specBetadisk.h"
 #include "specConfig.h"
 #include "specKeyboard.h"
 #include "specMB02.h"
@@ -337,11 +336,9 @@ void Spectrum_UpdateConfig(bool hardReset)
 void Spectrum_UpdateDisks()
 {
 	if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
-		floppy_set_fast_mode(specConfig.specBdiMode);
-
 		for (int i = 0; i < 4; i++) {
-			fdc_open_image(i, specConfig.specBdiImages[i].name);
-			floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
+			open_dsk_image(i, specConfig.specBdiImages[i].name);
+			beta_set_disk_wp(i, specConfig.specBdiImages[i].writeProtect);
 		}
 	}
 	else if (specConfig.specDiskIf == SpecDiskIf_MB02) {
@@ -514,7 +511,7 @@ void SpectrumTimer_Routine()
 		bool activity = Tape_Started();
 
 		if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
-			activity ^= floppy_leds();
+			activity ^= beta_leds();
 		else
 			activity ^= (diskIfWasActive > 0);
 
@@ -582,39 +579,6 @@ void Timer_Routine()
 	SpectrumTimer_Routine();
 }
 
-void DiskIF_Routine()
-{
-	if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
-		BDI_Routine();
-	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
-		DivMMC_Routine();
-	else if (specConfig.specDiskIf == SpecDiskIf_MB02)
-		MB02_Routine();
-}
-
-void BDI_ResetWrite()
-{
-	SystemBus_Write(0xc00060, 0x8000);
-}
-
-void BDI_Write(byte data)
-{
-	SystemBus_Write(0xc00060, data);
-}
-
-void BDI_ResetRead(word counter)
-{
-	SystemBus_Write(0xc00061, 0x8000 | counter);
-}
-
-bool BDI_Read(byte *data)
-{
-	word result = SystemBus_Read(0xc00061);
-	*data = (byte)result;
-
-	return (result & 0x8000) != 0;
-}
-
 void BDI_Routine()
 {
 	int ioCounter = 0x20;
@@ -627,19 +591,19 @@ void BDI_Routine()
 
 		if (trdosWr) {
 			byte trdosData = SystemBus_Read(0xc0001b);
-			fdc_write(trdosAddr, trdosData);
+			beta_write_port(trdosAddr, trdosData);
 		}
 		else {
-			byte trdosData = fdc_read(trdosAddr);
+			byte trdosData = beta_read_port(trdosAddr);
 			SystemBus_Write(0xc0001b, trdosData);
 		}
 
-		SystemBus_Write(0xc0001d, fdc_read(0xff));
+		SystemBus_Write(0xc0001d, beta_read_port(0xff));
 		SystemBus_Write(0xc00019, 0);
 
 		fdc_dispatch();
 
-		SystemBus_Write(0xc0001d, fdc_read(0xff));
+		SystemBus_Write(0xc0001d, beta_read_port(0xff));
 		//SystemBus_Write( 0xc00019, 0 );
 
 		if (--ioCounter == 0)
@@ -649,7 +613,7 @@ void BDI_Routine()
 	}
 
 	fdc_dispatch();
-	SystemBus_Write(0xc0001d, fdc_read(0xff));
+	SystemBus_Write(0xc0001d, beta_read_port(0xff));
 }
 
 void DivMMC_Routine()
@@ -738,6 +702,16 @@ void MB02_Routine()
 		else
 			SystemBus_Write(0xc00040, lastCpuConfig);
 	}
+}
+
+void DiskIF_Routine()
+{
+	if (specConfig.specDiskIf == SpecDiskIf_Betadisk)
+		BDI_Routine();
+	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC)
+		DivMMC_Routine();
+	else if (specConfig.specDiskIf == SpecDiskIf_MB02)
+		MB02_Routine();
 }
 
 const dword STACK_FILL = 0x37ACF177;
@@ -936,7 +910,7 @@ int main()
 		__TRACE("PLL initialization error !\n");
 	DelayMs(100);
 
-	fdc_init();
+	beta_init();
 	mb02_init();
 	RTC_Init();
 	Debugger_Init();

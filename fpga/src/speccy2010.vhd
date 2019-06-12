@@ -169,7 +169,6 @@ architecture rtl of speccy2010_top is
 	signal specTrdosEnabled : std_logic := '0';
 	signal specTrdosTglFlag : std_logic := '0';
 	signal specTrdosFlag    : std_logic := '0';
-	signal specTrdosCounter : unsigned(15 downto 0) := x"0000";
 	signal specTrdosPortFF  : std_logic_vector(7 downto 0) := x"00";
 
 	signal divmmcEnabled    : std_logic := '0';
@@ -342,25 +341,6 @@ architecture rtl of speccy2010_top is
 
 	signal tapeFifoReady    : std_logic;
 	signal tapeFifoFull     : std_logic;
-
-	signal trdosFifoReadWrTmp   : std_logic_vector( 7 downto 0 );
-	signal trdosFifoReadWr      : std_logic;
-	signal trdosFifoReadRdTmp   : std_logic_vector( 7 downto 0 );
-	signal trdosFifoReadRd      : std_logic;
-
-	signal trdosFifoReadRst     : std_logic;
-	signal trdosFifoReadReady   : std_logic;
-	signal trdosFifoReadFull    : std_logic;
-
-	signal trdosFifoWriteWrTmp  : std_logic_vector( 7 downto 0 );
-	signal trdosFifoWriteWr     : std_logic;
-	signal trdosFifoWriteRdTmp  : std_logic_vector( 7 downto 0 );
-	signal trdosFifoWriteRd     : std_logic;
-
-	signal trdosFifoWriteRst        : std_logic;
-	signal trdosFifoWriteReady      : std_logic;
-	signal trdosFifoWriteFull       : std_logic;
-	signal trdosFifoWriteCounter    : unsigned( 10 downto 0 ) := "00000000000";
 
 	-- A B C (L)  A B C (R)
 	constant weigthYmTable : weight_array := (
@@ -578,49 +558,8 @@ begin
 			in_full_o => tapeFifoFull
 		);
 
-	-- Betadisk interface
-	U08 : entity work.fifo
-		generic map(
-			fifo_width => 8,
-			fifo_depth => 1024
-		)
-
-		port map(
-			clk_i => memclk,
-			rst_i => reset or trdosFifoReadRst,
-
-			data_o => trdosFifoReadRdTmp,
-			data_i => trdosFifoReadWrTmp,
-
-			wr_i => trdosFifoReadWr,
-			rd_i => trdosFifoReadRd,
-
-			out_ready_o => trdosFifoReadReady,
-			in_full_o => trdosFifoReadFull
-		);
-
-	U09 : entity work.fifo
-		generic map(
-			fifo_width => 8,
-			fifo_depth => 1024
-		)
-
-		port map(
-			clk_i => memclk,
-			rst_i => reset or trdosFifoWriteRst,
-
-			data_o => trdosFifoWriteRdTmp,
-			data_i => trdosFifoWriteWrTmp,
-
-			wr_i => trdosFifoWriteWr,
-			rd_i => trdosFifoWriteRd,
-
-			out_ready_o => trdosFifoWriteReady,
-			in_full_o => trdosFifoWriteFull
-		);
-
 	-- Covox
-	U10 : entity work.SounDrive
+	U08 : entity work.SounDrive
 		port map(
 			CLK         => sysclk,
 
@@ -637,7 +576,7 @@ begin
 		);
 
 	-- SoundMixer L/R
-	U11_L : entity work.SoundMixer
+	U09_L : entity work.SoundMixer
 		port map (
 			CLK     => sysclk,
 			I_AUDIO1_AY_A => ayOUT_A,
@@ -678,7 +617,7 @@ begin
 			O_AUDIO        => mixedOutputL
 		);
 
-	U11_R : entity work.SoundMixer
+	U09_R : entity work.SoundMixer
 		port map (
 			CLK     => sysclk,
 			I_AUDIO1_AY_A => ayOUT_A,
@@ -992,16 +931,7 @@ begin
 			keysWr <= '0';
 			mouseRd <= '0';
 			mouseWr <= '0';
-
 			tapeFifoWr <= '0';
-
-			trdosFifoReadRd <= '0';
-			trdosFifoReadWr <= '0';
-			trdosFifoReadRst <= '0';
-
-			trdosFifoWriteRd <= '0';
-			trdosFifoWriteWr <= '0';
-			trdosFifoWriteRst <= '0';
 
 ----------------------------------------------------------------------------------
 
@@ -1111,14 +1041,8 @@ begin
 
 					-- Betadisk control or data-transfer ports
 					if specTrdosEnabled = '1' and ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
-						if cpuA( 7 downto 0 ) = x"7F" and trdosFifoWriteCounter > 0 then
-							trdosFifoWriteWrTmp <= cpuDout;
-							trdosFifoWriteWr <= '1';
-							trdosFifoWriteCounter <= trdosFifoWriteCounter - 1;
-						else
-							specDiskIfWait <= '1';
-							specDiskIfWr <= '1';
-						end if;
+						specDiskIfWait <= '1';
+						specDiskIfWr <= '1';
 
 					-- DivMMC or MB-02 real time clock at #0n03 ports
 					elsif ( divmmcEnabled = '1' or mb02Enabled = '1' ) and cpuA( 15 downto 12 ) & cpuA( 7 downto 0 ) = x"003" then
@@ -1249,9 +1173,6 @@ begin
 					elsif specTrdosEnabled = '1' and ( specTrdosFlag = '1' or specMode = 3 ) and cpuA( 4 downto 0 ) = "11111" then
 						if cpuA( 7 downto 0 ) = x"FF" then
 							cpuDin <= specTrdosPortFF;
-						elsif cpuA( 7 downto 0 ) = x"7F" and trdosFifoReadReady = '1' then
-							cpuDin <= trdosFifoReadRdTmp;
-							trdosFifoReadRd <= '1';
 						else
 							specDiskIfWait <= '1';
 							specDiskIfWr <= '0';
@@ -1359,20 +1280,6 @@ begin
 							cpuDin <= ARM_AD(7 downto 0);
 						elsif addressReg( 7 downto 0 ) = x"1d" then
 							specTrdosPortFF <= ARM_AD( 7 downto 0 );
-
-						elsif addressReg( 7 downto 0 ) = x"60" then
-
-							if ARM_AD( 15 ) = '1' then
-								trdosFifoReadRst <= '1';
-							else
-								trdosFifoReadWrTmp <= ARM_AD( 7 downto 0 );
-								trdosFifoReadWr <= '1';
-							end if;
-
-						elsif addressReg( 7 downto 0 ) = x"61" then
-
-							trdosFifoWriteRst <= ARM_AD( 15 );
-							trdosFifoWriteCounter <= unsigned( ARM_AD( 10 downto 0 ));
 
 						elsif addressReg( 7 downto 0 ) = x"1e" then
 							mouseX <= ARM_AD( 7 downto 0 );
@@ -1491,14 +1398,6 @@ begin
 							ARM_AD <= cpuA;
 						elsif addressReg( 7 downto 0 ) = x"1b" then
 							ARM_AD <= x"00" & cpuDout;
-						elsif addressReg( 7 downto 0 ) = x"1c" then
-							ARM_AD <= std_logic_vector( specTrdosCounter );
-
-						elsif addressReg( 7 downto 0 ) = x"61" then
-							ARM_AD <= trdosFifoWriteReady & "0000000" & trdosFifoWriteRdTmp;
-							if trdosFifoWriteReady = '1' then
-								trdosFifoWriteRd <= '1';
-							end if;
 
 						elsif addressReg( 7 downto 0 ) = x"30" then
 							ARM_AD <= joyCode0;
@@ -1535,7 +1434,7 @@ begin
 							ARM_AD <= std_logic_vector( counterMem( 31 downto 16 ) );
 
 						elsif addressReg( 7 downto 0 ) = x"f0" then
-							ARM_AD <= x"f124"; -- for firmware version >= 1.2.4
+							ARM_AD <= x"f125"; -- for firmware version >= 1.2.5
 
 						else
 							ARM_AD <= x"ffff";
@@ -1643,40 +1542,6 @@ begin
 
 		end if;
 
-	end process;
-
-	process(sysclk)
-
-		variable specTrdosPreCounter : unsigned( 15 downto 0 ) := x"0000";
-		variable waitCounter : std_logic := '0';
-
-	begin
-
-		if sysclk'event and sysclk = '1' then
-
-			if reset = '1' then
-				specTrdosPreCounter := x"0000";
-				specTrdosCounter <= x"0000";
-			end if;
-
-			if waitCounter = '0' then
-
-				specTrdosPreCounter := specTrdosPreCounter + 1;
-
-				if specTrdosPreCounter >= sysFreq * 10 then
-
-					specTrdosPreCounter := x"0000";
-					specTrdosCounter <= specTrdosCounter + 1;
-
-				end if;
-
-			end if;
-
-			if cpuCLK_nowait = '1' then
-				waitCounter := cpuWait;
-			end if;
-
-		end if;
 	end process;
 
 	---------------------------------------------------------------------------------------

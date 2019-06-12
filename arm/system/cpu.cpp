@@ -1,7 +1,7 @@
 #include "cpu.h"
 #include "../specConfig.h"
 #include "../specKeyboard.h"
-#include "../betadisk/fdc.h"
+#include "../specBetadisk.h"
 
 int cpuStopNesting = 0;
 extern word lastCpuConfig;

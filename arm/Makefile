@@ -34,7 +34,6 @@ LDFLAGS += -Wl,-Map=$(MAP_TARGET)
 
 DIR_TARGETS = \
 	$(OBJDIR)/core \
-	$(OBJDIR)/betadisk \
 	$(OBJDIR)/fatfs/option \
 	$(OBJDIR)/fatfs \
 	$(OBJDIR)/libnosys \
@@ -48,15 +47,6 @@ DIR_TARGETS = \
 CC_SRCS = \
 	$(SRCDIR)/mem.c \
 	$(SRCDIR)/utils/crc16.c \
-	$(SRCDIR)/betadisk/bdi.c \
-	$(SRCDIR)/betadisk/fdc.c \
-	$(SRCDIR)/betadisk/floppy.c \
-	$(SRCDIR)/betadisk/img_fdi.c \
-	$(SRCDIR)/betadisk/img_odi.c \
-	$(SRCDIR)/betadisk/img_scl.c \
-	$(SRCDIR)/betadisk/img_trd.c \
-	$(SRCDIR)/betadisk/trace.c \
-	$(SRCDIR)/betadisk/wd1793.c \
 	$(SRCDIR)/fatfs/diskio.c \
 	$(SRCDIR)/fatfs/ff.c \
 	$(SRCDIR)/fatfs/option/ccsbcs.c \
@@ -115,8 +105,8 @@ CXX_SRCS = \
 	$(SRCDIR)/system/sdram.cpp \
 	$(SRCDIR)/system/uarts.cpp \
 	$(SRCDIR)/main.cpp \
-	$(SRCDIR)/ramFile.cpp \
 	$(SRCDIR)/settings.cpp \
+	$(SRCDIR)/specBetadisk.cpp \
 	$(SRCDIR)/specConfig.cpp \
 	$(SRCDIR)/specKeyboard.cpp \
 	$(SRCDIR)/specKeyMap.cpp \

@@ -32,13 +32,6 @@ extern "C" {
 
 	void Mouse_Reset();
 
-	void BDI_Routine();
-	void BDI_ResetWrite();
-	void BDI_Write(byte data);
-	void BDI_ResetRead(word counter);
-	bool BDI_Read(byte *data);
-	void DivMMC_Routine();
-	void MB02_Routine();
 	void DiskIF_StopTimer();
 	void DiskIF_StartTimer();
 	void DiskIF_Routine();
