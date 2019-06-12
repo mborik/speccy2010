@@ -19,7 +19,6 @@ CMenuItem mainMenu[] = {
 	CMenuItem(  8,  5, "Machine :", GetParam(iniParameters, "Machine", PGRP_GENERAL)),
 	CMenuItem(  8,  6, "Timings :", GetParam(iniParameters, "Timings", PGRP_GENERAL)),
 	CMenuItem(  8,  7, "Disk IF :", GetParam(iniParameters, "Disk Interface", PGRP_GENERAL)),
-	CMenuItem(128,  7, "Betadisk speed:", GetParam(iniParameters, "BDI mode", PGRP_TRDOS)),
 	CMenuItem(  8,  8, "Turbo   :", GetParam(iniParameters, "Turbo", PGRP_GENERAL)),
 	CMenuItem(  8,  9, "AY Chip :", GetParam(iniParameters, "AY Chip", PGRP_GENERAL)),
 	CMenuItem(104,  9, "Covox:", GetParam(iniParameters, "Covox", PGRP_GENERAL)),

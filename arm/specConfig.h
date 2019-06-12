@@ -32,7 +32,6 @@ struct CSpecConfig {
 	int specTurboSound;
 	int specCovox;
 	int specAyYm;
-	int specBdiMode;
 	int specJoyModeEmulation;
 	int specJoyMode1;
 	int specJoyMode2;

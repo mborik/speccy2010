@@ -25,7 +25,6 @@ const CParameter iniParameters[] = {
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Swap mouse buttons", "Off|On", &specConfig.specMouseSwap),
 	CParameter(PTYPE_LIST, PGRP_GENERAL, "Font", "Thin|Bold", &specConfig.specFont),
 
-	CParameter(PTYPE_LIST,   PGRP_TRDOS, "BDI mode", "Slow|Fast", &specConfig.specBdiMode),
 	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk A", (char *) sizeof(specConfig.specBdiImages[0].name), specConfig.specBdiImages[0].name),
 	CParameter(PTYPE_LIST,   PGRP_TRDOS, "Disk A WP", "No|Yes", &specConfig.specBdiImages[0].writeProtect),
 	CParameter(PTYPE_STRING, PGRP_TRDOS, "Disk B", (char *) sizeof(specConfig.specBdiImages[1].name), specConfig.specBdiImages[1].name),
@@ -103,7 +102,6 @@ void RestoreConfig()
 	specConfig.specTurboSound = 1;
 	specConfig.specCovox = 0;
 	specConfig.specAyYm = 0;
-	specConfig.specBdiMode = 1;
 	specConfig.specJoyModeEmulation = SpecJoy_Cursor;
 	specConfig.specJoyMode1 = SpecJoy_Kempston;
 	specConfig.specJoyMode2 = SpecJoy_Kempston;

@@ -7,8 +7,7 @@
 #include "../system/sdram.h"
 #include "../utils/cstring.h"
 #include "../utils/dirent.h"
-#include "../betadisk/fdc.h"
-#include "../betadisk/floppy.h"
+#include "../specBetadisk.h"
 #include "../specMB02.h"
 #include "../specConfig.h"
 #include "../specKeyboard.h"
@@ -963,8 +962,8 @@ void Shell_Commander()
 					if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
 						difValid = true;
 
-						if (fdc_open_image(i, mem.fullName)) {
-							floppy_disk_wp(i, &specConfig.specBdiImages[i].writeProtect);
+						if (open_dsk_image(i, mem.fullName) == 0) {
+							beta_set_disk_wp(i, specConfig.specBdiImages[i].writeProtect);
 
 							strcpy(specConfig.specBdiImages[i].name, mem.fullName);
 							SaveConfig();
@@ -1166,8 +1165,8 @@ void Shell_Commander()
 				}
 				else if (strstr(".trd.fdi.scl", ext)) {
 					if (specConfig.specDiskIf == SpecDiskIf_Betadisk) {
-						if (fdc_open_image(0, mem.fullName)) {
-							floppy_disk_wp(0, &specConfig.specBdiImages[0].writeProtect);
+						if (open_dsk_image(0, mem.fullName) == 0) {
+							beta_set_disk_wp(0, specConfig.specBdiImages[0].writeProtect);
 
 							strcpy(specConfig.specBdiImages[0].name, mem.fullName);
 							SaveConfig();
