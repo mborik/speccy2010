@@ -1152,7 +1152,9 @@ void Shell_Commander()
 						Shell_AutoloadESXDOS(mem.fullName);
 					else {
 						Tape_SelectFile(mem.fullName);
-						Shell_Toast("Tape file mounted:", mem.ra.name);
+
+						make_short_name(mem.shortName, 35, mem.ra.name);
+						Shell_Toast("Tape file mounted:", mem.shortName);
 					}
 					break;
 				}
