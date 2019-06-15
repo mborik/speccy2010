@@ -17,7 +17,7 @@ struct CDiskImage {
 };
 
 struct CSpecConfig {
-	char fpgaConfigName[PATH_SIZE];
+	char fpgaConfigName[_MAX_LFN + 1];
 
 	int specMachine;
 	int specSync;
@@ -43,14 +43,14 @@ struct CSpecConfig {
 	CDiskImage specBdiImages[4];
 	CDiskImage specMB2Images[4];
 
-	char specRomFile_Classic48[PATH_SIZE];
-	char specRomFile_Classic128[PATH_SIZE];
-	char specRomFile_Pentagon[PATH_SIZE];
-	char specRomFile_Scorpion[PATH_SIZE];
-	char specRomFile_TRD_ROM[PATH_SIZE];
-	char specRomFile_TRD_Service[PATH_SIZE];
-	char specRomFile_DivMMC_FW[PATH_SIZE];
-	char specRomFile_BSROM_BSDOS[PATH_SIZE];
+	char specRomFile_Classic48[_MAX_LFN + 1];
+	char specRomFile_Classic128[_MAX_LFN + 1];
+	char specRomFile_Pentagon[_MAX_LFN + 1];
+	char specRomFile_Scorpion[_MAX_LFN + 1];
+	char specRomFile_TRD_ROM[_MAX_LFN + 1];
+	char specRomFile_TRD_Service[_MAX_LFN + 1];
+	char specRomFile_DivMMC_FW[_MAX_LFN + 1];
+	char specRomFile_BSROM_BSDOS[_MAX_LFN + 1];
 
 	char snaName[PATH_SIZE];
 };

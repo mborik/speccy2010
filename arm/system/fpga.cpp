@@ -26,13 +26,13 @@ void FPGA_TestClock()
 	SystemBus_Write(0xc00050, 1);
 	DelayMs(100);
 	SystemBus_Write(0xc00050, 0);
-/*
+
 	dword counter20 = SystemBus_Read(0xc00050) | (SystemBus_Read(0xc00051) << 16);
 	dword counterMem = SystemBus_Read(0xc00052) | (SystemBus_Read(0xc00053) << 16);
 
 	__TRACE("FPGA clock - %d.%.5d MHz\n", counter20 / 100000, counter20 % 100000);
 	__TRACE("FPGA PLL clock - %d.%.5d MHz\n", counterMem / 100000, counterMem % 100000);
-*/
+
 	CPU_Start();
 }
 //---------------------------------------------------------------------------------------

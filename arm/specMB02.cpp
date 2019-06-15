@@ -143,7 +143,7 @@ int mb02_open_image(byte drv_id, const char *filename)
 		f_flags &= ~FA_WRITE;
 
 	if (f_open(&mem.fsrc, filename, f_flags) != FR_OK) {
-		// __TRACE("MB-02 disk open failed\n");
+		TRACE("MB-02 disk open failed\n");
 		return 2;
 	}
 
@@ -172,14 +172,14 @@ int mb02_open_image(byte drv_id, const char *filename)
 	mb02_drives[drv_id].side_cnt = secBuffer[8];
 	mb02_drives[drv_id].cur_sec = 1;
 	mb02_drives[drv_id].cur_cyl = 0;
-/*
+
 	__TRACE("MB-02 disk @%u:'%s' loaded (wp:%u, cyls:%u, secs:%u, sides:%u)...\n",
 		drv_id + 1, filename,
 		mb02_drives[drv_id].wp,
 		mb02_drives[drv_id].cyl_cnt,
 		mb02_drives[drv_id].sec_cnt,
 		mb02_drives[drv_id].side_cnt);
-*/
+
 	return 0;
 }
 
@@ -461,7 +461,7 @@ byte mb02_is_disk_loaded(byte drv)
 bool mb02_checkfmt(const char *file_name, int *numtrk, int *numsec)
 {
 	if (f_open(&mem.fsrc, file_name, FA_OPEN_EXISTING | FA_READ) != FR_OK) {
-		// __TRACE("MB-02 disk open failed\n");
+		TRACE("MB-02 disk open failed\n");
 		return false;
 	}
 
@@ -481,18 +481,18 @@ bool mb02_checkfmt(const char *file_name, int *numtrk, int *numsec)
 	*numsec = secBuffer[0x06];
 
 	if (*numtrk < 1 || *numtrk > 255) {
-		// __TRACE("MB-02 image: invalid number of tracks (%u not in range 1..255)", numtrk);
+		TRACE("MB-02 image: invalid number of tracks (%u not in range 1..255)", numtrk);
 		result = false;
 	}
 
 	if (*numsec < 1 || *numsec > 127) {
-		// __TRACE("MB-02 image: invalid number of sectors (%u not in range 1..127)", numsec);
+		TRACE("MB-02 image: invalid number of sectors (%u not in range 1..127)", numsec);
 		result = false;
 	}
 
 	int disk_size = ((*numtrk) * (*numsec)) << 1;
 	if (disk_size < 5 || disk_size >= 2047) {
-		// __TRACE("MB-02 image: invalid disk size (%u not in range 6..2046 kB)", disk_size);
+		TRACE("MB-02 image: invalid disk size (%u not in range 6..2046 kB)", disk_size);
 		result = false;
 	}
 
@@ -507,7 +507,7 @@ bool mb02_formatdisk(const char *file_name, int numtrk, int numsec, const char *
 	int disk_size = (numtrk * numsec) << 1;
 	int disk_length = disk_size << 10;
 
-	// __TRACE("MB-02 CreateDisk: NumTrk:%u, NumSec:%u, DiskSize:%u kB\n", numtrk, numsec, disk_size);
+	TRACE("MB-02 CreateDisk: NumTrk:%u, NumSec:%u, DiskSize:%u kB\n", numtrk, numsec, disk_size);
 
 	memset(secBuffer, 0, secbLen);
 

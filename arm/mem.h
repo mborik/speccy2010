@@ -4,7 +4,7 @@
 #include "types.h"
 #include "fatfs/ff.h"
 
-#define PATH_SIZE 64
+#define PATH_SIZE 96
 
 typedef struct FRECORD {
 	dword size;
