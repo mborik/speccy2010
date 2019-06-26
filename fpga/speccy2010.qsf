@@ -50,8 +50,6 @@ set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
 set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
-set_global_assignment -name MISC_FILE "D:/workSvn/speccy2012/trunk/firmware/ep2c8q208/speccy2010.dpf"
-set_global_assignment -name MISC_FILE "D:/workSvn/speccy2010/trunk/firmware/ep2c8q208/speccy2010.dpf"
 set_global_assignment -name CYCLONEII_CONFIGURATION_SCHEME "PASSIVE SERIAL"
 set_global_assignment -name GENERATE_TTF_FILE ON
 set_global_assignment -name GENERATE_RBF_FILE ON
@@ -88,7 +86,6 @@ set_location_assignment PIN_132 -to CLK_20
 set_location_assignment PIN_57 -to ARM_WAIT
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "NO HEAT SINK WITH STILL AIR"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
-set_global_assignment -name MISC_FILE "D:/workSvn/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
 set_location_assignment PIN_152 -to pMemUdq
 set_location_assignment PIN_151 -to pMemClk
 set_location_assignment PIN_150 -to pMemDat[8]
@@ -174,8 +171,6 @@ set_location_assignment PIN_199 -to VIDEO_B[7]
 set_location_assignment PIN_208 -to SOUND_RIGHT[4]
 set_location_assignment PIN_206 -to SOUND_RIGHT[5]
 set_location_assignment PIN_203 -to SOUND_RIGHT[6]
-set_location_assignment PIN_84 -to JOY0_SEL
-set_location_assignment PIN_86 -to JOY1_SEL
 set_location_assignment PIN_87 -to JOY1[0]
 set_location_assignment PIN_88 -to JOY1[1]
 set_location_assignment PIN_89 -to JOY1[2]
@@ -190,8 +185,6 @@ set_location_assignment PIN_81 -to JOY0[4]
 set_location_assignment PIN_82 -to JOY0[5]
 set_location_assignment PIN_14 -to MOUSE_DATA
 set_location_assignment PIN_15 -to MOUSE_CLK
-set_global_assignment -name MISC_FILE "D:/workGit/speccy2010/trunk/firmware/fpga/speccy2010.dpf"
-set_location_assignment PIN_24 -to CLK_20_ALT
 set_global_assignment -name TIMEQUEST_DO_CCPP_REMOVAL OFF
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
 set_global_assignment -name ADD_PASS_THROUGH_LOGIC_TO_INFERRED_RAMS ON
