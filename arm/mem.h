@@ -5,6 +5,7 @@
 #include "fatfs/ff.h"
 
 #define PATH_SIZE 96
+#define SHORT_PATH 32
 
 typedef struct FRECORD {
 	dword size;
