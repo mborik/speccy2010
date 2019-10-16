@@ -158,12 +158,12 @@ char CString::GetSymbol(int position) const
 
 int CString::SetBufferSize(int _size)
 {
-	if (_size < CSTRING_DEF_MIN_SIZE)
-		_size = CSTRING_DEF_MIN_SIZE;
+	if (_size < SHORT_PATH)
+		_size = SHORT_PATH;
 
 	if (_size > size) {
-		_size = (_size + CSTRING_DEF_MIN_SIZE - 1);
-		_size = _size - _size % CSTRING_DEF_MIN_SIZE;
+		_size = (_size + SHORT_PATH - 1);
+		_size = _size - _size % SHORT_PATH;
 
 		char *_str = new char[_size];
 

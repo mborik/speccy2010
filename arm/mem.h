@@ -4,6 +4,7 @@
 #include "types.h"
 #include "fatfs/ff.h"
 
+// keep in multiples of 8th
 #define PATH_SIZE 96
 #define SHORT_PATH 32
 

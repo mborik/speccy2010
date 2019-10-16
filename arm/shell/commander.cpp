@@ -36,6 +36,7 @@ const char *fatErrorMsg[] = {
 };
 //---------------------------------------------------------------------------------------
 char destinationPath[PATH_SIZE] = "/";
+CString cstrbuf(PATH_SIZE);
 //---------------------------------------------------------------------------------------
 void dynamic_bytes_text(dword size, char *buffer)
 {
@@ -331,22 +332,20 @@ bool Shell_CopyItem(const char *srcName, const char *dstName, bool move, bool *a
 //---------------------------------------------------------------------------------------
 bool Shell_Copy(const char *_name, bool move)
 {
-	CString name;
-
 	if (ModComb(MOD_SHIFT_1))
-		name = _name;
+		cstrbuf.Set(_name);
 	else
-		name = destinationPath;
+		cstrbuf = destinationPath;
 
 	const char *title = move ? "Move/Rename" : "Copy";
-	if (!Shell_InputBox(title, "Enter new name/path:", name))
+	if (!Shell_InputBox(title, "Enter new name/path:", cstrbuf))
 		return false;
 
 	bool newPath = false;
 
-	if (name.GetSymbol(0) == '/') {
-		if (name.GetSymbol(name.Length() - 1) != '/')
-			name += '/';
+	if (cstrbuf.GetSymbol(0) == '/') {
+		if (cstrbuf.GetSymbol(cstrbuf.Length() - 1) != '/')
+			cstrbuf += '/';
 		newPath = true;
 	}
 
@@ -354,12 +353,12 @@ bool Shell_Copy(const char *_name, bool move)
 		sniprintf(mem.srcName, PATH_SIZE, "%s%s", get_current_dir(), _name);
 
 		if (newPath)
-			sniprintf(mem.dstName, PATH_SIZE, "%s%s", name.String() + 1, _name);
+			sniprintf(mem.dstName, PATH_SIZE, "%s%s", cstrbuf.String() + 1, _name);
 		else
-			sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
+			sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), cstrbuf.String());
 
 		if (Shell_CopyItem(mem.srcName, mem.dstName, move) && !newPath && move) {
-			sniprintf(files_lastName, sizeof(files_lastName), "%s", name.String());
+			sniprintf(files_lastName, sizeof(files_lastName), "%s", cstrbuf.String());
 		}
 	}
 	else {
@@ -371,7 +370,7 @@ bool Shell_Copy(const char *_name, bool move)
 
 			if (mem.ra.sel) {
 				sniprintf(mem.srcName, PATH_SIZE, "%s%s", get_current_dir(), mem.ra.name);
-				sniprintf(mem.dstName, PATH_SIZE, "%s%s", name.String() + 1, mem.ra.name);
+				sniprintf(mem.dstName, PATH_SIZE, "%s%s", cstrbuf.String() + 1, mem.ra.name);
 
 				if (!Shell_CopyItem(mem.srcName, mem.dstName, move, &askForOverwrite, &overwrite))
 					break;
@@ -392,19 +391,19 @@ bool Shell_Copy(const char *_name, bool move)
 //---------------------------------------------------------------------------------------
 bool Shell_CreateFolder()
 {
-	CString name = "";
-	if (!Shell_InputBox("Create folder", "Enter name:", name))
+	cstrbuf = "";
+	if (!Shell_InputBox("Create folder", "Enter name:", cstrbuf))
 		return false;
 
-	sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
+	sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), cstrbuf.String());
 
 	int res = f_mkdir(mem.dstName);
 	if (res == FR_OK) {
-		sniprintf(files_lastName, sizeof(files_lastName), "%s", name.String());
+		sniprintf(files_lastName, sizeof(files_lastName), "%s", cstrbuf.String());
 		return true;
 	}
 
-	make_short_name(mem.shortName, 32, name);
+	make_short_name(mem.shortName, 32, cstrbuf);
 
 	Shell_MessageBox("Error", "Cannot create the folder", mem.shortName, fatErrorMsg[res]);
 	show_table();
@@ -481,12 +480,12 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 			return false;
 	}
 
-	CString label = _name;
-	label.TrimRight(4);
-	if (label.Length() > 8)
-		label.TrimRight(label.Length() - 8);
+	cstrbuf.Set(_name);
+	cstrbuf.TrimRight(4);
+	if (cstrbuf.Length() > 8)
+		cstrbuf.TrimRight(cstrbuf.Length() - 8);
 
-	if (!Shell_InputBox("Format", "Enter disk label:", label))
+	if (!Shell_InputBox("Format", "Enter disk label:", cstrbuf))
 		return false;
 
 	sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), _name);
@@ -494,7 +493,7 @@ bool Shell_EmptyTrd(const char *_name, bool format = true)
 	const byte zero[0x10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	const byte sysArea[] = { 0x00, 0x00, 0x01, 0x16, 0x00, 0xf0, 0x09, 0x10 };
 	char *sysLabel = mem.sname + 32;
-	strncpy(sysLabel, label.String(), 8);
+	strncpy(sysLabel, cstrbuf.String(), 8);
 
 	int res;
 	UINT r;
@@ -580,13 +579,13 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 
 	if (askForGeometry) {
 		numtrk = 82; numsec = 11;
-		CString value = "82/11";
+		cstrbuf = "82/11";
 
 		while (true) {
-			if (!Shell_InputBox(title, "Tracks/Sectors:", value))
+			if (!Shell_InputBox(title, "Tracks/Sectors:", cstrbuf))
 				return false;
 
-			sscanf(value.String(), "%d/%d", &numtrk, &numsec);
+			sscanf(cstrbuf.String(), "%d/%d", &numtrk, &numsec);
 
 			if (numtrk < 1 || numtrk > 255) {
 				Shell_MessageBox(title, "Invalid number of tracks", "(must be 1..255)");
@@ -610,17 +609,17 @@ bool Shell_EmptyMbd(const char *_name, bool format = true)
 		}
 	}
 
-	CString label = _name;
-	label.TrimRight(4);
-	if (label.Length() > 8)
-		label.TrimRight(label.Length() - 8);
-	if (!Shell_InputBox(title, "Enter disk label:", label))
-		label = _name;
-	if (label.Length() > 26)
-		label.TrimRight(label.Length() - 26);
+	cstrbuf.Set(_name);
+	cstrbuf.TrimRight(4);
+	if (cstrbuf.Length() > 8)
+		cstrbuf.TrimRight(cstrbuf.Length() - 8);
+	if (!Shell_InputBox(title, "Enter disk label:", cstrbuf))
+		cstrbuf.Set(_name);
+	if (cstrbuf.Length() > 26)
+		cstrbuf.TrimRight(cstrbuf.Length() - 26);
 
 	Shell_ProgressBar(title, "Formatting...");
-	bool result = mb02_formatdisk(mem.dstName, numtrk, numsec, label.String());
+	bool result = mb02_formatdisk(mem.dstName, numtrk, numsec, cstrbuf.String());
 	ScreenPop();
 
 	return result;
@@ -636,22 +635,22 @@ bool Shell_CreateDiskImage()
 
 	const char *baseExt = &".mbd\0.trd"[mbd ? 0 : 5];
 
-	CString newName = "empty";
-	newName += baseExt;
+	cstrbuf = "empty";
+	cstrbuf += baseExt;
 
-	if (!Shell_InputBox(title, "Enter image name:", newName))
+	if (!Shell_InputBox(title, "Enter image name:", cstrbuf))
 		return false;
 
-	char *ext = ((char *) newName.String()) + newName.Length();
-	while (ext > newName.String() && *ext != '.')
+	char *ext = strcpy(mem.srcName, cstrbuf.String()) + cstrbuf.Length();
+	while (ext > mem.srcName && *ext != '.')
 		ext--;
 
-	if (strcasecmp(ext, baseExt) != 0)
-		newName += baseExt;
+	if (strncasecmp(ext, baseExt, 4) != 0)
+		strcat(mem.srcName, baseExt);
 
 	return mbd ?
-		Shell_EmptyMbd(newName.String(), false) :
-		Shell_EmptyTrd(newName.String(), false);
+		Shell_EmptyMbd(mem.srcName, false) :
+		Shell_EmptyTrd(mem.srcName, false);
 }
 //---------------------------------------------------------------------------------------
 void Shell_AutoloadESXDOS(char *fullName, bool disk = false)
@@ -795,12 +794,12 @@ bool Shell_Viewer(char *fullName)
 bool Shell_Receiver(const char *inputName)
 {
 	const char *title = "XMODEM File Transfer";
-	CString name = inputName;
-	if (!Shell_InputBox(title, "Enter output name:", name) || name.Length() == 0)
+	cstrbuf = inputName;
+	if (!Shell_InputBox(title, "Enter output name:", cstrbuf) || cstrbuf.Length() == 0)
 		return false;
 
-	make_short_name(mem.shortName, 32, name.String());
-	sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), name.String());
+	make_short_name(mem.shortName, 32, cstrbuf.String());
+	sniprintf(mem.dstName, PATH_SIZE, "%s%s", get_current_dir(), cstrbuf.String());
 
 	if (FileExists(mem.dstName) && !Shell_MessageBox("Overwrite", "Do you want to overwrite", mem.shortName, "", MB_YESNO, 0050, 0115))
 		return false;
@@ -840,10 +839,9 @@ bool Shell_Receiver(const char *inputName)
 					break;
 			}
 
-			CString value;
-			value.Format("%lu", ++dc);
-			if (Shell_InputBox(title, "Confirm file size:", value))
-				sscanf(value.String(), "%lu", &dc);
+			cstrbuf.Format("%lu", ++dc);
+			if (Shell_InputBox(title, "Confirm file size:", cstrbuf))
+				sscanf(cstrbuf.String(), "%lu", &dc);
 
 			if (dc > 0 && dc < mem.fdst.fsize) {
 				f_lseek(&mem.fdst, dc);

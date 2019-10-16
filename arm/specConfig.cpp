@@ -55,7 +55,7 @@ const CParameter iniParameters[] = {
 	CParameter(PTYPE_END)
 };
 //---------------------------------------------------------------------------------------
-int GroupFromName(CString name)
+int GroupFromName(CString &name)
 {
 	int group = -1;
 	if (name == "General")

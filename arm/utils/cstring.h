@@ -1,13 +1,11 @@
 #ifndef UTILS_CSTRING_H_INCLUDED
 #define UTILS_CSTRING_H_INCLUDED
 
-#include "../types.h"
+#include "../mem.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-
-const int CSTRING_DEF_MIN_SIZE = 0x10;
 
 class CString {
 	char *str;
@@ -16,7 +14,7 @@ class CString {
 	int length;
 
 public:
-	CString(int _size = CSTRING_DEF_MIN_SIZE);
+	CString(int _size = SHORT_PATH);
 	CString(const char *_str);
 	CString(const CString &s);
 
