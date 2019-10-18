@@ -5,7 +5,7 @@
 #include "fatfs/ff.h"
 
 // keep in multiples of 8th
-#define PATH_SIZE 96
+#define PATH_SIZE 128
 #define SHORT_PATH 32
 
 typedef struct FRECORD {
