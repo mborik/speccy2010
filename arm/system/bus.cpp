@@ -34,7 +34,7 @@ bool SystemBus_TestConfiguration()
 
 	portEXIT_CRITICAL();
 
-	return (result == 0xf125);
+	return (result == 0xf126);
 }
 //---------------------------------------------------------------------------------------
 void SystemBus_SetAddress(dword address)

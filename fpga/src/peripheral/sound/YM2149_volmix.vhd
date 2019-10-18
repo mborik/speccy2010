@@ -5,24 +5,22 @@ use IEEE.numeric_std.all;
 entity YM2149 is
   port (
 
-  CLK                 : in  std_logic;  	-- note 6 Mhz
-  ENA                 : in  std_logic; 		-- clock enable for higher speed operation
-  RESET_L             : in  std_logic;
-  I_SEL_L             : in  std_logic;
+    CLK             : in  std_logic; -- note 6 Mhz
+    ENA             : in  std_logic; -- clock enable for higher speed operation
+    RESET_L         : in  std_logic;
+    I_SEL_L         : in  std_logic;
 
-  I_DA                : in  std_logic_vector(7 downto 0);
-  O_DA                : out std_logic_vector(7 downto 0);
+    I_DA            : in  std_logic_vector(7 downto 0);
+    O_DA            : out std_logic_vector(7 downto 0);
 
-  busctrl_addr         : std_logic;
-  busctrl_we           : std_logic;
-  busctrl_re           : std_logic;
-  ctrl_aymode         : std_logic;
-  
-  O_AUDIO_A           : out std_logic_vector(7 downto 0);
-  O_AUDIO_B           : out std_logic_vector(7 downto 0);
-  O_AUDIO_C           : out std_logic_vector(7 downto 0);
-  
-  O_AUDIO             : out std_logic_vector(7 downto 0)
+    busctrl_addr    : std_logic;
+    busctrl_we      : std_logic;
+    busctrl_re      : std_logic;
+    ctrl_aymode     : std_logic;
+
+    O_AUDIO_A       : out std_logic_vector(7 downto 0);
+    O_AUDIO_B       : out std_logic_vector(7 downto 0);
+    O_AUDIO_C       : out std_logic_vector(7 downto 0)
   );
 end;
 
@@ -55,7 +53,7 @@ architecture RTL of YM2149 is
   signal env_hold             : std_logic;
   signal env_inc              : std_logic;
   signal env_vol              : std_logic_vector(4 downto 0);
-  
+
   signal A 					  : std_logic_vector(4 downto 0);
   signal B 					  : std_logic_vector(4 downto 0);
   signal C 					  : std_logic_vector(4 downto 0);
@@ -65,9 +63,9 @@ architecture RTL of YM2149 is
 
   constant volTableAy : volTableType16 :=(
 		x"00", x"03", x"04", x"06",
-		x"0a", x"0f", x"15", x"22", 
-		x"28", x"41", x"5b", x"72", 
-		x"90", x"b5", x"d7", x"ff" 
+		x"0a", x"0f", x"15", x"22",
+		x"28", x"41", x"5b", x"72",
+		x"90", x"b5", x"d7", x"ff"
     );
 
   constant volTableYm : volTableType32 :=(
@@ -75,12 +73,12 @@ architecture RTL of YM2149 is
 		x"06", x"07", x"09", x"0a", x"0c", x"0e", x"11", x"13",
 		x"17", x"1b", x"20", x"25", x"2c", x"35", x"3e", x"47",
 		x"54", x"66", x"77", x"88", x"a1", x"c0", x"e0", x"ff"
-    );    
+    );
 
 begin
-  
+
   -- LATCHED, useful when emulating a real chip in circuit. Nasty as gated clock.
-  --p_waddr                : process(reset_l, busctrl_addr)  
+  --p_waddr                : process(reset_l, busctrl_addr)
   process(clk)
   begin
 	if clk'event and clk = '1' then
@@ -99,7 +97,7 @@ begin
 		if RESET_L = '0' then
 			reg <= (others => (others => '0'));
 			reg(7) <= x"ff";
-      
+
 		elsif busctrl_we = '1' then
 			case addr(3 downto 0) is
 				when x"0" => reg(0)  <= I_DA;
@@ -121,12 +119,12 @@ begin
 				when others => null;
 			end case;
 		end if;
-		
+
 		env_reset <= '0';
 		if busctrl_we = '1' and addr(3 downto 0) = x"D" then
 		  env_reset <= '1';
 		end if;
-		
+
     end if;
   end process;
 
@@ -185,7 +183,7 @@ begin
         cnt_div <= cnt_div - "1";
       end if;
     end if;
-  end process;  
+  end process;
 
 --  p_noise_gen            : process
   process(clk)
@@ -193,7 +191,7 @@ begin
     variable poly17_zero : std_logic;
   begin
 	if clk'event and clk = '1' then
-  
+
 		if (reg(6)(4 downto 0) = "00000") then
 		  noise_gen_comp := "00000";
 		else
@@ -217,7 +215,7 @@ begin
 		end if;
 	end if;
   end process;
-  
+
   noise_gen_op <= poly17(0);
 
   --p_tone_gens            : process
@@ -230,7 +228,7 @@ begin
 		tone_gen_freq(1) := reg(1)(3 downto 0) & reg(0);
 		tone_gen_freq(2) := reg(3)(3 downto 0) & reg(2);
 		tone_gen_freq(3) := reg(5)(3 downto 0) & reg(4);
-		
+
 		-- period 0 = period 1
 		for i in 1 to 3 loop
 		  if (tone_gen_freq(i) = x"000") then
@@ -262,7 +260,7 @@ begin
     variable env_gen_comp : std_logic_vector(15 downto 0);
   begin
 	if clk'event and clk = '1' then
-	
+
 		env_gen_freq := reg(12) & reg(11);
 		-- envelope freqs 1 and 0 are the same.
 		if (env_gen_freq = x"0000") then
@@ -282,7 +280,7 @@ begin
 			end if;
 		  end if;
 		end if;
-		
+
 	end if;
   end process;
 
@@ -420,32 +418,23 @@ begin
 			end if;
 		  end if;
 		end if;
-	end if;    
+	end if;
   end process;
-  
+
   process(clk)
   variable out_audio_mixed : unsigned(9 downto 0);
   begin
 	if clk'event and clk = '1' then
 		if RESET_L = '0' then
-		  O_AUDIO <= x"00";
 		  O_AUDIO_A <= x"00";
 		  O_AUDIO_B <= x"00";
 		  O_AUDIO_C <= x"00";
 		else
 		  if(ctrl_aymode = '0') then
-		   out_audio_mixed := 	("00" & volTableYm( to_integer( unsigned( A )))) + 
-										("00" & volTableYm( to_integer( unsigned( B )))) + 
-										("00" & volTableYm( to_integer( unsigned( C ))));
-			O_AUDIO   <= std_logic_vector(out_audio_mixed(9 downto 2));
 			O_AUDIO_A <= std_logic_vector( volTableYm( to_integer( unsigned( A ) ) ) );
 			O_AUDIO_B <= std_logic_vector( volTableYm( to_integer( unsigned( B ) ) ) );
 			O_AUDIO_C <= std_logic_vector( volTableYm( to_integer( unsigned( C ) ) ) );
 		  else
-		   out_audio_mixed := 	( "00" & volTableAy( to_integer( unsigned( A(4 downto 1) )))) + 
-										( "00" & volTableAy( to_integer( unsigned( B(4 downto 1) )))) + 
-										( "00" & volTableAy( to_integer( unsigned( C(4 downto 1) ))));
-			O_AUDIO   <= std_logic_vector(out_audio_mixed(9 downto 2));
 			O_AUDIO_A <= std_logic_vector( volTableAy( to_integer( unsigned( A(4 downto 1) ) ) ) );
 			O_AUDIO_B <= std_logic_vector( volTableAy( to_integer( unsigned( B(4 downto 1) ) ) ) );
 			O_AUDIO_C <= std_logic_vector( volTableAy( to_integer( unsigned( C(4 downto 1) ) ) ) );
@@ -453,5 +442,5 @@ begin
 		end if;
 	end if;
   end process;
-  
+
 end architecture RTL;

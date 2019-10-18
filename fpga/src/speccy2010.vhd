@@ -127,9 +127,7 @@ architecture rtl of speccy2010_top is
 	signal memAck       : std_logic := '0';
 
 	signal memAddress2  : std_logic_vector(23 downto 0);
-	signal memDataIn2   : std_logic_vector(15 downto 0);
 	signal memDataOut2  : std_logic_vector(15 downto 0);
-	signal memDataMask2 : std_logic_vector(1 downto 0);
 	signal memWr2       : std_logic := '0';
 	signal memReq2      : std_logic := '0';
 	signal memAck2      : std_logic := '0';
@@ -431,7 +429,6 @@ begin
 			busctrl_re   => ay2RD,
 			ctrl_aymode  => ayymMode,
 
---			O_AUDIO      => ay2OUT,
 			O_AUDIO_A    => ay2OUT_A,
 			O_AUDIO_B    => ay2OUT_B,
 			O_AUDIO_C    => ay2OUT_C
@@ -474,9 +471,9 @@ begin
 			memAck => memAck,
 
 			memAddress2 => memAddress2,
-			memDataIn2 => memDataIn2,
+			memDataIn2 => x"0000",
 			memDataOut2 => memDataOut2,
-			memDataMask2 => memDataMask2,
+			memDataMask2 => "00",
 			memWr2 => memWr2,
 			memReq2 => memReq2,
 			memAck2 => memAck2,
@@ -597,11 +594,9 @@ begin
 
 			I_AUDIO_AUX_1 => covoxOUT_L1,			-- COVOX C1
 			I_AUDIO_AUX_2 => covoxOUT_L2,			-- COVOX C2
-			I_AUDIO_AUX_3 => x"0000",
 
 			WEIGHT_AUDIO_AUX_1 => x"000100",		-- COVOX C1
 			WEIGHT_AUDIO_AUX_2 => x"000100",		-- COVOX C2
-			WEIGHT_AUDIO_AUX_3 => x"000001",		-- SID -- in data in 16bit format
 
 			I_AUDIO_BEEPER => speaker,
 			I_AUDIO_TAPE   => tapeIn,
@@ -613,7 +608,6 @@ begin
 			I_AY2_ENABLED  => ay2Enabled,
 			I_AUX1_ENABLED => covoxEnabled,
 			I_AUX2_ENABLED => covoxEnabled,
-			I_AUX3_ENABLED => '0',
 			O_AUDIO        => mixedOutputL
 		);
 
@@ -638,11 +632,9 @@ begin
 
 			I_AUDIO_AUX_1 => covoxOUT_R1,			-- COVOX C1
 			I_AUDIO_AUX_2 => covoxOUT_R2,			-- COVOX C2
-			I_AUDIO_AUX_3 => x"0000",				-- SID
 
 			WEIGHT_AUDIO_AUX_1 => x"000100",		-- COVOX C1
 			WEIGHT_AUDIO_AUX_2 => x"000100",		-- COVOX C2
-			WEIGHT_AUDIO_AUX_3 => x"000001",		-- SID -- in data in 16bit format
 
 			I_AUDIO_BEEPER => speaker,
 			I_AUDIO_TAPE   => tapeIn,
@@ -654,7 +646,6 @@ begin
 			I_AY2_ENABLED  => ay2Enabled,
 			I_AUX1_ENABLED => covoxEnabled,
 			I_AUX2_ENABLED => covoxEnabled,
-			I_AUX3_ENABLED => '0',
 			O_AUDIO        => mixedOutputR
 		);
 
@@ -1434,7 +1425,7 @@ begin
 							ARM_AD <= std_logic_vector( counterMem( 31 downto 16 ) );
 
 						elsif addressReg( 7 downto 0 ) = x"f0" then
-							ARM_AD <= x"f125"; -- for firmware version >= 1.2.5
+							ARM_AD <= x"f126"; -- for firmware version >= 1.2.5
 
 						else
 							ARM_AD <= x"ffff";

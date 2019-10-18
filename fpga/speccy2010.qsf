@@ -204,7 +204,6 @@ set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2fifo.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/ps2.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ps2/fifo.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/memory/sdram.vhd
-set_global_assignment -name VHDL_FILE src/peripheral/sound/vol_table_array.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/sound/YM2149_volmix.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80_ALU.vhd
