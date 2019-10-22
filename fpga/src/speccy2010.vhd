@@ -169,14 +169,15 @@ architecture rtl of speccy2010_top is
 	signal specTrdosFlag    : std_logic := '0';
 	signal specTrdosPortFF  : std_logic_vector(7 downto 0) := x"00";
 
+	signal divmmcCardSelect : std_logic := '0';
 	signal divmmcEnabled    : std_logic := '0';
 	signal divmmcSramPage   : std_logic_vector(5 downto 0) := "000000";
 	signal divmmcMapram     : std_logic := '0';
 	signal divmmcConmem     : std_logic := '0';
-	signal divmmcCardSelect : std_logic := '0';
 	signal divmmcAmapRq     : std_logic := '0';
 	signal divmmcAmap       : std_logic := '0';
 	signal divmmcMemAddr    : std_logic_vector(23 downto 0) := x"000000";
+	signal divmmcMB02AllRAM : std_logic := '0';
 
 	signal mb02Enabled      : std_logic := '0';
 	signal mb02SramPage     : std_logic_vector(4 downto 0) := "00000";
@@ -857,18 +858,21 @@ begin
 				specDiskIfWait <= '0';
 				specDiskIfWr <= '0';
 
-				if divmmcEnabled = '1' then
+				if divmmcEnabled = '1' and divmmcMB02AllRAM = '0' then
+					divmmcCardSelect <= '0';
 					divmmcSramPage <= (others => '0');
 					divmmcMapram <= divmmcMapram or '0';
 					divmmcConmem <= '0';
-					divmmcCardSelect <= '0';
 					divmmcAmapRq <= '0';
 					divmmcAmap <= '0';
-				elsif mb02Enabled = '1' then
+
+				elsif mb02Enabled = '1' or divmmcMB02AllRAM = '1' then
 					mb02SramPage <= (others => '0');
 					mb02MemSram <= '0';
-					mb02MemEprom <= '1'; -- set after reset
+					mb02MemEprom <= not divmmcEnabled; -- set '1' after reset
 					mb02MemWriteRom <= '0';
+
+					divmmcMB02AllRAM <= '0';
 				end if;
 			end if;
 
@@ -933,8 +937,8 @@ begin
 
 ----------------------------------------------------------------------------------
 
-			-- DivMMC automapper
-			if divmmcEnabled = '1' and reset = '0' then
+			-- DivMMC automapper (disabled in AllRAM mode)
+			if divmmcEnabled = '1' and divmmcMB02AllRAM = '0' and reset = '0' then
 				if cpuMREQ = '0' and cpuRD = '0' and cpuM1 = '0' then
 					if (cpuA = x"0000" or cpuA = x"0008" or cpuA = x"0038" or
 						cpuA = x"0066" or cpuA = x"04C6" or cpuA = x"0562") then
@@ -956,11 +960,15 @@ begin
 			end if;
 
 			-- NMI signal in MB-02 switching the 0th SRAM bank (BS-ROM)
-			if mb02Enabled = '1' and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' then
+			if ( mb02Enabled = '1' or divmmcMB02AllRAM = '1' )
+				and cpuM1 = '0' and cpuMREQ = '0' and cpuNMI = '0' then
+
 				mb02SramPage <= (others => '0');
-				mb02MemSram <= '1'; -- set after NMI
+				mb02MemSram <= not divmmcEnabled; -- set '1' after NMI
 				mb02MemEprom <= '0';
 				mb02MemWriteRom <= '0';
+
+				divmmcMB02AllRAM <= '0';
 			end if;
 
 ----------------------------------------------------------------------------------
@@ -1002,7 +1010,8 @@ begin
 						cpuMemoryWait <= '1';
 
 					-- memory write into #2000-3FFF segment of DivMMC SRAMx
-					elsif divmmcEnabled = '1' and cpuA( 15 downto 13 ) = "001"
+					elsif divmmcEnabled = '1' and divmmcMB02AllRAM = '0'
+						and cpuA( 15 downto 13 ) = "001"
 						and (divmmcConmem = '1' or divmmcAmap = '1')
 						and not (divmmcMapram = '1' and divmmcSramPage = "000011") then
 
@@ -1015,8 +1024,10 @@ begin
 						memReq <= '1';
 						cpuMemoryWait <= '1';
 
-					-- memory write into ROM segment when MB-02 SRAM paged
-					elsif mb02Enabled = '1' and cpuA( 15 downto 14 ) = "00"
+					-- memory write into ROM segment when MB-02 SRAMx paged
+					-- or when AllRAM mode is activated in DivMMC
+					elsif ( mb02Enabled = '1' or divmmcMB02AllRAM = '1' )
+						and cpuA( 15 downto 14 ) = "00"
 						and mb02MemWriteRom = '1' and mb02MemSram = '1' then
 
 						memAddress <= mb02MemAddr;
@@ -1027,6 +1038,7 @@ begin
 						cpuReq := '1';
 						memReq <= '1';
 						cpuMemoryWait <= '1';
+
 					end if;
 				elsif cpuIORQ = '0' and cpuM1 = '1' then
 
@@ -1048,27 +1060,28 @@ begin
 						elsif cpuA ( 3 downto 2 ) = "01" then	-- #E7
 							divmmcCardSelect <= cpuDout(0);
 						elsif cpuA ( 3 downto 2 ) = "10" then	-- #EB
-							specDiskIfWait <= '1';
+							specDiskIfWait <= not divmmcCardSelect;
 							specDiskIfWr <= '1';
 						end if;
 
-					-- MB-02 control or data-transfer ports
-					elsif mb02Enabled = '1' and ( cpuA(7) & cpuA( 5 downto 3 ) & cpuA( 1 downto 0 ) ) = "001011" then
-						if cpuA ( 7 downto 0 ) = x"17" then		-- #17
-							-- SRAM+EPROM bits connected to reset signal
-							if cpuDout( 7 downto 6 ) = "11" then
-								cpuReset <= '1';
-							else
-								mb02SramPage <= cpuDout( 4 downto 0 );
-								mb02MemWriteRom <= cpuDout(5);
-								mb02MemSram <= cpuDout(6);
-								mb02MemEprom <= cpuDout(7);
-							end if;
+					-- MB-02 control port and DivMMC AllRAM control port #17
+					elsif ( mb02Enabled = '1' or divmmcEnabled = '1' ) and cpuA ( 7 downto 0 ) = x"17" then
+						-- SRAM+EPROM bits connected to reset signal
+						if cpuDout( 7 downto 6 ) = "11" then
+							cpuReset <= '1';
+						else
+							mb02SramPage <= cpuDout( 4 downto 0 );
+							mb02MemWriteRom <= cpuDout(5);
+							mb02MemSram <= cpuDout(6);
+							mb02MemEprom <= not divmmcEnabled and cpuDout(7);
 
-						elsif cpuA ( 7 downto 0 ) = x"53" then	-- #53
-							specDiskIfWait <= '1';
-							specDiskIfWr <= '1';
+							divmmcMB02AllRAM <= cpuDout(6);
 						end if;
+
+					-- MB-02 data-transfer port
+					elsif mb02Enabled = '1' and cpuA ( 7 downto 0 ) = x"53" then
+						specDiskIfWait <= '1';
+						specDiskIfWr <= '1';
 
 					else
 						if cpuA( 7 downto 0 ) = x"FE" then
@@ -1121,10 +1134,10 @@ begin
 				if cpuMREQ = '0' then
 
 					if accessRom = '1' then
-						if divmmcEnabled = '1' then
-							memAddress <= divmmcMemAddr;
-						elsif mb02Enabled = '1' then
+						if ( mb02Enabled = '1' or divmmcMB02AllRAM = '1' ) then
 							memAddress <= mb02MemAddr;
+						elsif divmmcEnabled = '1' then
+							memAddress <= divmmcMemAddr;
 						else
 							memAddress <= "00100000" & romPage & cpuA( 13 downto 1 );
 						end if;
@@ -1176,11 +1189,11 @@ begin
 					-- DivMMC or MB-02 control and data-transfer ports
 					elsif ( divmmcEnabled = '1' and cpuA( 7 downto 0 ) = x"EB" ) or
 							( mb02Enabled = '1' and cpuA( 7 downto 0 ) = x"53" ) then
-						specDiskIfWait <= '1';
+						specDiskIfWait <= not (divmmcEnabled and divmmcCardSelect);
 						specDiskIfWr <= '0';
 
-					-- MB-02 paging port
-					elsif ( mb02Enabled = '1' and cpuA( 7 downto 0 ) = x"17" ) then
+					-- DivMMC or MB-02 paging port
+					elsif ( divmmcEnabled = '1' or mb02Enabled = '1' ) and cpuA( 7 downto 0 ) = x"17" then
 						cpuDin <= mb02MemEprom & mb02MemSram & mb02MemWriteRom & mb02SramPage;
 
 					else
@@ -1307,10 +1320,11 @@ begin
 							if ARM_AD(15) = '1' then
 								if divmmcEnabled = '1' then
 									-- hard reset of DivMMC
+									divmmcMB02AllRAM <= '0';
+									divmmcCardSelect <= '0';
 									divmmcSramPage <= (others => '0');
 									divmmcMapram <= '0';
 									divmmcConmem <= '0';
-									divmmcCardSelect <= '0';
 									divmmcAmapRq <= '0';
 									divmmcAmap <= '0';
 								end if;
@@ -1409,8 +1423,10 @@ begin
 							ARM_AD <= x"00" & std_logic_vector(cpuTurbo) & std_logic_vector(syncMode) & std_logic_vector(specMode);
 
 						elsif addressReg( 7 downto 0 ) = x"42" then
-							if divmmcEnabled = '1' then
-								ARM_AD <= "00000" & divmmcCardSelect & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & divmmcSramPage;
+							if divmmcMB02AllRAM = '1' then
+								ARM_AD <= divmmcCardSelect & "0000" & divmmcMB02AllRAM & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & mb02MemWriteRom & mb02SramPage;
+							elsif divmmcEnabled = '1' then
+								ARM_AD <= divmmcCardSelect & "00000" & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & divmmcSramPage;
 							elsif mb02Enabled = '1' then
 								ARM_AD <= x"00" & mb02MemEprom & mb02MemSram & mb02MemWriteRom & mb02SramPage;
 							end if;
