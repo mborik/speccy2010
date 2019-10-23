@@ -31,8 +31,7 @@ mb02: bsdos
 	$(BIN2H) bsdos308s/bootstrap.bin "epromBootstrap" "SPEC_MB02_BOOTSTAP_H_INCLUDED" > bsdos308s/bootstrap.h
 
 bsdos: bsdos308s/bsdos308s.a80
-	$(CD) bsdos308s; $(SJASMPLUS) --lst=bsdos308s.lst bsdos308s.a80; \
-	$(CAT) Xch140x1.bin bsdos308s.bin > bsdos308s.rom
+	$(CD) bsdos308s; $(SJASMPLUS) --lst=compiler.lst compiler.a80
 
 esxautoload: esxautoload/autoloader.a80
 	$(CD) esxautoload; $(SJASMPLUS) autoloader.a80
@@ -64,8 +63,7 @@ clean:
 		$(FNT_BOLD_SRC).bin \
 		esxautoload/autoloader.bin \
 		esxautoload/autoloader.h \
-		bsdos308s/bsdos308s.lst \
-		bsdos308s/bsdos308s.bin \
+		bsdos308s/compiler.lst \
 		bsdos308s/bsdos308s.rom \
 		bsdos308s/bootstrap.bin \
 		bsdos308s/bootstrap.h

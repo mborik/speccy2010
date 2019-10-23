@@ -4,51 +4,12 @@
 
 verzia:		equ	308
 
-		device	zxspectrum48
-		slot	0
-		org	0
+;---[definice cisel sluzeb fdc biosu]-----------------------------------
 
+;modified by dron
+;duplicitni navesti vzhledem k fdc biosu nahrazeny #+"_x"
 
-dta:		equ	#53	; Speccy2010 specific communication port
-ram:		equ	#17	; original MB-02 bank switching port
-
-h04:		equ	#40	;4
-h05:		equ	#41	;5
-h0c:		equ	#60	;c
-h0d:		equ	#61	;d
-
-rdrom:		equ	#3c98
-rdram:		equ	#3c9a
-wrrom:		equ	#3c9c
-wrram:		equ	#3c9e
-
-ver1:		equ	verzia/100
-verza:		equ	ver1*100
-verzb:		equ	verzia-verza
-ver2:		equ	verzb/10
-verzc:		equ	ver2*10
-ver3:		equ	verzb-verzc
-
-
-		; load original BS-DOS 308 by Busy
-		incbin "bsdos308.cod"
-
-
-		; and apply patches...
-		org	#0080
-		block	#80
-
-;***********************************************************************
-;***                        SPECCY 2010 BIOS                         ***
-;***********************************************************************
-
-spc2010_bios:
-bz:
-
-verzia_bios =	2010
-
-; definitions of BIOS service numbers
-status_x:	equ	#01
+status_x:	equ	#01			;sluzby biosu
 rest_x:		equ	#02
 seek_x:		equ	#03
 rdsec_x:	equ	#04
@@ -65,6 +26,174 @@ dinfo_x:	equ	#0e
 setmax_x:	equ	#0f
 setmlt_x:	equ	#10
 setoff_x:	equ	#11
+
+;---[definice adres podprogramu z rom]----------------------------------
+
+;To su definicie pouzivanych podprogramov
+;z basic systemu romky a systemovych premennych
+
+dupdup:	equ	#0ead
+scann:	equ	#24fb
+chesyn:	equ	#2530
+listsp:	equ	#5c3f
+chadd:	equ	#5c5d
+taddr:	equ	#5c74
+prog:	equ	#5c53
+vars:	equ	#5c4b
+eline:	equ	#5c59
+
+
+;---[definice ???]------------------------------------------------------
+
+;modified by dron
+;zmenil sem definice navesti pomoci org+ds na equ
+
+kesid	equ	0		; ds #08
+kesvek	equ	8		; ds #01
+kesatt	equ	9		; ds #01
+				; ds #02
+kesdrv	equ	12		; ds #01
+kesdir	equ	13		; ds #01
+kesldc	equ	14		; ds #02
+
+;---[definice adr.polozky]----------------------------------------------
+
+;modified by dron
+;zmenil sem definice navesti pomoci org+ds na equ
+;duplicitni navesti vzhledem k fdc biosu nahrazeny #+"_x"
+
+info_x	equ	0		; ds 1
+				; ds 4
+type	equ	5		; ds 1
+name	equ	6		; ds 10
+len	equ	16		; ds 2
+add	equ	18		; ds 2
+				; ds 2
+addb	equ	22		; ds 2
+lenb	equ	24		; ds 4
+flag	equ	28		; ds 1
+attr	equ	29		; ds 1
+first	equ	30		; ds 2
+
+;--[Hardwarove definicie]------------------------------------------------
+
+dta:	equ	#53
+ram:	equ	#17
+
+h04:	equ	#40	;4
+h05:	equ	#41	;5
+h0c:	equ	#60	;c
+h0d:	equ	#61	;d
+
+;rdrom:	equ	#3c98
+;rdram:	equ	#3c9a
+;wrrom:	equ	#3c9c
+;wrram:	equ	#3c9e
+
+;---[restarty]-----------------------------------------------------------
+
+	org	0
+
+rst0:	di
+	xor	a
+	ld	de,#ffff
+	jp	pitfall
+
+rst8:	pop	hl
+	ld	l,(hl)
+	rst	#28
+	dw	#55
+	nop
+	jr	pitfall
+
+rst16:	rst	#28
+	dw	#10
+	ret
+	nop
+	nop
+	jr	pitfall
+
+rst24:	jp	spc2010_bios	;volani fdc biosu (ramdrv vola #90)
+	nop			;.L001b	ld	a,#64		;ramdrv
+	nop			;	out	(#17),a
+	nop			;	ret
+	jr	pitfall
+
+rst32:	jp	bsdos		;volani dosu
+	nop
+	nop
+	nop
+	jr	pitfall
+
+rst40:	jp	L3ca0		;skok mezi vektory...
+	nop
+	nop
+	nop
+	jr	pitfall
+
+rst48:	xor	a
+	ret
+	dw	0,0
+	jr	pitfall
+
+
+rst56:	ei			;simulace testu klavesnice
+	ret
+
+	pop	hl		;zachyt pro im2 programy volajici primo rom
+	pop	af		;az po pitfall...
+	ei
+	ret
+
+	ds	13
+	jr	pitfall
+	pop	de		;zachyt
+	pop	bc
+	pop	hl
+	pop	af
+	ei
+	ret
+
+	ds	14
+	jr	pitfall
+
+prepit:	call	rdrom
+
+pitfall:
+	ld	sp,#5820
+	jr	prepit
+
+; free space ???
+a_fr7:	equ	#80-$
+
+;---[flopy disk setup]---------------------------------------------------
+
+;; Konfiguracia disketovych mechanik pre FDC bios
+;;
+;; Obsahuje definicie pre 4 mechaniky, kazda zabera 4 bajty
+;;
+;; +0 ... podporovane rezimy: bit0=DD, bit1=HD, bit2=ED...
+;; +1 ... pocet stop ktore mechanika podporuje
+;; +2 ... rychlost krokovania hlavickou (#00=3ms, #01=6ms...)
+;; +3 ... sposob akym dava mechanika najavo ze je pripravena pracovat
+;;		#01 = negovany signal /READY
+;;		#80 = pozitivny signal DISK_CHANGE
+;;
+;; Same nulove bajty znamenaju ze ziadna mechanika nie je pripojena.
+
+	ds	#80-$
+
+tabset:	ds	#80
+
+;***********************************************************************
+;***                        SPECCY 2010 BIOS                         ***
+;***********************************************************************
+
+spc2010_bios:
+bz:
+
+verzia_bios =	2010
+
 
 biosjmp:	jr	skoky
 		dw	status
@@ -235,178 +364,4399 @@ info:		xor	a
 		ld	de,#5201	; 82 tracks / HD
 		ret
 
-; fill the free space
-		block	(#03C0-$),0
+bk:
+bl:	equ	bk-bz				;Koniec FDC biosu
 
-; system variables
-xxx		equ	#03E0
-yyy: 		equ	#03E1
-color: 		equ	#03E2
-optio: 		equ	#03E3
-actual: 	equ	#03E4
-okdrv: 		equ	#03E6
-okall: 		equ	#03E7
-secsub: 	equ	#03E8
-mmbot: 		equ	#03EA
-mmfat: 		equ	#03EB
-mmdir: 		equ	#03EC
-mmsub: 		equ	#03ED
-disk: 		equ	#03EE
-cesta: 		equ	#03EF
-crcrtr:		equ	#03F1
+;; Koniec FDC biosu
+						;----------------
+; free space ???
+a_fr6:	equ	#03c0-$				;az do promennych dosu?
+
+a2_end:
+
+;pri bootovani sa spusti boot sektor, ktory
+;vytvori v dos ramke FDC bios. Tym padom ma
+;pristup k disketovej jednotke. Nacita z nej subor
+;"masterboot" a spusti ho. Masterboot vypise
+;tabulku konfigutacie, pomocou FDC biosu loadne
+;subor "bsdos308". Kedze boot a masterboot este
+;neovladaju filesystem, tak je nutne aby masterboot
+;a bsdos308 lezali na konkretnych sektoroch
+;(treba ich sejvnut na cistu prazdnu disketu HD, 11sec/trk).
+;Po loadnuti suboru bsdos308 sa tento zdepakuje,
+;LDIRne do baniek (outy pre prepinanie baniek sa
+;beru z boot sektora) a znovu sa spusti boot, ktory
+;znovu vytvori FDC bios a aj ROM bios. Nakoniec
+;sa spusti sluzba dosu #30 START, tym je proces
+;bootovania z hladiska vytvorenia dosu hotovy a
+;vsetko ostatne je uz zalezitost autoexecu.
+
+;---[systemove promenne dosu]-------------------------------------------
+
+	ds	#03C0-$
+;;	org	#03c0
+
+drkes:	ds	1			;modified by dron
+	dw	1			;celkem ds #20
+	ds	#20-3
+
+xxx:	db	#00
+yyy:	db	#00
+color:	db	#38
+optio:	db	#00
+actual:	dw	#3333
+okdrv:	db	#00
+okall:	db	#00
+secsub:	dw	#00
+mmbot:	db	#00
+mmfat:	db	#00
+mmdir:	db	#00
+mmsub:	db	#00
+
+disk:	db	#01
+cesta:	dw	#00
+
+crcrtr:	db	#04
+
+wrkzn:	db	#00
+wrkdir:	db	#00
+dzn0:	dw	0
+dzn1:	dw	0
+dmem0:	dw	0,0
+dmem1:	dw	0,0
+
+; tady je #400
+
+;; Cache pamet ktora udrzuje informacie o 16-tich posledne pouzitych disketach
+;; (aktualne nastaveny adresar, aktualnu poziciu load kurzora...)
+
+cache_level_1:
+	ds	#100			;0400-04FF Cache level 1
+
+;	if	cache_level_1<>#400	;test, jestli keska nepretekla
+;	error	"\aCache level 1 neni na svem miste!!!"
+;	endif
 
 
 ;***********************************************************************
-;***                   SPECCY 2010 BS-DOS PATCHES                    ***
+;***				BS DOS 308				***
 ;***********************************************************************
-bsdos		equ	#0500
+;
+; zacatek bsdosu
 
-		org	#0DC1
+bsdos:
+zacatek:
+	jr	dos				; skok na dos
 
-		db	#1f
-		db	" BS-DOS "
-		db	'0'+ver1
-		db	'0'+ver2
-		db	'0'+ver3
-		db	"s by SinDiKaT 2018 "
-		db	#1f,0
+; nasleduji adresy rutin sluzeb dosu
 
-		org	#0DE8
+	dw	disp				;1
+	dw	enter				;2
+	dw	tabx				;3
+	dw	txxt				;4
+	dw	dec8x				;5
+	dw	dec16x				;6
+	dw	dec32x				;7
+	dw	dec32				;8
+	dw	inc32				;9
+	dw	add32				;10
+	dw	sub32				;11
+	dw	sddx				;12
+	dw	beep				;13
+	dw	prevox				;14
+	dw	howsec				;15
 
-		db	"@",0
-		dw	0,0
+d:	dw	kukni				;10
+	dw	kuini				;11
+	dw	getcst				;12
+	dw	setdrv				;13
+	dw	setdir				;14
+	dw	setlcx				;15
+	dw	getsub				;16
+	dw	nic				;17
+	dw	kolkox				;18
+	dw	seasx				;19
+	dw	seadx				;1a
+	dw	owsub				;1b
+	dw	nic				;1c
+	dw	nic				;1d
+	dw	killx				;1e
+	dw	freex				;1f
 
-		org	#0DF8
+c:	dw	em562				;20
+	dw	em4c6				;21
+	dw	loa1x				;22
+	dw	loa2x				;23
+	dw	verix				;24
+	dw	savex				;25
+	dw	creatx				;26
+	dw	utrasx				;27
+	dw	erasex				;28
+	dw	erasix				;29
+	dw	movexx				;2a
+	dw	moveix				;2b
+	dw	catx				;2c
+	dw	seaxxx				;2d
+	dw	catxd				;2e
+	dw	seaxxd				;2f
 
-		call	space
-		call	dva
-		ld	bc,26
-		call	printl
-		db	0,0,0
-		ld	e,#00
+v:	dw	start				;30
+	dw	basic				;31
+	dw	funkc				;32
+	dw	formx				;33
+	dw	messx				;34
+	dw	sdmsx				;35
+	dw	unerax				;36
+	dw	unerix				;37
 
-		org	#0E50
 
-		db	"$",0
-		dw	0,0
+dos:	add	a,a
+	jr	z,getver
+	cp	low dos
+	ret	nc
+	push	hl
+	ld	l,a
+	ld	h,dos/256
+	ld	a,(hl)
+	inc	l
+	ld	h,(hl)
+	ld	l,a
+	ex	(sp),hl
+	ld	a,e
+nic:	ret
 
-		org	#20B0
+getver:	ld	iy,fat
+	ld	ix,bot
+	ld	hl,work
+	ld	de,subs
+	ld	bc,verzia
+	ret
 
-ds10:		ld	bc,10
-printl:		ld	a,6
-		add	a,xl
-		ld	d,xh
-		ld	e,a
+tabcom:	db	"SEARC",'H'+128
+	dw	search
 
-		org	#219A
+	db	"RENAM",'E'+128
+	dw	rename
 
-dva:		ld	a,':'
-		jr	dd1
-space:		ld	a,' '
-disp:		cp	#1e
-		ret	c
-dd1:
+	db	"PRES",'S'+128
+	dw	utras
 
-		savebin "bsdos308s.bin",#0000,#4000
+	db	"MOV",'E'+128
+	dw	move
 
+	db	"ERAS",'E'+128
+	dw	erase
+
+	db	"UNERAS",'E'+128
+	dw	unera
+
+	db	"FORMA",'T'+128
+	dw	format
+
+	db	"KIL",'L'+128
+	dw	kill
+
+	;db	"RESE",'T'+128
+	;dw	102
+
+	nop
+
+znsmer:	db	"@$`"
+
+basic:	call	boff
+	ld	hl,optio
+	ld	a,(hl)
+	and	#7c
+	ld	(hl),a
+	ld	a,(23693)
+	ld	(color),a
+	ld	a,(taddr)
+	ld	hl,znsmer
+	ld	bc,#03
+	cpir
+	jp	z,smery
+	cp	'.'
+	jp	nz,bascom
+	rst	#28
+	dw	#74
+	ld	(wwadd+1),hl
+	ld	de,buff
+getw1:	ld	a,(hl)
+	rst	#28
+	dw	#2c8d
+	jr	nc,getwee
+	ldi
+	jr	getw1
+getwee:	xor	a
+	ld	b,a
+	ld	(de),a
+	ld	(wwend+1),hl
+	ld	(chadd),hl
+	ld	hl,tabcom
+hhtt1:	ld	(hhadd+1),hl
+	ld	de,buff
+	ld	a,(hl)
+	or	a
+	jr	z,hhend
+hhtt2:	ld	a,(de)
+	and	#df
+	jr	z,hhano
+	cp	(hl)
+	inc	de
+	inc	hl
+	jr	z,hhtt2
+	dec	hl
+	ld	c,a
+	ld	a,(hl)
+	and	#7f
+	cp	c
+	jr	nz,hhnie
+	ld	a,(de)
+	and	#df
+	jr	nz,hhnie
+hhano:	inc	b
+hhadd:	ld	de,#5555
+	ld	(hhzde+1),de
+hhnie:	bit	7,(hl)
+	inc	hl
+	jr	z,hhnie
+	inc	hl
+	inc	hl
+	jr	hhtt1
+
+synerr:	rst	#28
+	dw	#1c8a
+
+hhend:	djnz	synerr
+	call	nahrad
+hhzde:	ld	hl,#5555
+hhwwee:	bit	7,(hl)
+	inc	hl
+	jr	z,hhwwee
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)
+	ld	l,a
+	jp	(hl)
+
+nahrad:	rst	#28
+	dw	chesyn
+	ret	nz
+wwadd:	ld	de,#5555
+wwend:	ld	hl,#5555
+	rst	#28
+	dw	#19e5
+	ld	hl,(hhzde+1)				;bc=0!
+lenww:	bit	7,(hl)
+	inc	hl
+	inc	bc
+	jr	z,lenww
+	ld	hl,(wwadd+1)
+	rst	#28
+	dw	#1655
+	ex	de,hl
+	ld	hl,(hhzde+1)
+pokww:	inc	de
+	ld	a,(hl)
+	and	#7f
+	ld	(de),a
+	bit	7,(hl)
+	inc	hl
+	jr	z,pokww
+	inc	de
+	ld	(chadd),de
+	ret
+
+ciarka:	rst	#28
+	dw	#18
+	cp	','
+	ret
+
+ciara:	call	ciarka
+	ret	nz
+	rst	#28
+	dw	#20
+	ret
+
+getret:	call	dvaent
+loanam:	jr	z,mknic
+	rst	#28
+	dw	#1c8c
+	ret
+
+llend:	db	#0d,':',#aa,#af,#e4
+
+loatst:	rst	#28
+	dw	#18
+	ld	hl,llend
+	ld	bc,#05
+	cpir
+	ret	nz
+	pop	af
+mknic:	ld	a,(taddr)
+	cp	#e0
+	jr	z,synerr
+	ld	bc,#00
+	rst	#28
+	dw	#2aa9
+	ret
+
+smget:	rst	#28
+	dw	#20
+	rst	#28
+	dw	scann
+syntx:	rst	#28
+	dw	chesyn
+	ret	nz
+	pop	af
+	xor	a
+	ret
+
+smesy:	call	smery
+	jr	syntx
+
+smery:	rst	#28
+	dw	#18
+	ld	bc,smery
+	push	bc
+	cp	'@'
+	jr	z,smdrv
+	cp	'$'
+	jr	z,smdir
+	cp	'`'
+	jr	z,smldc
+	cp	';'
+	jr	z,smnext
+	cp	','
+	jr	nz,smnonx
+smnext:	rst	#28
+	dw	#20
+smnonx:	pop	bc
+	ret
+
+smdrv:	call	smget
+	rst	#28
+	dw	#1c85
+	rst	#28
+	dw	#1e94
+	or	a
+	jr	nz,smdsk
+	rst	#28
+	dw	15522
+	ret
+smdsk:	ld	(disk),a
+	rst	#28
+	dw	15524
+	ret
+
+smdir:	call	smget
+	bit	6,(iy+#01)
+	call	z,seadir
+	jr	z,loop19		;modified by dron
+	rst	#28
+	dw	#1e94
+loop19:	call	setdir
+	ret	c
+devinv:	rst	#08
+	db	#12
+seadir:	call	retaze
+	call	seadx
+seatst:	jr	nc,devinv
+	ret	z
+	rst	#08
+	db	#0e
+
+smldc:	call	smget
+ldcset:	bit	6,(iy+#01)
+	jr	z,hhldc
+ldcsn:	rst	#28
+	dw	#1e99
+	call	setlcx
+	jr	nc,devinv
+	ret
+hhldc:	call	retaze
+	ret	z
+	ld	a,#ff
+	call	seasx
+	jr	seatst
+
+setopt:	rst	#28
+	dw	#18
+	cp	c
+	ret	nz
+	ld	hl,optio
+	ld	a,b
+	or	(hl)
+	ld	(hl),a
+	rst	#28
+	dw	#20
+	ret
+
+vsetky:	ld	bc,#0100+'!'
+	call	setopt
+smeloc:	call	smery
+locdrv:	xor	a
+	ld	(lcexe+1),a
+	call	dvaent
+	ret	z
+	cp	'#'
+	ret	nz
+	rst	#28
+	dw	#20
+	rst	#28
+	dw	#1c82
+	call	ciara
+	call	syntx
+	rst	#28
+	dw	#1e94
+	ld	(lcexe+1),a
+	ret
+
+retaze:	rst	#28
+	dw	#2bf1
+	ld	hl,buff+#60
+	ld	(sesadd+1),hl
+	ld	a,b
+	or	c
+	push	af
+	push	hl
+reta1:	ld	a,(de)
+	ld	(hl),a
+	ld	a,b
+	or	c
+	jr	nz,loop18		;modified by dron
+	ld	(hl),#20
+	inc	bc
+loop18:	dec	bc
+	inc	de
+	inc	l
+	jr	nz,reta1
+	pop	hl
+	pop	af
+	ret
+
+bascom:	cp	#e0
+	jr	c,bcom
+	cp	#e4
+	jp	c,lsvm
+bcom:	cp	#a9
+	jr	z,new
+	cp	#d7
+	jr	z,cat
+	cp	#15
+	jp	nz,synerr
+cat:	ld	bc,#0200+'.'
+	call	setopt
+	call	vsetky
+	call	dvaent
+	ld	bc,#01ff
+	jr	z,ctbez
+	rst	#28
+	dw	#1c82
+	call	syntx
+	rst	#28
+	dw	#1e99
+ctbez:	call	syntx
+	jp	catbas
+
+stbas:	rst	#28
+	dw	#20
+	call	syntx
+
+start:	ld	(listsp),sp
+	call	runvst
+	xor	a
+	ld	(cesta+1),a
+	ld	hl,autosy
+	ld	(sesadd+1),hl
+	call	seasn3
+	ret	nz
+	jr	newbot
+
+new:	call	dvaent
+	jr	nz,newss
+	call	syntx
+	rst	#28
+	dw	#11b7
+newss:	cp	'*'
+	jr	z,stbas
+	call	smeloc
+	rst	#28
+	dw	scann
+	call	syntx
+	ld	bc,devinv
+	push	bc
+	bit	6,(iy+#01)
+	jr	z,newret
+	rst	#28
+	dw	#1e99
+	ld	(newldc+1),bc
+	call	run
+	call	lcexe
+newldc:	ld	hl,#5555
+	call	setldc
+	jr	newcon
+
+newret:	call	retaze
+	call	run
+	call	lcexe
+	call	setret
+	xor	a
+	call	seasn
+	jr	z,newcon
+	call	seasn3
+	jr	z,newcon
+	xor	a
+	ld	(cesta+1),a
+	call	seasn
+	jr	z,newcon
+	call	seasn3
+	jp	nz,finofo
+newcon:	ld	bc,noexe
+	push	bc
+newbot:	call	getldc
+	ret	z
+	call	addsub
+	ret	z
+	call	setnam
+	ld	a,(ix+info_x)
+	cp	#b0
+	ret	nz
+	call	getlen
+	ret	z
+	ld	a,l
+	xor	(ix+len+0)
+	or	e
+	ret	nz
+	ld	a,h
+	xor	(ix+len+1)
+	or	d
+	ret	nz
+	or	(ix+type)
+	jr	z,loabas
+	cp	#03
+	ret	nz
+
+loacod:	ld	a,(ix+add+2)
+	and	(ix+add+3)
+	inc	a
+	ret	z
+	ld	l,(ix+add+0)
+	ld	h,(ix+add+1)
+	ld	a,h
+	and	#c0
+	ret	z
+	push	hl
+	call	ldnew
+	pop	hl
+	ld	sp,(listsp)
+	ld	c,l
+	ld	b,h
+	ld	a,h
+	cp	#5d
+	jr	c,newusr
+	dec	hl
+	ld	(23730),hl
+	ld	(hl),#3e
+	dec	hl
+	ld	sp,hl
+	ld	hl,#1303
+	push	hl
+	ld	(23613),sp
+	ld	hl,#ffff
+	ld	(23732),hl
+	ld	hl,#1b76
+	push	hl
+newusr:	push	bc
+	jp	rdrom
+
+loabas:	call	off
+	call	setiy
+	ld	sp,(listsp)
+	ld	de,(prog)
+	ld	hl,(eline)
+	dec	hl
+	rst	#28
+	dw	#19e5
+	ld	c,(ix+lenb+0)
+	ld	b,(ix+lenb+1)
+	rst	#28
+	dw	#1655
+	ld	c,(ix+add+2)
+	ld	b,(ix+add+3)
+	inc	hl
+	add	hl,bc
+	ld	(vars),hl
+	ld	l,(ix+add+0)
+	ld	h,(ix+add+1)
+	ld	a,h
+	and	#c0
+	jr	nz,nerun
+	rst	#28
+	dw	#1e6c
+nerun:	ld	a,(cesta+1)
+	push	af
+	call	vstup
+	pop	af
+	ld	(cesta+1),a
+	ld	hl,(prog)
+	call	ldnew
+	jp	rdrom
+
+noexe:	ld	sp,(listsp)
+	call	off
+	rst	#08
+	db	#09
+
+ldnew:	ld	(bbadd),hl
+	ld	hl,ldsm1
+	ld	(em1co+1),hl
+	call	ldtelo
+	call	off
+	ld	hl,#2758
+	exx
+	xor	a
+	inc	a
+setiy:	ld	iy,#5c3a
+	ret
+
+lsvm:	ld	sp,(listsp)
+	rst	#28
+	dw	#18
+	cp	'!'
+	jr	nz,loop17		;modified by dron
+	rst	#28
+	dw	#20
+loop17:	cp	'*'
+	jr	nz,lsvcom
+	rst	#28
+	dw	#20
+lsvcom:	call	smery
+	ld	bc,#0606
+	push	bc
+	ld	bc,rdrom		;modified by dron (3c98) ???
+	push	bc
+	call	loatst
+	rst	#28
+	dw	scann
+	rst	#28
+	dw	chesyn
+	call	nz,lvcur
+	bit	6,(iy+#01)
+	ret	z
+	call	loatst
+	call	ciara
+	rst	#28
+	dw	#1c8c
+	call	syntx
+lvcur:	ld	a,(taddr)
+	cp	#e0
+	ret	z
+	ld	hl,#3cae
+	rst	#28
+	dw	#7b
+	rrca
+	ret	nc
+	rst	#28
+	dw	dupdup
+	jp	ldcset
+
+rename:	call	smery
+	rst	#28
+	dw	#1c82
+	call	ciara
+	rst	#28
+	dw	scann
+	call	syntx
+	bit	6,(iy+#01)
+	jr	z,renmen
+	rst	#28
+	dw	#1e99
+	ld	(renadd+1),bc
+	jr	renall
+renmen:	call	retaze
+renall:	rst	#28
+	dw	#1e99
+	ld	(rennum+1),bc
+	call	run
+	call	bini
+rennum:	ld	hl,#5555
+	ld	a,h
+	or	l
+	push	hl
+	push	af
+	call	addsub
+	push	ix
+	pop	hl
+	ld	de,buff
+	ld	(owadd+1),de
+	call	ldir20
+	ld	a,(#5c3a+#01)
+	bit	6,a
+	jr	z,rennam
+	pop	af
+renadd:	ld	hl,#5555
+	jr	z,renadu
+	ld	(buff+add),hl
+	jr	renfin
+renadu:	ld	a,l
+	ld	(buff+type),a
+	jr	renfin
+rennam:	pop	af
+	ld	c,26
+	jr	z,loop16		;modified by dron
+	ld	c,#0a
+loop16:	ld	hl,buff+#60
+	ld	e,#80+name
+	ldir
+renfin:	pop	hl
+	jp	owren
+
+move:	call	smery
+	rst	#28
+	dw	#1c82
+	rst	#28
+	dw	#18
+	cp	';'
+	jr	z,mvviac
+	call	ciara
+	rst	#28
+	dw	#1c82
+	call	syntx
+	rst	#28
+	dw	#1e85			;st->bc,a
+	jp	movexx
+
+mvviac:	rst	#28
+	dw	#20
+	rst	#28
+	dw	chesyn
+	jr	z,mvrun
+	rst	#28
+	dw	#1e94
+	ld	(mxdir+1),a
+mvrun:	ld	hl,movbas
+	jr	merun
+
+unera:	ld	hl,unerix
+	db	#dd
+erase:	ld	hl,erasix
+merun:	ld	(meskok+1),hl
+	call	smery
+makll:	call	getint
+	rst	#28
+	dw	chesyn
+	call	nz,ukazy
+	call	ciarka
+	ret	nz
+	rst	#28
+	dw	#20
+	jr	makll
+
+ukazy:	rst	#28
+	dw	#1e99
+	push	bc
+	rst	#28
+	dw	#1e99
+	pop	hl
+meskok:	jp	noexe
+
+getint:	rst	#28
+	dw	#18
+	cp	#cc
+	ld	bc,#01
+	call	putnum
+	rst	#28
+	dw	#18
+	cp	#cc
+	jr	z,gi2
+	call	syntx
+	rst	#28
+	dw	dupdup
+	ret
+
+tseeii:	cp	','
+	ret	z
+tsdei:	rst	#28
+	dw	#2048
+	ret
+
+dvaent:	rst	#28
+	dw	#18
+	jr	tsdei
+
+gi2:	rst	#28
+	dw	#20
+	call	tseeii
+	jr	z,putkol
+putnum:	jr	z,putbc
+	rst	#28
+	dw	#1c82
+	ret
+putkol:	call	syntx
+	call	kolkox
+	jr	nc,invdev
+	ld	b,d
+	ld	c,e
+putbc:	call	syntx
+	rst	#28
+	dw	#2d2b
+	ret
+
+tabfn:	db	'?'
+	dw	fnver
+	db	'@'
+	dw	fndrv
+	db	'$'
+	dw	fndir
+	db	'`'
+	dw	fnldc
+	db	'#'
+	dw	fnkolk
+	db	'%'
+	dw	fnfree
+
+funkc:	rst	#28
+	dw	#20
+	cp	'*'
+	jr	z,fncsub
+	cp	''
+	jr	z,fncsub
+	ld	hl,tabfn
+fn1:	bit	7,(hl)
+	ret	nz
+	cp	(hl)
+	inc	hl
+	ld	e,(hl)
+	inc	hl
+	ld	d,(hl)
+	inc	hl
+	jr	nz,fn1
+	rst	#28
+	dw	#20
+	set	6,(iy+#01)
+	call	syntx
+	ex	de,hl
+	jp	(hl)
+
+invdev:	rst	#08
+	db	#12
+
+fncsub:	res	6,(iy+#01)
+	push	af
+	rst	#28
+	dw	#20
+	pop	af
+	call	syntx
+	rrca
+	jr	c,fncmem
+	ld	bc,#20
+	rst	#28
+	dw	#30
+	push	de
+	push	de
+	call	gtxldc
+	jr	nc,invdev
+	ld	b,h
+	ld	c,l
+	inc	h
+	jr	nz,fncss
+	pop	de
+	ld	hl,meno
+	call	ldir20
+	or	h
+	jr	fncaa
+fncss:	pop	ix
+	call	getsub
+	jr	nc,invdev
+fncaa:	pop	de
+	ld	bc,#00
+	jr	z,putret
+	ld	c,#20
+	jr	putret
+fncmem:	ld	de,#01
+	ld	bc,#ffff
+putret:	ld	a,d
+	rst	#28
+	dw	#2ab2
+	xor	a
+	ret
+
+fndir:	call	getcst
+	ld	a,d
+	jr	fnaaa
+fndrv:	scf
+	ld	a,(disk)
+fnaaa:	ld	c,a
+	ld	b,#00
+	jr	fnbce
+
+fnldc:	call	getcst
+	ld	b,h
+	ld	c,l
+	jr	fnbce
+fnkolk:	call	kolkox
+	ld	b,d
+	ld	c,e
+	jr	fnbce
+fnfree:	call	freex
+fnbce:	jr	nc,invdev
+fnbc:	rst	#28
+	dw	#2d2b
+	xor	a
+	ret
+
+fnver:	ld	bc,verzia
+	jr	fnbc
+
+getcst:	call	runvst
+getact:	call	getldc
+	ret	nz
+	inc	l
+	ret
+
+gtxldc:	call	runvst
+getldc:	ld	ix,(actual)
+	ld	e,(ix+kesdrv)
+	ld	d,(ix+kesdir)
+	ld	l,(ix+kesldc+0)
+	ld	h,(ix+kesldc+1)
+	ld	a,h
+	or	l
+	ret
+
+setdrv:	ld	(disk),a
+	ret
+
+setdir:	push	af
+	call	gtxldc
+	pop	bc
+	ret	nc
+	ld	(ix+kesdir),b
+	ret
+
+setlcx:	push	bc
+	call	kukni
+	pop	hl
+	ret	nc
+setldc:	ld	ix,(actual)
+	ld	(ix+kesldc+0),l
+	ld	(ix+kesldc+1),h
+	res	0,(ix+kesatt)
+	ret
+
+xornam:	ld	b,#0a
+	xor	a
+xxnn:	xor	(hl)
+	inc	hl
+	djnz	xxnn
+	ret
+
+seadx:	ld	(sedadd+1),hl
+	call	runvst
+sedadd:	ld	hl,#5555
+	call	xornam
+	ld	c,a
+sednum:	ld	a,(cesta+1)
+	ld	(seadee+1),a
+sead1:	ld	(cesta+1),a
+	push	af
+	call	adddir
+	bit	7,(hl)
+	jr	z,sead2
+	bit	6,(hl)
+	jr	nz,sead2
+	inc	l
+	ld	a,c
+	xor	(hl)
+	jr	nz,sead2
+	ld	h,a
+	ld	l,a
+	call	addsub
+	ld	a,name
+	add	a,xl
+	ld	d,xh
+	ld	e,a
+	ld	hl,(sedadd+1)
+	call	cpi10
+	jr	z,seadok
+sead2:	pop	af
+	inc	a
+seadee:	cp	#55
+	jr	nz,sead1
+	or	a
+	inc	h
+	ret
+seadok:	pop	af
+	cp	a
+	ret
+
+seasn3:	ld	a,#03
+seasn:	ld	(seatyp+1),a
+	jr	seasub
+
+seasx:	ld	(sesadd+1),hl
+	ld	(seatyp+1),a
+	call	runvst
+seasub:	call	setcur
+	jr	z,seas2
+seas1:	call	addsub
+	push	hl
+	call	seasts
+	pop	hl
+	jp	z,setldc
+	call	nxtcur
+	jr	nz,seas1
+seas2:	jp	getact
+
+seasts:	ld	a,(ix+info_x)
+	cpl
+	and	#80
+	ret	nz
+seatyp:	ld	a,#55
+	cp	#ff
+	jr	z,seas3
+	cp	(ix+type)
+	ret	nz
+seas3:	push	ix
+	pop	hl
+	ld	bc,name
+	add	hl,bc
+sesadd:	ld	de,#5555
+cpi10:	ld	bc,#0a
+cpi:	ld	a,(de)
+	cpi
+	inc	de
+	ret	nz
+	ret	po
+	jr	cpi
+
+search:	call	vsetky
+	call	getret
+	call	syntx
+	rst	#28
+	dw	#2bf1
+	jr	seabas
+
+seaxxx:	ld	l,#00
+seaxxd:	ld	a,l
+	ld	(lcexe+1),a
+seabas:	ld	(txtadd+1),de
+	ld	h,b
+	ld	l,c
+	ld	de,11
+	call	comp
+	jr	c,loop14		;modified by dron
+	ld	hl,10
+loop14:	ld	(txtlen+1),hl
+	call	run
+	call	zaccs
+	ld	a,#10
+	ld	hl,(txtlen+1)
+	sub	l
+	rra
+	and	#1f
+	ld	e,a
+	call	tabx
+	call	text
+	db	"Searching for ",'"',0
+
+
+
+	ld	de,(txtadd+1)
+	ld	bc,(txtlen+1)
+	call	teet
+	call	uvodz
+	call	tab17
+	call	text
+	db	"Dir:",0
+
+	call	enter
+	ld	hl,#0400
+	ld	(xxx),hl
+	ld	(mszn2),a
+	ld	a,#18
+	ld	(mszn1),a
+ms0:	ld	hl,(xxx)
+	push	hl
+	ld	hl,#1704
+	ld	(xxx),hl
+	ld	a,(cesta+1)
+	call	dec8s
+	pop	hl
+	ld	(xxx),hl
+	call	adddir
+	bit	7,(hl)
+	jr	z,ms99
+	bit	6,(hl)
+	jr	nz,ms99
+	call	ms1
+mszn1:	jr	ms99
+	ld	a,#18
+	ld	(mszn1),a
+	ld	b,#03
+	call	scroll
+	call	enter
+ms99:	call	getldc
+	ld	hl,cesta+1
+	inc	(hl)
+	ld	a,(hl)
+	cp	d
+	jr	nz,ms0
+mszn2:	ret
+	ld	e,#0b
+	call	tabx
+	call	text
+	db	"Not "
+found:	db	"found",0
+
+	ret
+
+ms1:	ld	hl,#00
+	call	addsub
+	push	ix
+	pop	hl
+	ld	de,buff
+	call	ldir20
+	ld	hl,#ffff
+	push	hl
+ms2:	pop	hl
+	inc	hl
+	call	addsub
+	ret	z
+	ld	bc,ms2
+	push	hl
+	push	bc
+	call	tstdel
+	ret	z
+	ld	a,name
+	add	a,xl
+	ld	d,xh
+	ld	e,a
+ms3:
+txtadd:	ld	hl,#5555
+txtlen:	ld	bc,#5555
+	ld	a,b
+	or	c
+	jr	z,nasiel
+	push	de
+	call	cpi
+	pop	de
+	inc	de
+	jr	z,nasiel
+	ld	a,e
+	and	#1f
+	cp	name+10
+	jr	c,ms3
+	ret
+
+nasiel:	xor	a
+	ld	(mszn1),a
+	ld	a,#c9
+	ld	(mszn2),a
+	ld	b,#04
+	call	scroll
+	ld	ix,buff
+	ld	a,(cesta+1)
+	call	dec8s
+	call	prndva
+	call	lomeno
+	pop	bc
+	pop	hl
+	push	hl
+	push	bc
+	call	addsub
+	call	dec16t
+	call	dvadel
+	call	print
+	jp	tab0
+
+scroll:	ld	a,(yyy)
+	cp	#16
+	ret	c
+	push	ix
+	push	bc
+	ld	a,(cesta+1)
+	push	af
+	ld	a,pasive_x
+	rst	#18
+	ld	hl,#1718
+	ld	(xxx),hl
+	push	hl
+	call	text
+	db	"Scroll ?",0
+
+
+	call	spcent
+	jp	nc,ret
+	pop	hl
+	ld	(xxx),hl
+	call	tab0
+	call	vstup
+	ld	hl,(actual)
+oldact:	ld	de,#5555
+	call	comp
+	jp	nz,retry
+	pop	af
+	ld	(cesta+1),a
+	pop	af
+	ld	h,a
+	ld	l,#00
+	ld	(xxx),hl
+	call	tab17
+	ld	(xxx),hl
+	pop	ix
+	ret
+
+zaccs:	call	lcexe
+	ld	hl,(actual)
+	ld	(oldact+1),hl
+	ld	hl,#00
+	ld	(xxx),hl
+	ld	hl,color
+	ld	a,(hl)
+	and	#78
+	bit	5,a
+	jr	nz,loop13		;modified by dron
+	xor	#07
+loop13:	ld	(hl),a
+	call	sddsc
+	call	text
+
+	db	#1f
+	db	" BS-DOS "
+	db	'0'+ver1
+	db	'0'+ver2
+	db	'0'+ver3
+	db	"s by SinDiKaT 2018 "
+	db	#1f,0
+
+dsmeno:	call	dddd1
+	call	text
+	db	"@",0			;26znak
+	dw	0,0			;26znak
+
+	ld	a,(cesta)
+	ld	ix,meno
+drvdir:	call	dec8s
+	call	space
+	call	dva			;26znak
+	ld	bc,26			;26znak
+	call	printl			;26znak
+	db	0,0,0			;26znak
+dddd1:	ld	e,#00			;26znak
+	ld	hl,color
+	ld	a,#02
+	xor	(hl)
+	ld	(hl),a
+	jp	tabx
+
+tstdel:	ld	a,(optio)
+	and	#01
+	ret	nz
+b7info:	bit	7,(ix+info_x)
+	ret
+
+catx:	ld	l,#00
+catxd:	ld	a,l
+	ld	(lcexe+1),a
+catbas:	ld	(ctdir+1),bc		;bc=dir [#1xx=act]
+	call	run
+	call	zaccs
+	call	getact
+	call	setldc
+ctdir:	ld	hl,#5555
+	dec	h
+	ld	a,l
+	jr	z,loop12		;modified by dron
+	ld	(cesta+1),a
+loop12:	ld	hl,#00
+	call	addsub
+	jr	nz,ctdd
+	ld	ix,nuly
+ctdd:	call	dddd1
+	call	text
+	db	"$",0			;26znak
+	dw	0,0			;26znak
+
+	ld	a,(cesta+1)
+	call	drvdir
+	call	text
+	db	" Free:",0
+
+	call	free
+	push	hl
+	ld	h,b
+	ld	l,c
+	call	dec16
+	call	lomeno
+	pop	hl
+	ld	b,10
+	call	dec32z
+	ld	e,#15
+	call	tabx
+	call	text
+	db	"Files:",0
+
+	call	kolko
+	ex	de,hl
+	call	dec16
+	call	tab17
+	call	enter
+	ld	hl,optio
+	bit	1,(hl)
+	ld	hl,#0500
+	ld	(xxx),hl
+	ld	h,l
+	call	nz,getldc
+	jr	nz,ct9
+	push	hl
+ct0:	pop	hl
+	inc	hl
+ct9:	call	addsub
+	ret	z
+	push	hl
+	ld	bc,ct0
+	push	bc
+	call	tstdel
+	ret	z
+	push	hl
+	ld	b,#05
+	call	scroll
+	pop	hl
+	call	sddsc
+ctprn:	call	dec16t
+	push	ix
+	push	hl
+	call	getact
+	pop	de
+	call	comp
+	ld	a,'<'
+	jr	c,loop11		;modified by dron
+	ld	a,'>'
+loop11:	jr	nz,loop10		;modified by dron
+	ld	a,'*'
+loop10:	call	disp
+	pop	ix
+	ld	a,(ix+type)
+	call	dec8
+	call	dvadel
+	call	print
+	bit	4,(ix+info_x)
+	call	spcdva
+	ld	l,(ix+add+0)
+	ld	h,(ix+add+1)
+	ld	c,' '
+	call	dec16x
+	bit	5,(ix+info_x)
+	call	spcdva
+	ld	hl,(xxx)
+	ld	a,#20
+	sub	l
+	cp	10
+	jr	c,loop09		;modified by dron
+	ld	a,10
+loop09:	ld	b,a
+	call	getlen
+	call	dec32z
+	jp	tab0
+
+utras:	call	smesy
+utrasx:	call	run
+	call	bini
+	call	kolko
+	ld	a,d
+	or	e
+	ret	z
+	ld	hl,#20
+	call	comp
+	jr	c,utviac
+	ld	l,h
+	call	addsub
+	ld	hl,subs+#20
+	ld	d,h
+	ld	e,l
+ut1:	ld	bc,#20
+	bit	7,(hl)
+	jr	z,ut2
+	push	hl
+	push	bc
+	ldir
+	pop	bc
+	pop	hl
+ut2:	add	hl,bc
+	ld	a,h
+	cp	hiss+#04
+	jr	c,ut1
+	ex	de,hl
+ut3:	ld	a,h
+	cp	hiss+#04
+	jp	nc,wrrsbb
+	ld	(hl),b
+	inc	hl
+	jr	ut3
+
+utviac:	ld	hl,#01
+	ld	bc,#20
+	ld	d,b
+	ld	e,c
+	ld	yh,b
+ut6:	call	addsub
+	jr	z,ut4
+	call	b7info
+	jr	z,ut5
+	ex	de,hl
+	add	hl,bc
+	ex	de,hl
+	jr	nc,ut5
+	inc	yh
+ut5:	inc	hl
+	jr	ut6
+ut4:	ld	ix,buff
+	ld	a,yh
+	ld	(ix+lenb+0),e
+	ld	(ix+lenb+1),d
+	ld	(ix+lenb+2),a
+	ld	(ix+lenb+3),#00
+	ld	hl,#04
+	call	creutr
+	call	clswrk
+	ld	hl,#ffff
+	ld	(utsnum+1),hl
+	inc	hl
+	call	addsub
+	ld	hl,subs
+	call	ldir20
+	ld	h,c
+	ld	l,c
+ut8:	inc	hl
+	call	addsub
+	jr	z,utend
+	call	b7info
+	jr	z,ut8
+	push	hl
+	push	ix
+	ld	a,d
+	cp	hiww+4
+	call	nc,utsnum
+	pop	hl
+	call	ldir20
+	pop	hl
+	jr	ut8
+
+utend:	call	utsnum
+	ld	ix,buff
+	ld	hl,ldsm0
+	ld	d,c
+	ld	e,c
+	ld	bc,(utsnum+1)
+	inc	bc
+	call	lssecm
+	call	adddir
+	ld	a,(hl)
+	set	0,(hl)
+	inc	l
+	inc	l
+	ld	c,(hl)
+	inc	l
+	ld	b,(hl)
+	ld	d,(ix+first+1)
+	ld	e,(ix+first+0)
+	and	#40
+	or	d
+	or	#80
+	ld	(hl),a
+	dec	l
+	ld	(hl),e
+	call	erasec
+	jp	savall
+
+utsnum:	ld	de,#5555
+	inc	de
+	ld	(utsnum+1),de
+	ld	ix,buff
+	ld	iy,work
+	ld	a,#01
+	call	svsecs
+clswrk:	ld	hl,work
+	ld	de,work+1
+	ld	bc,#03ff
+	ld	(hl),l
+	push	hl
+	ldir
+	pop	de
+	ld	hl,#ff
+	ld	(wrkzn),hl
+	ret
+
+owsub:	ld	(owadd+1),ix
+	ld	(ownum+1),hl
+	call	run
+	call	bini
+ownum:	ld	hl,#5555
+owren:	call	addsub
+	ret	z
+	ld	a,#ff
+	ld	(mmsub),a
+	ld	a,h
+	or	l
+	push	ix
+	pop	de
+owadd:	ld	hl,#5555
+	call	ldir20
+	jr	nz,ooww2
+	ex	de,hl
+	ld	bc,name-#20
+	add	hl,bc
+	call	xornam
+	ld	c,a
+	call	adddir
+	inc	l
+	ld	a,c
+	xor	(hl)
+	ld	(hl),c
+	jr	z,ooww2
+	dec	l
+	set	0,(hl)
+ooww2:	jp	savall
+
+movexx:	ld	h,b
+	ld	l,c
+moveix:	ld	(mxdir+1),a
+movbas:	ld	de,movexe
+	jr	lme
+
+unerax:	ld	h,b
+	ld	l,c
+unerix:	ld	de,uneexe
+	jr	lme
+
+erasex:	ld	h,b
+	ld	l,c
+erasix:	ld	de,eraexe
+lme:	ld	(lmeco+1),de
+	ld	(lmezac+1),bc
+	ld	(lmeend+1),hl
+	call	run
+	call	bini
+	ld	hl,savall
+	push	hl
+lmezac:	ld	hl,#5555
+lmeend:	ld	de,#5555
+lmeloo:	call	comp
+	jr	z,loop08		;modified by dron
+	ret	nc
+loop08:	push	hl
+	push	de
+lmeco:	call	syserr
+	pop	de
+	pop	hl
+	inc	hl
+	jr	lmeloo
+
+movexe:	ld	a,h
+	or	l
+	jr	z,movdir
+	call	addsub
+	ret	z
+	call	b7info
+	ret	z
+	push	ix
+	pop	hl
+	ld	de,buff
+	call	ldir20
+	res	7,(ix+info_x)
+	ld	a,#ff
+	ld	(mmsub),a
+	ld	a,(mxdir+1)
+	ld	(cesta+1),a
+	call	adddir
+	call	radds
+	push	ix
+	pop	de
+	ld	hl,buff
+	call	ldir20
+	call	getact
+	ld	a,d
+	ld	(cesta+1),a
+	ret
+
+movdir:	ld	a,(cesta+1)
+mxdir:	cp	#55
+	ret	z
+	call	wridir
+	call	readir
+	ld	de,work
+	ld	hl,(cesta+1)
+	ld	h,e
+	add	hl,hl
+	add	hl,hl
+	add	hl,de
+	push	hl
+	ld	hl,(mxdir+1)
+	ld	h,e
+	add	hl,hl
+	add	hl,hl
+	add	hl,de
+	pop	de
+	ld	b,#04
+exxdir:	ld	c,(hl)
+	ld	a,(de)
+	ld	(hl),a
+	ld	a,c
+	ld	(de),a
+	inc	l
+	inc	e
+	djnz	exxdir
+	ld	hl,dzn0
+	call	zrdd
+	jp	wrdir
+
+eraexe:	ld	a,h
+	or	l
+	jr	z,eradir
+	call	addsub
+	ret	z
+	call	b7info
+	ret	z
+	ld	a,#ff
+	ld	(mmsub),a
+	res	7,(ix+info_x)
+	call	frsand
+	ret	z
+	call	fpeek
+	bit	7,h
+	ret	z
+	push	bc
+	call	tslenb
+	pop	bc
+erasec:	call	bcand
+	ret	z
+erasek:	call	fpeek
+	bit	7,h
+	call	z,dainer
+	res	7,h
+	call	fpoke
+	bit	6,h
+	ld	b,h
+	ld	c,l
+	jr	nz,erasek
+	ret
+
+eramsg:	db	"Dir ",#1c
+
+	dw	cesta+1
+	db	' ',8,"empty. "
+
+
+	db	"Erase ?",0
+
+
+eradir:	call	kolko
+	ld	a,d
+	or	e
+	ret	z
+	ld	hl,#01
+erad1:	call	addsub
+	jr	z,erad2
+	call	b7info
+	inc	hl
+	jr	z,erad1
+	ld	hl,eramsg
+	call	mesage
+	jp	nc,abort
+	call	bini
+	call	kolko
+	ld	hl,#01
+	call	lmeloo
+erad2:	call	adddir
+	set	0,(hl)
+	res	7,(hl)
+	inc	l
+	inc	l
+	ld	c,(hl)
+	inc	l
+	ld	b,(hl)
+	res	7,(hl)
+	call	erasec
+	jp	savall
+
+uneexe:	call	setldc
+	ld	a,#21				;ld hl,...
+	ld	(tstune),a
+	ld	a,h
+	or	l
+	jr	nz,unesub
+	call	adddir
+	bit	7,(hl)
+	ret	nz
+	set	7,(hl)
+	set	0,(hl)
+	inc	l
+	inc	l
+	ld	c,(hl)
+	inc	l
+	ld	b,(hl)
+	set	7,(hl)
+	call	bcand
+	jr	z,uneerr
+	jr	unesek
+
+unesub:	call	addsub
+	ret	z
+	ld	a,(ix+info_x)
+	or	a
+	ret	z
+	add	a,a
+	jr	c,unecnt
+	ld	a,#ff
+	ld	(mmsub),a
+	set	7,(ix+info_x)
+unecnt:	call	tslenb
+	call	frsand
+	ret	z
+unesek:	call	fpeek
+	bit	7,h
+	jr	nz,uneerr
+	set	7,h
+	call	fpoke
+	bit	6,h
+	ld	b,h
+	ld	c,l
+	jr	nz,unesek
+	ret
+
+uneerr:	call	error
+	db	"Can",#27
+	db	"t unerase",0
+
+
+
+formsg:	db	"Quick ",7
+
+	db	' ',2,e8
+	dw	cesta
+	db	" ?",0
+
+format:	call	smesy
+formx:	call	runvst
+	ld	hl,formsg
+	call	mesage
+	ret	nc
+	call	bini
+	call	readir
+	ld	hl,work
+	ld	de,#03
+	ld	b,d
+form1:	res	7,(hl)
+	add	hl,de
+	res	7,(hl)
+	inc	hl
+	djnz	form1
+	ld	bc,#02
+form2:	call	fpeek
+	inc	h
+	jr	z,form3
+	dec	h
+	res	7,h
+	call	fpoke
+	inc	h
+form3:	inc	bc
+	inc	l
+	ld	a,h
+	or	l
+	jr	nz,form2
+	ld	h,#84
+	ld	bc,(numdir)
+	call	fpoke
+	ld	bc,(fat1)
+	call	undfat
+	ld	bc,(fat2)
+	call	undfat
+	call	wrdir
+	call	fatswr
+	jp	zrusmm
+
+undfat:	ld	e,#00
+ndofat:	call	fpeek
+	bit	7,h
+	call	nz,syserr
+	set	7,h
+	call	fpoke
+	inc	e
+	bit	6,h
+	ld	b,h
+	ld	c,l
+	jr	nz,ndofat
+	ld	a,(secfat)
+	cp	e
+	ret	z
+	jp	dainer
+
+em562:	ex	af,af'
+	call	setbb
+	sbc	a,a
+	ld	hl,ldsm1
+	jr	c,loop07		;modified by dron
+	ld	hl,ldsm3
+loop07:	ld	(em1co+1),hl
+	and	healoa-heaver
+	ld	(heaver-1),a
+	call	runvst
+	call	setcur
+	jr	z,finofo
+	ld	bc,loaend
+	push	bc
+ld0:	push	hl
+	call	ld1
+	pop	hl
+	call	nxtcur
+	call	setldc
+	jr	nz,ld0
+	push	hl
+	call	ld1
+finofo:	call	error
+	db	4,eg
+	dw	notfnd
+
+ld1:	call	addsub
+	call	b7info
+	ret	z
+	bit	4,(ix+info_x)				;H ?
+	jr	z,ldbody
+	call	tsthea
+	jr	nz,ldbody
+	ld	iy,(actual)
+	bit	0,(iy+kesatt)
+	ret	nz
+	pop	bc
+	pop	hl
+	set	0,(iy+kesatt)				;H !
+	ld	(iy+kesldc+0),l
+	ld	(iy+kesldc+1),h
+	ld	a,type
+	add	a,xl
+	ld	d,xh
+	ld	e,a
+	ld	bc,#11
+	ld	hl,(bbadd)
+	jr	finofo				;***
+heaver:	call	cpi
+	ret	z				;zle: NC
+	xor	a
+	ld	(ret),a
+	ret
+healoa:	ex	de,hl
+	ldir
+	ret
+
+ldbody:	bit	5,(ix+info_x)				;T ?
+	ret	z
+	ld	a,(bbfff)
+	xor	(ix+flag)
+	or	(ix+lenb+3)
+	or	(ix+lenb+2)
+	ret	nz
+	ld	d,(ix+lenb+1)
+	ld	e,(ix+lenb)
+	ld	hl,(bblen)
+	sbc	hl,de
+	ret	nz
+	call	ldtelo				;T !
+	pop	bc
+	pop	hl
+	inc	hl
+	jp	setldc
+
+ldtelo:	call	setnam
+	call	tslenb
+	call	getlen
+	call	howsec
+	or	b
+	jp	nz,syserr
+	ld	a,c
+	ld	d,b
+	ld	e,b
+	ld	iy,(bbadd)
+em1co:	ld	hl,#5555
+	jp	lssecs
+
+tsthea:	db	#3e
+bbfff:	db	#55
+	or	a
+	ret	nz
+	ld	hl,(bblen)
+	ld	bc,#11
+	sbc	hl,bc
+	ret
+
+setbb:	ld	(bbfff),a
+	ld	(bbadd),ix
+	ld	(bblen),de
+	ret
+
+em4c6:	ld	a,l
+	call	setbb
+	call	puthea
+	call	run
+	call	bini
+	call	radds
+	call	clssub
+	ld	hl,savend
+	push	hl
+	ld	hl,hlava				;H ?
+	xor	a
+	xor	(hl)
+	inc	hl
+	ld	e,#b0
+	jr	nz,heains
+	ld	e,#a0
+	ld	hl,hless
+heains:	ld	(ix+info_x),e
+	ld	a,type
+	add	a,xl
+	ld	e,a
+	ld	d,xh
+	ld	bc,#11
+	ldir
+	call	setnam
+	xor	a
+	ld	hl,(bbadd)
+	ld	(ix+addb+0),l
+	ld	(ix+addb+1),h
+	ld	hl,(bblen)
+	ld	(ix+lenb+0),l
+	ld	(ix+lenb+1),h
+	ld	a,(bbfff)
+	ld	(ix+flag),a
+	call	create
+	call	tslenb
+	call	getlen
+	call	howsec
+	or	b
+	call	nz,syserr
+	ld	a,c
+	ld	d,b
+	ld	e,b
+	push	af
+	ld	iy,(bbadd)
+	push	de
+	call	svsecs
+	pop	de
+	pop	af
+	ld	hl,ldsm0
+	call	lssecs
+	call	savall
+	xor	a
+	ld	(hlava),a
+	ret
+
+puthea:	call	tsthea
+	ret	nz
+	pop	hl
+	push	ix
+	pop	hl
+	ld	c,e
+	ld	b,d
+	ld	de,hlava
+	ld	a,d
+	ld	(de),a
+	inc	de
+	ldir
+savend:	call	loaend
+	inc	ix
+	dec	de
+	ret
+
+loaend:	db	#dd,#21
+bbadd:	dw	#5555
+	db	#01
+bblen:	dw	#5555
+	ld	de,#00
+	add	ix,bc
+	scf
+	ret
+
+clssub:	push	ix
+	pop	hl
+	ld	bc,#2000
+ccss:	ld	(hl),c
+	inc	l
+	djnz	ccss
+	ret
+
+loa1x:	ld	de,ldsm1				;hl=num
+	jr	lsvxx				;ix=add
+loa2x:	ld	de,ldsm2				;bc=1.s
+	jr	lsvxx				;ea=len s
+verix:	ld	de,ldsm3
+	jr	lsvxx
+savex:	ld	de,wrisec				;Vystup:
+lsvxx:	ld	(lsvco+1),de				;NZ = OK
+	ld	(lsvadd+2),ix				;Z = zle
+	ld	(lsvnum+1),hl
+	ld	(lsv1sc+1),bc
+	ld	(lsvlen+1),a
+	call	run
+	ld	a,(lsvco+2)
+	cp	wrisec/256
+	jr	z,ssvvx
+	call	vstup
+lsvnum:	ld	hl,#5555
+	call	addsub
+	ret	z
+	call	udaje
+	jr	lssecs
+
+ssvvx:	call	bini
+	call	lsvnum
+	ret	z
+	call	udaje
+	ld	hl,ldsm0
+	jr	lssecs
+udaje:
+lsvadd:	ld	iy,#5555
+lsvco:	ld	hl,#5555
+lsv1sc:	ld	de,#5555
+lsvlen:	ld	a,#55
+	ret
+
+svsecs:	ld	hl,wrisec				;ix=sub,iy=add,de=1.s.,a=len s.
+lssecs:	ld	b,#00				;hl=co
+	ld	c,a
+lssecm:	ld	(lsslen+1),bc
+	push	hl
+	push	de
+	call	tslenb
+	pop	de
+	ld	c,(ix+first+0)
+	ld	b,(ix+first+1)
+matscc:	ld	a,d
+	or	e
+	jr	z,lssmee
+	dec	de
+	call	fpktst
+	bit	6,h
+	jr	z,fitosh
+	ld	b,h
+	ld	c,l
+	jr	matscc
+
+fitosh:	call	error
+	db	4,5," short",0
+
+
+
+lssmee:	pop	hl
+lsslen:	ld	de,#5555
+
+lssecl:	ld	a,d				;hl=co,bc=1.sec,iy=add,de=len s.
+	or	e
+	ret	z
+	call	bcand
+	ret	z
+	ld	(lssmxx+1),hl
+	push	bc
+	ld	hl,lsmat
+	ld	a,setmlt_x
+	rst	#18
+	pop	hl
+	ld	(futsec+1),hl
+	push	de
+	call	prevod
+	pop	bc
+lssloo:	push	iy
+	pop	hl
+	push	bc
+lssmxx:	call	ldsm0
+	pop	bc
+	dec	bc
+	ld	a,b
+	or	c
+	jr	z,lssend
+lssnxt:	ld	hl,#5555
+	bit	6,h
+	jr	z,fitosh
+	ld	(futsec+1),hl
+	ld	de,#0400
+	add	iy,de
+lssnff:	ld	de,#5555
+	jr	lssloo
+
+lssend:	ld	hl,#00
+	ld	a,setmlt_x
+	rst	#18
+	ld	hl,(zlenum+1)
+	ld	a,h
+	or	l
+	jp	nz,zle99
+	inc	a
+	ret					;NZ = OK
+
+lsm3c:	ld	a,h
+	cp	#3c
+	ret	nc
+	pop	af
+lsmat:	push	bc
+	push	de
+	push	hl
+futsec:	ld	bc,#5555
+	call	fpeek
+	ld	(lssnxt+1),hl
+	ld	a,h
+	and	#3f
+	ld	h,a
+	call	prevod
+lsm1:	ld	(lssnff+1),de
+	pop	hl
+	pop	de
+	pop	bc
+	ret
+
+ldsm0:	ld	hl,#00				;Mode 0: zbezne verify
+	ld	(wrkzn),hl
+	ld	h,work/256
+reasc:	jp	reasec
+
+ldsm1:	ld	bc,(futsec+1)				;Mode 1: load pre #562
+	push	hl
+	call	fpeek
+	push	de
+	ld	de,#8400
+	call	comp
+	pop	de
+	jr	z,loomm2
+	ld	a,h
+	and	#3f
+	ld	b,a
+	ld	c,l
+	bit	6,h
+	pop	hl
+	jr	z,loarom
+	push	hl
+loomm2:	pop	hl
+ldsm2:	call	lsm3c				;Mode 2: load pre copy
+	ld	bc,#0400
+	add	a,b
+	cp	#44
+	jr	nc,reasc
+loarom:	push	hl
+	push	bc
+	call	ldsm0
+	pop	bc
+	pop	de
+llrr1:	ld	a,b
+	or	c
+	ret	z
+	dec	bc
+	ld	a,d
+	and	#c0
+	jr	z,llrr2
+	ld	a,(hl)
+	ld	(de),a
+llrr2:	inc	hl
+	inc	de
+	jr	llrr1
+
+ldsm3:	ld	bc,(futsec+1)				;Mode 3: verify pre #562
+	push	hl
+	call	fpeek
+	ld	a,h
+	and	#3f
+	ld	b,a
+	ld	c,l
+	bit	6,h
+	pop	hl
+	jr	z,verrom
+	call	lsm3c
+	ld	bc,#0400
+verrom:	push	hl
+	push	bc
+	call	ldsm0
+	ex	de,hl
+	pop	bc
+	pop	hl
+vvrr1:	ld	a,b
+	or	c
+	ret	z
+	dec	bc
+	ld	a,h
+	and	#c0
+	jr	z,vvrr2
+	ld	a,(de)
+	cp	(hl)
+	jr	nz,zle00
+vvrr2:	inc	hl
+	inc	de
+	jr	vvrr1
+
+zle00:	push	hl
+zlenum:	ld	hl,#5555
+	ld	a,h
+	or	l
+	inc	hl
+	ld	(zlenum+1),hl
+	pop	hl
+	jr	nz,zle11
+	ld	(zlezac),hl
+zle11:	ld	(zleend),hl
+	jr	vvrr2
+
+zle99:	call	error
+	db	"Error at ",#1d
+
+
+	dw	zlezac
+	db	'-',e16
+	dw	zleend
+	db	':',e16
+	dw	zlenum+1
+	nop
+
+getlen:	ld	l,(ix+lenb+0)
+	ld	h,(ix+lenb+1)
+	ld	e,(ix+lenb+2)
+	ld	d,(ix+lenb+3)
+tszero:	ld	a,h
+	or	l
+	or	e
+	or	d
+	ret
+
+tslenb:	call	getlen
+	call	frsand
+tstlen:	ld	a,b
+	or	c
+	jr	z,tstle
+tstloo:	push	hl
+	call	fpktst
+	bit	6,h
+	ld	b,h
+	ld	c,l
+	pop	hl
+	jr	z,tstl1
+	push	bc
+	ld	bc,#0400
+	call	sub32
+	pop	bc
+	jr	tstloo
+
+tstl1:	call	bcand
+	jr	nz,tstl2
+	ld	b,#40
+tstl2:	call	sub32
+tstle:	call	tszero
+	call	nz,tstune
+	ret
+
+fpktst:	call	fpeek
+tstsec:	ld	a,h
+	inc	a
+	jr	nz,tsts1
+	ld	a,l
+	inc	a
+	call	nz,syserr
+	call	tstune
+tsts1:	ld	a,h
+	or	l
+	call	z,tstune
+	ld	a,(tstune)
+	xor	h
+	ret	p
+	call	tstune
+
+tstune:	jp	dainer
+	jp	uneerr
+
+add32:	add	hl,bc
+	ret	nc
+	inc	de
+	ret
+sub32:	xor	a
+	sbc	hl,bc
+	ret	nc
+	dec	de
+	ret
+inc32:	push	af
+	inc	hl
+	ld	a,h
+	or	l
+	jr	z,i32
+	inc	de
+i32:	pop	af
+	ret
+dec32:	push	af
+	dec	hl
+	ld	a,h
+	and	l
+	inc	a
+	jr	nz,d32
+	dec	de
+d32:	pop	af
+	ret
+
+howsec:	push	hl
+	push	de				;sec=bc
+	ld	a,h				;len=de:hl
+	and	#03
+	or	l
+	jr	z,hs1
+	ld	a,h
+	and	#fc
+	ld	h,a
+	ld	bc,#0400
+	call	add32
+hs1:	ld	c,h
+	ld	b,e
+	srl	d
+	rr	b
+	rr	c
+	srl	d
+	rr	b
+	rr	c
+	ld	a,d
+	pop	de
+	pop	hl
+	and	a
+	ret
+
+creatx:	ld	(creadd+1),ix				;Out:hl
+	call	run
+	call	bini
+	call	radds
+	push	hl
+	push	ix
+	pop	de
+creadd:	ld	hl,#5555
+	ld	bc,#1e
+	ldir
+	set	7,(ix+info_x)
+	call	create
+	call	savall
+	pop	hl
+	ret
+
+tolefi:	call	error
+	db	4
+etolen:	db	5
+elen:	db	" length",0
+
+
+create:	ld	hl,medza
+creutr:	ld	(aladd),hl
+	ld	(aa1),hl
+	ld	hl,#07fe
+	ld	(aa2),hl
+	call	getlen
+	ld	(ix+first+0),l
+	ld	(ix+first+1),h
+	ret	z
+	call	howsec
+	jr	nz,tolefi
+	push	bc
+	call	alloc
+	pop	bc
+	ld	(ix+first+0),l
+	ld	(ix+first+1),h
+creloo:	dec	bc
+	ld	a,b
+	or	c
+	jr	nz,cre1
+	ld	b,h
+	ld	c,l
+	call	getlen
+	dec	hl
+	ld	a,h
+	and	#03
+	or	#80
+	ld	h,a
+	inc	hl
+	jp	fpoke
+
+cre1:	push	bc
+	ld	b,h
+	ld	c,l
+	set	7,h
+	call	fpoke
+	push	bc
+	call	alloc
+	pop	bc
+	push	hl
+	ld	a,h
+	or	#c0
+	ld	h,a
+	call	fpoke
+	pop	hl
+	pop	bc
+	jr	creloo
+
+alloc:	ld	hl,(aa1)			;aa1<aa2
+	ld	de,(aa2)
+	call	comp				;Out: hl=sec
+	jr	c,all1				;a:aa1-aa2
+	ld	hl,#03				;b:2-aa1
+	ld	(aladd),hl			;c:aa2-end
+	ld	(aa1),hl
+	inc	hl
+	ld	(aa2),hl
+	ld	a,#ff
+	ld	(mmfat),a
+all1:	ld	bc,fat
+	db	#21
+aladd:	dw	#5555
+aaloop:	ld	(aladd),hl
+	push	hl
+	add	hl,hl
+	add	hl,bc
+	ld	e,(hl)
+	inc	l
+	ld	d,(hl)
+	pop	hl
+	bit	7,d
+	ret	z
+	inc	hl
+	ld	a,d
+	and	e
+	inc	a
+	jr	z,aaeeff
+	db	#11				;[NEend fat]
+aa1:	dw	#5555
+	call	comp
+	jr	z,aaset2
+	db	#11
+aa2:	dw	#5555
+	call	comp
+	jr	nz,aaloop
+aaset1:	ld	hl,#02
+	jr	aaloop
+
+aaset2:	ld	hl,(aa2)
+	jr	aaloop
+
+aaeeff:	ld	de,(aa1)			;[End fat]
+	call	comp
+	jr	c,aaset2
+	ld	de,(aa2)
+	call	comp
+	jr	c,aaset1
+
+dskful:	call	error
+	db	2,eg
+	dw	full
+
+prevod:	ld	a,(numsec)
+prevox:	ld	d,#ff
+	ld	b,d
+	add	a,a
+	ld	e,a
+	cpl
+	ld	c,a
+	inc	bc
+pr1:	add	hl,bc
+	inc	d				;d=stopa
+	jr	c,pr1
+	sbc	hl,bc
+	ld	a,l
+	add	a,a
+	cp	e
+	jr	c,pr2
+	sub	e
+pr2:	ccf
+	rra
+	inc	a
+	ld	e,a
+	ld	l,a
+	ld	h,d
+	ret
+
+notrdy:	call	error
+	db	2,8,9,0
+noexst:	call	error
+	db	6,2,0
+
+lcexe:	ld	a,#55
+	or	a
+	jr	z,vstup
+	ld	(cesta),a
+	jr	vstup
+
+kuini:	call	run
+bini:	ld	a,(optio)
+	add	a,a
+	call	nc,zrus
+	call	zrusdd
+	ld	a,#40
+	jr	vstup+1
+kukni:	call	run
+vstup:	xor	a
+	ld	(biand+1),a
+	xor	a
+	ld	h,a
+	ld	l,a
+	ld	(wrkzn),a
+	rst	#18
+	ld	a,setmlt_x
+	rst	#18
+	ld	hl,nuly+#20
+mknula:	dec	l
+	ld	(hl),#00
+	jr	nz,mknula
+	ld	(actual),hl
+	ld	bc,#0400
+	ld	a,setmax_x
+	rst	#18
+	call	clserr
+	ld	de,(cesta)
+	ld	a,(okdrv)
+	cp	e
+	call	nz,zrus
+	call	zrusmm
+	ld	a,aktive_x
+	rst	#18
+	or	a
+	jr	z,noexst
+	dec	a				;1
+	jr	z,notrdy
+	push	af
+	xor	a
+	rst	#18
+biand:	and	#40
+	jp	nz,wrtpro
+	pop	af
+	dec	a				;2
+	jr	z,nemena
+	dec	a				;3
+	call	nz,syserr
+	ld	a,(okall)
+	or	a
+	jr	z,iniall
+	xor	a
+	ld	(wrkdir),a
+	ld	hl,work
+	call	botsrd
+	ld	hl,work+lowid
+	ld	de,ident
+	ld	bc,#08
+	call	cpi
+	jr	z,kstest
+	ld	hl,work				;!!! zbytocne ?
+	ld	de,bot
+	ld	bc,#80
+	ldir
+	jr	inicon
+
+nemena:	ld	a,(okall)
+	or	a
+	jr	nz,kstest
+
+iniall:	ld	hl,bot
+	call	botsrd
+inicon:	call	clserr
+	call	zrus
+	call	check
+	call	fatsrd
+	xor	a
+	ld	h,a
+	ld	l,a
+	dec	a
+	ld	(okall),a
+	ld	(wrkzn),hl
+	ld	(secsub),hl
+	ld	a,(cesta)
+	ld	(okdrv),a
+
+kstest:	call	clserr
+	ld	de,ident
+	ld	hl,cache
+ks1:	push	hl
+	push	de
+	ld	bc,#08
+	call	cpi
+	pop	de
+	pop	hl
+	jr	z,ksok
+	ld	a,#10
+	add	a,l
+	ld	l,a
+	jr	nz,ks1
+	ld	c,#ff				;nenasiel
+	call	vekinc
+	ld	d,h
+	ld	c,#00
+ks2:	ld	a,(hl)				;hlada obet
+	cp	c
+	jr	c,ks3
+	ld	c,(hl)
+	ld	e,l
+ks3:	ld	a,#10
+	add	a,l
+	ld	l,a
+	jr	nc,ks2
+	ld	a,#f0
+	and	e
+	ld	e,a
+	ld	(actual),de
+	ld	hl,ident			;vklada novy
+	ld	bc,#08
+	ldir
+	ld	b,#08
+	xor	a
+	ld	(cesta+1),a
+ks4:	ld	(de),a
+	inc	e
+	djnz	ks4
+	dec	e
+	ld	a,#f0+kesdrv
+	and	e
+	ld	e,a
+	ld	a,(cesta)
+	ld	(de),a				;drive
+	ret
+
+ksok:	ld	(actual),hl			;nasiel
+	ld	a,kesdir
+	or	l
+	ld	l,a
+	ld	a,(hl)				;dir
+	ld	(cesta+1),a
+	dec	l
+	ld	a,(cesta)
+	ld	(hl),a				;drv
+	ld	a,kesvek-kesdrv
+	add	a,l
+	ld	e,a
+	ld	d,h
+	ld	a,(de)
+	or	a
+	ret	z
+	ld	c,a
+	call	vekinc
+	xor	a
+	ld	(de),a				;vek=0
+	ret
+
+vekinc:	ld	hl,cache+kesvek
+veki:	ld	a,(hl)
+	cp	c
+	jr	nc,loop06			;modified by dron
+	inc	(hl)
+loop06:	ld	a,#10
+	add	a,l
+	ld	l,a
+	jr	nc,veki
+	ret
+
+getsub:	ld	(suadd+1),ix			;In:
+	ld	(sunum+1),bc			;bc=cislo
+	call	runvst				;ix=adresa
+sunum:	ld	hl,#5555			;Out: z=zle,nz=ok
+	call	addsub
+suadd:	ld	de,#5555
+	push	ix
+	pop	hl
+	push	de
+	pop	ix
+ldir20:	ld	bc,#20
+	ldir
+	ret
+
+setcur:	call	kolko
+	ld	a,d
+	or	e
+	ret	z
+	ld	(maxldc+1),de
+	call	getact				;hl=ldc
+	call	maxldc
+setcok:	ld	(oldldc+1),hl
+	xor	a
+	inc	a
+	ret
+
+incldc:	inc	hl
+maxldc:	ld	de,#5555
+	call	comp
+	ret	c
+	call	beep
+	ld	hl,#01
+	ret
+
+nxtcur:	call	incldc				;nz:este nie
+oldldc:	ld	de,#5555			;z:uz je dokola
+comp:	ld	a,h
+	cp	d
+	ret	nz
+	ld	a,l
+	cp	e
+	ret
+
+addsub:	ld	ix,#00
+	ld	a,h
+	inc	a
+	ret	z
+	push	bc
+	push	de
+	push	hl
+	ld	a,#1f
+	and	l
+	ld	l,a
+	ld	h,#00
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl
+	ld	a,subs/256
+	add	a,h
+	ld	h,a
+	ld	(asadd+2),hl
+	pop	hl
+	push	hl
+	xor	a
+	add	hl,hl
+	rla
+	add	hl,hl
+	rla
+	add	hl,hl
+	rla
+	ld	b,a
+	ld	c,h
+	call	adddir
+	inc	l
+	inc	l
+	ld	e,(hl)
+	inc	l
+	bit	7,(hl)
+	jr	z,asret
+	ld	a,(hl)
+as1:	and	#3f
+	ld	d,a
+	ld	a,b
+	or	c
+	jr	z,as2
+	dec	bc
+	ld	hl,fat
+	add	hl,de
+	add	hl,de
+	ld	e,(hl)
+	inc	l
+	ld	a,(hl)
+	bit	6,a
+	jr	nz,as1
+	jr	asret
+
+as2:	ld	hl,(secsub)
+	call	comp
+	jr	z,asadd
+	push	de
+	call	wrisub
+	pop	hl
+	ld	(secsub),hl
+	call	prevod
+	ld	hl,subs
+	call	reasec
+asadd:	ld	ix,#5555
+	pop	bc
+	push	bc
+	ld	a,b
+	or	c
+	call	nz,tstint
+asret:	pop	hl
+	pop	de
+	pop	bc
+	xor	a
+	xor	xh
+	ret
+
+adddir:	ld	a,(cesta+1)
+	push	bc
+	push	de
+	ld	e,a
+	ld	d,#00
+	ld	a,(dzn0)
+	or	a
+	jr	z,add1
+	ld	a,(dzn0+1)
+	cp	e
+	ld	hl,dmem0
+	jr	z,addee
+add1:	ld	a,(dzn1)
+	or	a
+	jr	z,add2
+	ld	a,(dzn1+1)
+	cp	e
+	ld	hl,dmem1
+	jr	z,addee
+
+add2:	push	de
+	call	readir
+	pop	de
+	ld	hl,work
+	add	hl,de
+	add	hl,de
+	add	hl,de
+	add	hl,de
+	ld	de,dmem0
+	ld	bc,dzn0
+	ld	a,(bc)
+	or	a
+	jr	z,add4
+	ld	de,dmem1
+	ld	bc,dzn1
+	ld	a,(bc)
+	or	a
+	jr	z,add4
+	ld	a,(de)
+	rrca
+	jr	nc,add4
+	ld	de,dmem0
+	ld	bc,dzn1
+	ld	a,(de)
+	rrca
+	call	c,syserr
+add4:	ld	a,#ff
+	ld	(bc),a
+	inc	bc
+	ld	a,(cesta+1)
+	ld	(bc),a
+	ld	bc,#04
+	push	de
+	ldir
+	pop	hl
+addee:	ld	a,(hl)
+	push	hl
+	inc	l
+	inc	l
+	inc	l
+	xor	(hl)
+	and	#c0
+	call	nz,dainer
+	ld	a,h
+	cp	#04
+	call	nc,syserr
+	pop	hl
+	pop	de
+	pop	bc
+	ret
+
+kolkox:	call	runvst				;Out:de
+kolko:	call	adddir
+	ld	de,#00
+	bit	7,(hl)
+	ret	z
+	inc	l
+	inc	l
+	ld	c,(hl)
+	inc	l
+	ld	b,(hl)
+kolk1:	ld	hl,#20
+	add	hl,de
+	inc	h
+	jr	z,ditole
+	dec	h
+	ex	de,hl
+	call	fpktst
+	bit	6,h
+	ret	z
+	ld	b,h
+	ld	c,l
+	jr	kolk1
+
+ditole:	call	error
+	db	3,eg
+	dw	etolen
+
+radds:	call	kolko				;Out:
+	ld	a,d				;hl=cislo
+	or	e				;ix=adresa
+	jr	z,radnew
+	ld	(endsec+1),bc
+	ex	de,hl
+	ld	(radkol+1),hl
+	dec	hl
+	call	addsub
+	xor	a
+	xor	(ix+info_x)
+	jr	nz,radnxt
+radd1:	dec	hl
+	ld	a,h
+	or	l
+	jr	nz,radd2
+	inc	l
+	jr	radret
+
+radd2:	call	addsub
+	xor	a
+	xor	(ix+info_x)
+	jr	z,radd1
+	inc	hl
+	call	addsub
+radret:	ld	a,#ff
+	ld	(mmsub),a
+	ret
+
+dirful:	call	error
+	db	3
+full:	db	"full",0
+
+
+radnxt:	inc	hl
+	inc	h
+	jr	z,dirful
+	ld	hl,(endsec+1)
+	inc	hl
+	inc	hl
+	call	maksub
+	ld	h,b
+	ld	l,c
+	set	6,h
+	set	7,h
+endsec:	ld	bc,#5555
+	call	fpoke
+	ld	ix,subs
+radkol:	ld	hl,#5555
+	ret
+
+radnew:	ld	hl,#04
+	call	maksub
+	call	adddir
+	set	7,b
+	ld	(hl),#81
+	inc	l
+	ld	(hl),#06
+	inc	l
+	ld	(hl),c
+	inc	l
+	ld	(hl),b
+	ld	hl,noname
+	ld	de,subs+name
+	ld	bc,10
+	ldir
+	ld	hl,#01
+	ld	ix,subs+#20
+	set	7,(ix+info_x-#20)
+	ret
+
+maksub:	ld	(aladd),hl
+	ld	(aa1),hl
+	ld	hl,medza
+	ld	(aa2),hl
+	call	wrisub
+	ld	hl,subs
+	ld	de,subs+1
+	ld	bc,#03ff
+	ld	(hl),l
+	ld	a,c
+	ld	(mmsub),a
+	ldir
+	call	alloc
+	ld	(secsub),hl
+	ld	b,h
+	ld	c,l
+	ld	hl,#8400
+	jp	fpoke
+
+savall:	ld	a,(mmfat)
+	or	a
+	call	nz,fatswr
+savsd:	call	wrisub
+	call	wridir
+	call	clserr
+zrusmm:	ld	hl,#00
+	ld	(mmbot),hl
+	ld	(mmdir),hl
+	ret
+
+wridir:	ld	a,(dzn0)
+	or	a
+	jr	z,wrdr0
+	ld	hl,dmem0
+	bit	0,(hl)
+	jr	nz,wrdr1
+wrdr0:	ld	a,(dzn1)
+	or	a
+	ret	z
+	ld	hl,dmem1
+	bit	0,(hl)
+	ret	z
+wrdr1:	call	seteem
+	db	"WrDir",0
+
+	call	readir
+	ld	hl,dmem0
+	ld	bc,dzn0
+	call	dirwr
+	ld	hl,dmem1
+	ld	bc,dzn1
+	call	dirwr
+wrdir:	ld	de,(numdir)
+	ld	hl,work
+	jp	wrsudi
+
+dirwr:	ld	a,(bc)
+	or	a
+	ret	z
+	bit	0,(hl)
+	ret	z
+	res	0,(hl)
+	push	hl
+	inc	bc
+	ld	a,(bc)
+	ld	de,work
+	ld	bc,#04
+	ld	h,b
+	ld	l,a
+	add	hl,hl
+	add	hl,hl
+	add	hl,de
+	ex	de,hl
+	pop	hl
+	ldir
+	ret
+
+wrisub:	ld	hl,mmsub
+	ld	a,(hl)
+	or	a
+	ret	z
+	ld	(hl),#00
+wrrsbb:	call	seteem
+	db	"WrSub",0
+
+	ld	hl,subs
+	ld	de,(secsub)
+wrsudi:	ld	a,d
+	or	e
+	jp	z,syserr
+	push	hl
+	push	de
+	ld	de,#02
+	call	wrisec
+	pop	hl
+	call	prevod
+	pop	hl
+	jp	wrisec
+
+freex:	call	kukni				;Out:bc=bloky
+free:	ld	hl,fat+4			;de:hl=bajty
+	ld	bc,#00
+fre1:	ld	e,(hl)
+	inc	l
+	ld	a,(hl)
+	rlca
+	jr	c,fre2
+	inc	bc
+fre2:	inc	hl
+	and	e
+	inc	a
+	jr	nz,fre1
+	ld	h,b
+	ld	l,c
+	add	hl,hl
+	add	hl,hl
+	ld	d,a
+	ld	e,h
+	ld	h,l
+	ld	l,a
+	scf
+	ret
+
+fpeek:	push	af
+	call	fadd
+	ld	a,(hl)
+	inc	l
+	ld	h,(hl)
+	ld	l,a
+	pop	af
+	ret
+
+
+
+fpoke:	push	af
+	push	de
+	ex	de,hl
+	ld	a,#ff
+	ld	(mmfat),a
+	call	fadd
+	ld	(hl),e
+	inc	l
+	ld	(hl),d
+	ex	de,hl
+	pop	de
+	pop	af
+	ret
+
+
+
+
+frsand:	ld	c,(ix+first+0)
+	ld	b,(ix+first+1)
+bcand:	ld	a,b
+	and	#3f
+	ld	b,a
+	or	c
+	ret
+
+fadd:	call	bcand
+	jp	z,syserr
+	ld	hl,fat
+	add	hl,bc
+	add	hl,bc
+	ld	a,h
+	cp	hiff+#10
+	ret	c
+dainer:	pop	hl
+	ld	(sysnum),hl
+	call	error
+	db	10,"integrity"
+
+
+	db	1,e16
+	dw	sysnum
+	nop
+
+
+
+fatsrd:	call	seteem
+	db	"?.RdFAT",0
+
+	ld	hl,(lenfat)
+	ld	a,(secfat)
+	cp	#05
+	jp	nc,forunk
+	add	a,a
+	add	a,a
+	sbc	a,h
+	call	nz,dainer
+	ld	ix,nxtfat
+	ld	hl,(fat1)
+	ld	a,'1'
+	call	fatrd
+	ld	(fatcrc+1),hl
+	ld	a,(biand+1)
+	or	a
+	jr	z,ftrend
+	ld	ix,nxtfat+1
+	ld	hl,(fat2)
+	ld	a,'2'
+	call	fatrd
+	ld	a,'.'
+	ld	(eemeno),a
+fatcrc:	ld	de,#5555
+	sbc	hl,de
+	call	nz,dainer
+ftrend:	ld	hl,#00
+	ld	a,setmlt_x
+	rst	#18
+	jp	clserr
+
+
+
+fatrd:	ld	(eemeno),a
+	ld	de,#ffff
+	ld	(fatsp+1),sp
+	ld	sp,fat+#1000
+	ld	b,#00
+frd1:	push	de
+	push	de
+	push	de
+	push	de
+
+	push	de
+	push	de
+	push	de
+	push	de
+	djnz	frd1
+fatsp:	ld	sp,#5555
+	push	hl
+	ld	hl,ftmat
+	ld	a,setmlt_x
+	rst	#18
+	pop	hl
+	push	hl
+	call	prevod
+	ld	hl,fat
+	call	reasec
+	ld	a,(secfat)
+	dec	a
+	jr	z,fattst
+	ld	b,a
+ftnxt:	push	bc
+ftfff:	ld	de,#5555
+	ld	bc,#0400
+	add	hl,bc
+	inc	xl
+	inc	xl
+	call	reasec
+	pop	bc
+	djnz	ftnxt
+fattst:	pop	bc
+	ld	de,#00
+	ld	hl,(lenfat)
+	call	tstlen
+	call	tstfat
+	dec	hl
+	cp	(hl)
+	ld	a,(hl)
+	dec	hl
+	ld	l,(hl)
+	ld	h,a
+	ret	z
+	jp	dainer
+
+ftmat:	push	hl
+	push	de
+	ld	l,(ix+#00)
+	ld	h,#00
+	call	prevod
+	ld	(ftfff+1),hl
+	pop	de
+	pop	hl
+	ret
+
+tstfat:	ld	hl,fat+2
+	ld	bc,#0ffe
+	xor	a
+	push	hl
+tstf1:	add	a,(hl)
+	cpi
+	jp	pe,tstf1
+	pop	hl
+	ret
+
+fatswr:	call	seteem
+	db	"?.WrFAT",0
+
+	call	tstfat
+	dec	hl
+	ld	(hl),a
+	dec	hl
+	inc	(hl)
+	ld	bc,(fat1)
+	ld	a,'1'
+	call	fatwr
+	ld	bc,(fat2)
+	ld	a,'2'
+	call	fatwr
+	jp	clserr
+
+fatwr:	ld	(eemeno),a
+	ld	iy,fat
+	ld	hl,wrisec
+	ld	de,(secfat)
+	jp	lssecl
+
+botsrd:	ld	(booadd+1),hl
+	call	seteem
+	db	"boot",0
+
+	ld	a,(cesta)
+	and	#1f
+	add	a,low drkes
+	ld	xh,drkes/256
+	ld	xl,a
+	ld	e,(ix+#00)
+	call	bootrd
+	or	a
+	ret	z
+	ld	a,#01
+	xor	(ix+#00)
+	ld	e,a
+	push	af
+	call	bootrd
+	or	a
+	jr	nz,cant
+	pop	af
+	ld	(ix+#00),a
+	ret
+
+cant:	call	error
+	db	"Can",39,"t "			;39 = '
+
+	db	"read the ",2,0
+
+
+sekerr:	call	error
+	db	"Seek",1,0
+
+
+bootrd:	ld	a,rezim_x
+	rst	#18
+	or	a
+	ret	nz
+	ld	a,rest_x
+	rst	#18
+	bit	4,a
+	jr	nz,sekerr
+	ld	hl,work
+	ld	de,#01
+	call	rdsss
+	push	af
+	and	#ef
+	call	nz,osetri
+	pop	af
+	ld	hl,work
+booadd:	ld	de,bot
+	ld	bc,#80
+	ldir
+	ret
+
+wrsss:	ld	c,wrsec_x
+	jr	rwsss
+rdsss:	ld	c,rdsec_x
+rwsss:	ld	(eebios),de
+	ld	a,(numtrk)
+	dec	a
+	cp	d
+	call	c,syserr
+	ld	a,(crcrtr)
+	ld	b,a
+rds1:	ld	a,c
+	push	bc
+	rst	#18
+	pop	bc
+	bit	5,a
+	jr	z,rds2
+	ex	af,af'
+	ld	a,c
+	cp	wrsec_x
+	jr	z,rwsss
+	ex	af,af'
+rds2:	bit	3,a				;CRC ?
+	ret	z
+	djnz	rds1
+	ret
+
+readir:	ld	a,(wrkdir)
+	or	a
+	ret	nz
+	ld	a,(wrkzn)
+	or	a
+	jp	nz,syserr
+	ld	a,#ff
+	ld	(wrkdir),a
+	ld	hl,(numdir)
+	call	prevod
+	ld	hl,work
+reasec:	call	rdsss
+	jr	osetri
+wrisec:	call	wrsss
+osetri:	and	a
+	ret	z
+	rrca
+	jr	c,timout
+	rrca
+	jp	c,notrdy
+	rrca
+	jr	c,datlst
+	rrca
+	jr	c,crcerr
+	rrca
+	jr	c,recnot
+	rrca
+	jr	c,brkerr
+	rrca
+	jr	c,wrtpro
+	rrca
+	ret	nc
+rdyerr:	call	error
+	db	9,1,0
+brkerr:	call	error
+	db	"Break",0
+
+wrtpro:	call	error
+	db	"Write protect",0
+
+
+
+crcerr:	call	error
+	db	"CRC",1,0
+
+datlst:	call	error
+	db	10,"lost",0
+
+timout:	call	error
+	db	"Time out",0
+
+
+recnot:	call	error
+	db	"Record "
+
+notfnd:	db	8,eg
+	dw	found
+
+forunk:	call	error
+	db	6,7,0
+
+check:	ld	hl,forunk
+	push	hl
+	ld	a,(bot)
+	cp	#18
+	ret	nz
+	ld	a,(bot+3)
+	cp	#02
+	ret	nz
+	ld	a,(numsur)
+	cp	#02
+	ret	nz
+	ld	a,(numclu)
+	cp	#01
+	ret	nz
+	call	tstxx
+	jr	nz,daerin
+	pop	hl
+	ret
+
+tstxx:	ld	hl,ident-#0101
+	ld	a,(xorpas)
+	ld	b,#20
+	inc	h
+tstx1:	inc	l
+	xor	(hl)
+	djnz	tstx1
+	ret
+
+tstint:	push	hl
+	ld	l,#40
+	ld	a,l
+	and	(ix+info_x)
+	ld	h,a
+	ld	a,l
+	and	(ix+attr)
+	cp	h
+	jr	nz,daerin
+	ld	a,l
+	and	(ix+first+1)
+	cp	h
+daerin:	call	nz,dainer
+	pop	hl
+	ret
+
+runvst:	scf
+	db	#3e
+run:	xor	a
+	exx
+	ld	(2+iy),iy
+	ld	(1+hl),hl
+	ld	(1+de),de
+	ld	(1+bc),bc
+	sbc	a,a
+	and	#cd
+	or	#01
+	ld	(call),a
+	call	clserr				;hl=0!
+	ld	a,setmlt_x
+	rst	#18
+	pop	hl
+	ld	(skok+1),hl
+	ld	(sp_st+1),sp			;modified by dron
+retry:	ld	sp,#3c90
+	ld	a,#c3				;jp
+	ld	(tstune),a
+	ld	hl,#00
+	ld	(zlenum+1),hl
+	ld	a,(disk)
+	ld	(cesta),a
+	ld	a,(hl)
+	ld	hl,ret
+	push	hl
+	cp	#f3
+	call	nz,syserr
+call:	call	vstup				;#cd/#01
+skok:	jp	#5555
+
+ret:	scf
+abort:	exx
+	push	af
+	call	off
+	db	#3e
+	scf
+	ld	(ret),a
+	pop	af
+iy:	ld	iy,#5555
+hl:	ld	hl,#5555
+de:	ld	de,#5555
+bc:	ld	bc,#5555
+sp_st:	ld	sp,#5555			;modified by dron
+	exx
+	ret
+
+clserr:	ld	hl,#01
+	ld	(eebios),hl
+	dec	l
+	ld	(eemeno),hl
+	ret
+
+kill:	call	smesy
+killx:
+zrus:	ld	hl,okdrv
+	ld	bc,#0800
+err2:	ld	(hl),c
+	inc	l
+	djnz	err2
+zrusdd:	call	zrusmm
+	ld	hl,wrkzn
+zrdd:	ld	(hl),#00
+	inc	l
+	jr	nz,zrdd
+	ret
+
+boff:	ld	a,setoff_x
+	ld	e,#00
+	rst	#18
+off:	call	sddsc
+	ld	a,pasive_x
+	rst	#18
+	xor	a
+	rst	#18
+	ld	hl,#00
+	ld	a,setmlt_x
+	rst	#18
+	ret
+
+error:	ld	hl,(actual)
+	ld	bc,kesldc
+	add	hl,bc
+	ld	(ealdc),hl
+	ld	a,(eebios)
+	ld	c,a
+	rlca
+	and	#01
+	or	#30
+	ld	(eehea),a
+	res	7,c
+	ld	b,#56
+	pop	hl
+	ld	sp,#3c90
+	call	meserr
+	jp	c,retry
+	jp	abort
+
+messx:	call	run
+	exx
+	xor	a
+	ld	(ret),a
+mesage:	ld	bc,#4d00
+meserr:	ld	(eebios+2),bc
+	call	riazac
+	call	boff
+	call	zrus
+sdmadd:	jp	medos
+
+sdmsx:	ld	a,h
+	or	l
+	jr	nz,loop05			;modified by dron
+	ld	hl,medos
+loop05:	ld	(sdmadd+1),hl
+	ret
+
+medos:	ld	hl,#4000
+	ld	de,room
+	ld	bc,#0800
+	ldir
+	inc	b
+	ld	h,#58
+	ldir
+	ld	hl,(xxx)
+	push	hl
+	ld	hl,(color)
+	push	hl
+	ld	a,(eebios+3)
+	ld	(color),a
+	ld	ix,#0101
+	call	rianic
+	ld	hl,buff
+	call	riadok
+	ld	a,(eebios+2)
+	or	a
+	call	nz,cisla
+	ld	hl,menu
+	call	riadok
+	call	rianic
+	pop	hl
+	ld	(color),hl
+	pop	hl
+	ld	(xxx),hl
+pusti:	call	beep
+loop04:	djnz	loop04				;modified by dron
+	xor	a
+	in	a,(#fe)
+	or	#e0
+	inc	a
+	jr	nz,pusti
+	call	spcent
+	ld	hl,room
+	ld	de,#4000
+	ld	bc,#0800
+	ldir
+	inc	b
+	ld	d,#58
+	ldir
+	ret
+
+riazac:	ld	bc,(xxx)
+	push	bc
+	ld	de,buff
+	call	sddbuf
+	call	line
+	ld	hl,(xxx)
+	ld	(hl),a
+	pop	bc
+	ld	(xxx),bc
+	ret
+
+cisla:	ld	hl,eepath
+	call	riadok
+	ld	hl,eesec
+riadok:	call	riazac
+	ld	a,' '
+delspc:	dec	l
+	cp	(hl)
+	jr	z,delspc
+	ld	a,#9f
+	sub	l
+	rra
+	ld	e,a
+	ld	(xxx),ix
+	inc	xh
+	call	sddsc
+	call	tabx
+	ld	hl,buff
+	call	line
+	ld	e,#1f
+	jp	tabx
+
+rianic:	ld	(xxx),ix
+	inc	xh
+	ld	b,#1e
+rrnn:	ld	a,'='
+	call	disp
+	djnz	rrnn
+	ret
+
+tok:	or	a
+	ret	z
+	push	hl
+	ld	hl,tabtok-1
+	ld	b,a
+tk2:	bit	7,(hl)
+	inc	hl
+	jr	z,tk2
+	djnz	tk2
+tk5:	ld	a,(hl)
+	and	#7f
+	call	disp
+	bit	7,(hl)
+	inc	hl
+	jr	z,tk5
+	pop	hl
+	jr	line
+
+lin3:	cp	#1b
+	jr	c,tok
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)
+	ld	l,a
+line:	ld	a,(hl)
+	inc	hl
+	cp	#1e
+	jr	c,lin1
+	call	disp
+	jr	line
+lin1:	cp	#1c
+	jr	c,lin3
+	ld	e,(hl)
+	inc	hl
+	ld	d,(hl)
+	inc	hl
+	push	hl
+	ld	a,(de)
+	ld	l,a
+	ld	h,#00
+	jr	z,lin2
+	inc	de
+	ld	a,(de)
+	ld	h,a
+lin2:	call	dec16
+	pop	hl
+	jr	line
+
+tabtok:	db	" error",' '+128			;1
+	db	"Disk",' '+128				;2
+	db	"Directory",' '+128			;3
+	db	"File",' '+128				;4
+	db	"to",'o'+128				;5
+	db	"Unknown",' '+128			;6
+	db	"forma",'t'+128				;7
+	db	"not",' '+128				;8
+	db	"read",'y'+128				;9
+	db	"Data",' '+128				;a
+
+text:	ex	(sp),hl
+	call	txxt
+	ex	(sp),hl
+	ret
+
+txxt:	ld	a,(hl)
+	call	disp
+	inc	hl
+	jr	nc,txxt
+	ret
+
+seteem:	call	clserr
+	pop	hl
+	ld	de,eemeno
+stem1:	ld	a,(hl)
+	ldi
+	and	a
+	jr	nz,stem1
+	jp	(hl)
+
+setret:	ld	ix,buff+#5a
+setnam:	call	clserr
+	ld	de,eemeno
+	call	sddbuf
+	jr	print
+prndva:	call	dva
+print:	ld	bc,10			;26znak
+printl:	ld	a,6			;
+	add	a,xl			;
+	ld	d,xh			;
+	ld	e,a			;
+teet:	ld	a,b
+	or	c
+	dec	bc
+	ret	z
+	ld	a,(de)
+	inc	de
+	cp	#20
+	jr	nc,loop03		;modified by dron
+	ld	a,#1e
+loop03:	cp	#80
+	jr	c,loop02		;modified by dron
+	ld	a,#1f
+loop02:	call	disp
+	jr	teet
+
+tab17:	ld	a,(yyy)
+	cp	#17
+	ret	nc
+	call	space
+	jr	tab17
+
+enter:	call	space
+tab0:	ld	e,#00
+tabx:	ld	a,(xxx)
+	and	#1f
+	cp	e
+	ret	z
+	call	space
+	jr	tabx
+
+dec32z:	ld	c,#00
+dec32x:	push	hl
+	push	de
+	push	bc
+	xor	a
+	ld	de,buff
+	ld	b,#0a
+dcc1:	ld	(de),a
+	inc	de
+	djnz	dcc1
+	pop	bc
+	pop	de
+	push	de
+	push	bc
+	ld	b,#20
+dcc2:	add	hl,hl
+	ex	de,hl
+	adc	hl,hl
+	ex	de,hl
+	push	bc
+	push	de
+	ld	bc,#0a0a
+	ld	de,buff
+dcc3:	ld	a,(de)
+	adc	a,a
+	cp	c
+	jr	c,dcc4
+	sub	c
+dcc4:	ld	(de),a
+	ccf
+	inc	de
+	djnz	dcc3
+	pop	de
+	pop	bc
+	djnz	dcc2
+	ld	d,b
+	pop	bc
+	push	bc
+	ld	e,b
+	ld	hl,buff-1
+	add	hl,de
+	dec	b
+	jr	z,dcc8
+dcc5:	ld	a,(hl)
+	or	a
+	jr	nz,dcc6
+	ld	a,c
+	db	#11
+dcc6:	ld	c,'0'
+dcc7:	or	c
+	dec	hl
+	call	disp
+	djnz	dcc5
+dcc8:	ld	a,(hl)
+	or	'0'
+	call	disp
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+
+dec8s:	ld	c,#20
+	jr	dec8x
+dec8:	ld	c,#00
+dec8x:	push	bc
+	push	de
+	push	hl
+	ld	l,a
+	ld	h,#00
+	jr	bn9
+
+dec16t:	xor	a
+	xor	h
+	ld	a,l
+	jr	z,dec8s
+dec16:	ld	c,#00
+dec16x:	push	bc
+	push	de
+	push	hl
+	ld	de,-10000
+	call	bn1
+	ld	de,-1000
+	call	bn1
+bn9:	ld	de,-100
+	call	bn1
+	ld	e,-10
+	call	bn1
+	ld	e,-1
+	ld	c,'0'
+	call	bn1
+	pop	hl
+	pop	de
+	pop	bc
+	ret
+
+bn1:	ld	a,'0'-1
+bn4:	add	hl,de
+	inc	a
+	jr	c,bn4
+bn2:	sbc	hl,de
+	cp	'0'
+	jr	z,bn3
+	db	#01,'0'
+bn3:	ld	a,c
+	jr	disp
+
+uvodz:	ld	a,'"'
+	jr	dd1
+lomeno:	ld	a,'/'
+	jr	dd1
+dvadel:	call	b7info
+spcdva:	jr	z,space
+dva:	ld	a,':'
+	jr	dd1
+space:	ld	a,' '
+disp:	cp	#1e
+	ret	c
+dd1:	exx
+	ld	hl,(xxx)
+	jr	dd2
+ddbuf:	inc	h
+	dec	h
+	call	z,syserr
+	ld	(hl),a
+	inc	hl
+	ld	(xxx),hl
+	exx
+	ret
+
+sddx:	cp	#01				;0=b
+	sbc	a,a				;1=s
+	and	dd2-ddbuf
+	db	#01
+sddsc:	ld	a,dd2-ddbuf
+	jr	sddset
+sddbuf:	xor	a
+	ld	(xxx),de
+sddset:	ld	(ddbuf-1),a
+	ret
+
+dd2:	ld	c,a
+	ld	a,h
+	cp	#18
+	jr	c,dd3
+	xor	a
+	ld	h,a
+	ld	(yyy),a
+dd3:	and	#18
+	or	#40
+	ld	d,a
+	ld	a,h
+	rrca
+	rrca
+	rrca
+	and	#e0
+	or	l
+	ld	e,a
+	ld	a,c
+	add	a,a
+	ld	l,a
+	sub	#40
+	jr	z,ppspc
+	ld	h,#0f
+	add	hl,hl
+	add	hl,hl
+	dw	#127e,#2c14
+	dw	#127e,#2c14
+	dw	#127e,#2c14
+	dw	#127e,#2c14
+	dw	#127e,#2c14
+	dw	#127e,#2c14
+	dw	#127e,#2c14
+	dw	#127e
+	jr	farby
+ppspc:	dw	#1412,#1412
+	dw	#1412,#1412
+	dw	#1412,#1412
+	ld	(de),a
+	inc	d
+	ld	(de),a
+farby:	ld	a,d
+	rrca
+	rrca
+	rrca
+	and	#03
+	or	#58
+	ld	d,a
+	ld	a,(color)
+	ld	(de),a
+	ld	hl,xxx
+	inc	(hl)
+	bit	5,(hl)
+	res	5,(hl)
+	jr	z,ddret
+	inc	hl
+	inc	(hl)
+ddret:	and	a
+	exx
+	ret
+
+beep:	ld	bc,#fffd
+	ld	a,#0a
+	out	(c),a
+	in	a,(c)
+	ld	bc,#bffd
+	push	af
+	xor	a
+	ld	d,c
+bb2:	out	(c),a
+	xor	#0f
+	ld	e,#20
+loop01:	dec	e
+	jr	nz,loop01			;modified by dron
+	dec	d
+	jr	nz,bb2
+	pop	af
+	out	(c),a
+	ret
+
+spcent:	ld	a,#7f
+	in	a,(#fe)
+	rrca
+	ret	nc
+	ld	a,#bf
+	in	a,(#fe)
+	rrca
+	jr	c,spcent
+	scf
+	ret
+
+syserr:	pop	hl
+	ld	(sysnum),hl
+	call	error
+	db	"System",1,e16
+
+	dw	sysnum
+	nop
+
+eepath:	db	e8
+	dw	cesta
+	db	'/',e8
+	dw	cesta+1
+	db	'/',e16
+ealdc:	dw	#5555
+	db	' '
+eemeno:	db	"1234567890"
+
+
+	nop
+eesec:	db	"Trk:",e8
+
+	dw	eebios+#01
+	db	" Hea:"
+
+eehea:	db	"? Sec:",e8
+
+	dw	eebios+#02
+	nop
+
+menu:	db	"Enter=ok/retry"
+
+
+
+spcabo:	db	",Space=abort",0
+
+
+
+autosy:	db	"autosys   "
+
+
+hless:	db	#04
+noname:	db	"..noname.."
+
+
+	dw	0,0,0
+
+;l:	equ	hlava-zacatek
+
+medza:	equ	128
+
+bot:	equ	($/256+1)*256
+
+; free space ???
+a_fr1:	equ	bot-$
+
+
+;;	org	bot			;#2300
+	ds	#2300-$
+
+;; Cache uchovavajuca informacie o diskete s ktoru sa pracuje
+
+cache_level_2:				;2300-3BFF Cache level 2
+
+;	if	cache_level_2<>#2300	;test, jestli keska nepretekla
+;	error	"\aCache level 2 neni na svem miste!!!"
+;	endif
+
+;; Sem sa nacita BOOT sektor diskety s udajmi o diskete
+;; (meno disku, geometria, kde na disku je FAT,DIR...)
+
+boot:	dw	-1,-1
+numtrk:	dw	82			;lisi se oproti raw_binarce (ff)
+numsec:	dw	11			;ale to nevadi...
+numsur:	dw	#02
+numclu:	dw	#01
+numdir:	dw	#55
+secfat:	dw	#55
+lenfat:	dw	#55
+fat1:	dw	#55
+fat2:	dw	#55
+xorpas:	ds	4
+nxtfat:	ds	6
+
+meno:	ds	#20
+ident:	ds	#10
+pass:	ds	#10
+lowid:	equ	low ident
+
+;;	org	bot+#80			;modified by dron
+	ds	bot+#80-$
+
+buff:	ds	#40			;celkem ds #80
+eebios:	ds	#04
+zlezac:	ds	#02
+zleend:	ds	#02
+sysnum:	ds	#02
+hlava:	db	0
+	ds	17
+
+
+; free space ???
+;a_fr2:	equ	fat-$
+
+;;	org	bot+#100		;modified by dron
+	ds	bot+#100-$
+
+fat:	ds	#1000			;4 sektory FAT tabulky
+subs:	ds	#0400			;1 sektor z adresara
+work:	ds	#0400			;1 sektor - temp buffer pre ostatne sektory
+
+nuly:					;3c00 - pouziva se !!!
+a1_end:					;3c00 = 1024 do 16384
+
+;	if	a1_end<>#3c00		;test, jestli bsdos nepretekl
+;	error	"\aOut of 3c00 !!!"
+;	endif
+
+;---[definice ???]------------------------------------------------------
+
+room:	equ	subs-#0300
+hiff:	equ	fat/256
+hiss:	equ	subs/256
+hiww:	equ	work/256
+ver1:	equ	verzia/100
+verza:	equ	ver1*100
+verzb:	equ	verzia-verza
+ver2:	equ	verzb/10
+verzc:	equ	ver2*10
+ver3:	equ	verzb-verzc
+eg:	equ	#1b
+e8:	equ	#1c
+e16:	equ	#1d
+dasub:	equ	#5bc0
+cache:	equ	#0400
+ff:	equ	#3c00-$
 
 ;-----------------------------------------------------------------------
-; BOOTSTRAPER - simple replacement of EPROM content
+
+; free space ???
+;a_fr4:	equ	rdrom-$
+
+;---[strankovaci rutiny]------------------------------------------------
+
+;;	org	#3c98
+	ds	#3c98-$
+
+;;;;;;;;;;;;;;
+;; ROM BIOS ;;
+;;;;;;;;;;;;;;
+
+;; Sluzi na prepinanie pametovych baniek
+;; a uchovava informaciu o presmerovani load/save rutiniek
+;; Nachadza sa v oboch bankach (ROM aj DOS) na tomto istom mieste.
+
+;; Oficialne volania ROM biosu:
+
+rdrom:	jr	r04	;3c98	;; Zapnutie ROM banky so zakazanym zapisom
+rdram:	jr	r05	;3c9a	;; Zapnutie DOS banky so zakazanym zapisom
+wrrom:	jr	r0c	;3c9c	;; Zapnutie ROM banky s	povolenym zapisom
+wrram:	jr	r0d	;3c9e	;; Zapnutie DOS banky s	povolenym zapisom
+L3ca0:	jr	L3caf	;3ca0	;; Medzibankove volanie podprogramu
+
+;; Nasledujuce rutinky pre volania 15522 a 15524 su sice aj v dos banke
+;; ale oficialne sa maju volat iba pri nastrankovanej ROM banke.
+
+;; Vstupny bod 15522 pre nastavenie pasky ako aktivneho zariadenia
+;; Load-save rutinky budu vykonavat svoju obvyklu cinnost s paskou
+
+settap:	xor	a
+	db	#E6
+
+;; Vstupny bod 15524 pre nastavenie disku ako aktivneho zariadenia
+;; Load-save rutinky budu presmerovane do bsdosu pre pracu s diskom
+
+setdsk:	ld	a,#7F
+	call	wrrom
+	ld	(L3cae),a
+	jr	rdrom
+
+;; Bit 0 v nasledujucom bajte znamena:
+;;	0 = load save rutinky pracuju s paskou (povodna funkcionalita)
+;;	1 = load save rutinky pracuju s diskom (presmerovane do bsdosu)
+;; Pozor, plati iba stav bajtu v ROM banke. Bajt v DOS banke nema vyznam.
+
+L3cae:	db	#03
+
+;; Obsluzna rutinka pre medzibankove volanie podprogramu
+;; Pouziva sa nasledovne:
+;;
+;;	call #3CA0
+;;	dw adresa_volanej_rutinky
+;;
+;; V DOS banke je v RST #28 skok na tuto rutinku,
+;; preto tam mozno pouzit kratsie a uspornejsie:
+;;
+;;	rst #28
+;;	dw adresa_volanej_rutinky
+;;
+;; Po navrate z volanej rutinky program normalne pokracuje za dw...
+
+L3caf:	call	wrram		;; Zapnutie zapisu aktualnej banky (v ROM banke je "call wrrom")
+	ld	(L3cc6+1),hl	;; Uschova HL
+	pop	hl		;; HL = adresa za instrukciou RST #28
+	inc	hl		;; Preskocenie adresy volanej rutinky
+	inc	hl
+	push	hl		;; HL = navratova adresa a jej ulozenie na stack
+	push	af
+	dec	hl		;; Navrat k adrese volanej rutinky
+	ld	a,(hl)
+	dec	hl
+	ld	l,(hl)
+	ld	h,a		;; HL = adresa volanej rutinky
+	pop	af
+	push	hl		;; Ulozenie volanej adresy na stack
+	ld	hl,L3cc9	;; Navratova adresa z rutinky v druhej banke
+	ex	(sp),hl		;; HL = volana adresa, stack = navratova adresa
+	push	hl		;; Volana adresa na stack
+L3cc6:	ld	hl,#5555	;; Obnova HL
+L3cc9:	jp	r04		;; Skok na prepnutie do druhej banky (V ROM banke je "jp r0d")
+
+;; Low-level rutinky na prepinanie pametovych baniek
+
+r04:	push	af			;<- stranka 0,zakaz zapisu
+	ld	a,h04
+	jr	out
+r05:	push	af			;<- stranka 1,zakaz zapisu
+	ld	a,h05
+	jr	out
+r0c:	push	af			;<- stranka 0,povolenie
+	ld	a,h0c
+	jr	out
+r0d:	push	af			;<- stranka 1,povolenie
+	ld	a,h0d
+out:	out	(ram),a
+	pop	af
+	ret
+
+;; Koniec ROM biosu.
+
+	dw	-1,-1,-1,-1		;volne misto
+	dw	-1,-1,-1
+
+kx:					;3cf0
+lx:	equ	kx-r04
+
+;	if	kx>#3cf0		;test, jestli bsdos nepretekl
+;	error	"\aZasah do fontu!!!"
+;	endif
+
+;font = 15616 = 3d00
+;minus dva nove znaky = 3cf0
+
+;---[font]--------------------------------------------------------------
+
+;; Znakovy subor je ten isty v ROM aj DOS banke
+;; Aplikacie ho teda mozu pouzivat nezavisle od aktualne nastrankovanej banky
+
+	ds	#3cf0-$
+
+	db	0,0,0,0,0,0,#7e,0		;podtrzitko
+	db	0,#7e,#7e,#7e,#7e,#7e,#7e,0	;ctverecek
+
+	db	#00,#00,#00,#00,#00,#00,#00,#00
+	db	#00,#10,#10,#10,#10,#00,#10,#00
+	db	#00,#24,#24,#00,#00,#00,#00,#00
+	db	#00,#24,#7e,#24,#24,#7e,#24,#00
+	db	#00,#08,#3e,#28,#3e,#0a,#3e,#08
+	db	#00,#62,#64,#08,#10,#26,#46,#00
+	db	#00,#10,#28,#10,#2a,#44,#3a,#00
+	db	#00,#08,#10,#00,#00,#00,#00,#00
+	db	#00,#04,#08,#08,#08,#08,#04,#00
+	db	#00,#20,#10,#10,#10,#10,#20,#00
+	db	#00,#00,#14,#08,#3e,#08,#14,#00
+	db	#00,#00,#08,#08,#3e,#08,#08,#00
+	db	#00,#00,#00,#00,#00,#08,#08,#10
+	db	#00,#00,#00,#00,#3e,#00,#00,#00
+	db	#00,#00,#00,#00,#00,#18,#18,#00
+	db	#00,#00,#02,#04,#08,#10,#20,#00
+	db	#00,#3c,#46,#4a,#52,#62,#3c,#00
+	db	#00,#18,#28,#08,#08,#08,#3e,#00
+	db	#00,#3c,#42,#02,#3c,#40,#7e,#00
+	db	#00,#3c,#42,#0c,#02,#42,#3c,#00
+	db	#00,#08,#18,#28,#48,#7e,#08,#00
+	db	#00,#7e,#40,#7c,#02,#42,#3c,#00
+	db	#00,#3c,#40,#7c,#42,#42,#3c,#00
+	db	#00,#7e,#02,#04,#08,#10,#10,#00
+	db	#00,#3c,#42,#3c,#42,#42,#3c,#00
+	db	#00,#3c,#42,#42,#3e,#02,#3c,#00
+	db	#00,#00,#00,#10,#00,#00,#10,#00
+	db	#00,#00,#10,#00,#00,#10,#10,#20
+	db	#00,#00,#04,#08,#10,#08,#04,#00
+	db	#00,#00,#00,#3e,#00,#3e,#00,#00
+	db	#00,#00,#10,#08,#04,#08,#10,#00
+	db	#00,#3c,#42,#04,#08,#00,#08,#00
+	db	#00,#3c,#02,#3a,#4a,#4a,#3c,#00
+	db	#00,#3c,#42,#42,#7e,#42,#42,#00
+	db	#00,#7c,#42,#7c,#42,#42,#7c,#00
+	db	#00,#3c,#42,#40,#40,#42,#3c,#00
+	db	#00,#78,#44,#42,#42,#44,#78,#00
+	db	#00,#7e,#40,#7c,#40,#40,#7e,#00
+	db	#00,#7e,#40,#7c,#40,#40,#40,#00
+	db	#00,#3c,#42,#40,#4e,#42,#3c,#00
+	db	#00,#42,#42,#7e,#42,#42,#42,#00
+	db	#00,#3e,#08,#08,#08,#08,#3e,#00
+	db	#00,#02,#02,#02,#42,#42,#3c,#00
+	db	#00,#44,#48,#70,#48,#44,#42,#00
+	db	#00,#40,#40,#40,#40,#40,#7e,#00
+	db	#00,#42,#66,#5a,#42,#42,#42,#00
+	db	#00,#42,#62,#52,#4a,#46,#42,#00
+	db	#00,#3c,#42,#42,#42,#42,#3c,#00
+	db	#00,#7c,#42,#42,#7c,#40,#40,#00
+	db	#00,#3c,#42,#42,#52,#4a,#3c,#00
+	db	#00,#7c,#42,#42,#7c,#44,#42,#00
+	db	#00,#3c,#40,#3c,#02,#42,#3c,#00
+	db	#00,#fe,#10,#10,#10,#10,#10,#00
+	db	#00,#42,#42,#42,#42,#42,#3c,#00
+	db	#00,#42,#42,#42,#42,#24,#18,#00
+	db	#00,#42,#42,#42,#42,#5a,#24,#00
+	db	#00,#42,#24,#18,#18,#24,#42,#00
+	db	#00,#82,#44,#28,#10,#10,#10,#00
+	db	#00,#7e,#04,#08,#10,#20,#7e,#00
+	db	#00,#0e,#08,#08,#08,#08,#0e,#00
+	db	#00,#00,#40,#20,#10,#08,#04,#00
+	db	#00,#70,#10,#10,#10,#10,#70,#00
+	db	#00,#10,#38,#54,#10,#10,#10,#00
+	db	#00,#00,#00,#00,#00,#00,#00,#ff
+	db	#00,#1c,#22,#78,#20,#20,#7e,#00
+	db	#00,#00,#38,#04,#3c,#44,#3c,#00
+	db	#00,#20,#20,#3c,#22,#22,#3c,#00
+	db	#00,#00,#1c,#20,#20,#20,#1c,#00
+	db	#00,#04,#04,#3c,#44,#44,#3c,#00
+	db	#00,#00,#38,#44,#78,#40,#3c,#00
+	db	#00,#0c,#10,#18,#10,#10,#10,#00
+	db	#00,#00,#3c,#44,#44,#3c,#04,#38
+	db	#00,#40,#40,#78,#44,#44,#44,#00
+	db	#00,#10,#00,#30,#10,#10,#38,#00
+	db	#00,#04,#00,#04,#04,#04,#24,#18
+	db	#00,#20,#28,#30,#30,#28,#24,#00
+	db	#00,#10,#10,#10,#10,#10,#0c,#00
+	db	#00,#00,#68,#54,#54,#54,#54,#00
+	db	#00,#00,#78,#44,#44,#44,#44,#00
+	db	#00,#00,#38,#44,#44,#44,#38,#00
+	db	#00,#00,#78,#44,#44,#78,#40,#40
+	db	#00,#00,#3c,#44,#44,#3c,#04,#06
+	db	#00,#00,#1c,#20,#20,#20,#20,#00
+	db	#00,#00,#38,#40,#38,#04,#78,#00
+	db	#00,#10,#38,#10,#10,#10,#0c,#00
+	db	#00,#00,#44,#44,#44,#44,#38,#00
+	db	#00,#00,#44,#44,#28,#28,#10,#00
+	db	#00,#00,#44,#54,#54,#54,#28,#00
+	db	#00,#00,#44,#28,#10,#28,#44,#00
+	db	#00,#00,#44,#44,#44,#3c,#04,#38
+	db	#00,#00,#7c,#08,#10,#20,#7c,#00
+	db	#00,#0e,#08,#30,#08,#08,#0e,#00
+	db	#00,#08,#08,#08,#08,#08,#08,#00
+	db	#00,#70,#10,#0c,#10,#10,#70,#00
+	db	#00,#14,#28,#00,#00,#00,#00,#00
+	db	#3c,#42,#99,#a1,#a1,#99,#42,#3c
+
 ;-----------------------------------------------------------------------
 
-		output "bootstrap.bin"
+;0000-0080 Rozne restarty a ich obsluha
+;Prilis volnych miest tam nie je, ale ak tam
+;najdes suvislu sekvenciu nopov, tak to mozes pouzit.
+;0080-0382 FDC bios a nejake pomocne veci
+;0383-03BF Volne miesto
+;03C0-03FF Systemove premenne dosu
+;0400-04FF Cache level 1
+;0500-229C kod bsdosu
+;229D-22FF Volne miesto (asi)
+;2300-3BFF Cache level 2
+;3C00-3C?? Volne miesto
+;3C??-3C90 Zasobnik dosu
+;3C90-3CDF ROM bios
+;3CE0-3FFF Znakovy subor
 
-		org	#0000
 
-		di			;; just transfer itself into RAM
-		ld	sp,bootrg
-		xor	a
-		ld	i,a
-		out	(#fe),a
-		ld	bc,#7ffd
-		out	(c),a
-		ld	hl,$4000
-		ld	de,$4001
-		ld	bc,$1AFF
-		ld	(hl),l
-		ldir
-		ld	hl,bootmov
-		ld	de,bootrg
-		ld	bc,bootlen
-		push	de
-		ldir
-		ret
-
-bootmov		org	#6000
-
-bootrg:		ld	a,h0c			;; switch to ROM bank
-		out	(ram),a
-		ld	a,#38			;; basic Sinclair colour
-		ld	(#1266),a		;; patch the ROM
-		ld	(#128E),a
-		ex	af,af'
-		ld	a,h0d			;; switch to DOS bank
-		out	(ram),a
-		ld	hl,xxx			;; clear DOS variables
-		ld	de,xxx+1
-		ld	bc,bsdos-(xxx+1)
-		ld	(hl),0
-		ldir
-		ex	af,af'
-		ld	(color),a		;; patch color in DOS
-		ld	a,4
-		ld	(crcrtr),a
-		ld	a,1
-		ld	(disk),a		;; set actual drive to first
-		dec	a
-		in	a,(#fe)			;; test key, if pressed
-		or	#e0			;; don't run "autosys"
-		inc	a
-		ld	a,#30			;; else call #30 service of DOS:
-		call	z,#20			;; init DOS and run "autosys"
-
-		ld	a,h04			;; switch to ROM bank
-		out	(ram),a
-		ld	a,(#06)			;; test which ROM is loaded:
-		cp	#31			;; BSROM140 ?
-		jp	z,#3906			;; reset in bsrom140
-		cp	#66			;; BSROM118 ?
-		jp	z,#3978			;; reset in bsrom118
-		rst	#00			;; else restart normally
-
-booteffect:	xor	a	;; if everything fails just do the booteffect
-		out	(#fe),a
-		ld	a,3
-		ld	hl,#4000
-		ld	de,#4001
-.loop1		ld	bc,#0100
-		ld	(hl),l
-		ldir
-		ld	b,6
-		ld	(hl),#7E
-		ldir
-		inc	b
-		ld	(hl),l
-		ldir
-		dec	a
-		jr	nz,.loop1
-.loop2		ld	b,h
-		ld	c,l
-		add	hl,hl
-		add	hl,hl
-		add	hl,hl
-		add	hl,bc
-		ld	bc,12
-		add	hl,bc
-		ld	a,h
-		and	3
-		or	88
-		ld	h,a
-		ex	de,hl
-		ldi
-		ex	de,hl
-		ld	b,32
-		djnz	$
-		jr	.loop2
-
-bootlen		equ	$-bootrg
+; EOF

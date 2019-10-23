@@ -1,0 +1,106 @@
+		output "bsdos308s.rom"
+
+	module rom
+		org	#0000
+
+		include "bsrom140s.a80"
+	endmod
+
+	module dos
+		org	#0000
+
+		include "bsdos308s.a80"
+	endmod
+
+;-----------------------------------------------------------------------
+; BOOTSTRAPER - simple replacement of EPROM content
+;-----------------------------------------------------------------------
+
+		output "bootstrap.bin"
+
+		org	#0000
+
+		di			;; just transfer itself into RAM
+		ld	sp,bootrg
+		xor	a
+		ld	i,a
+		out	(#fe),a
+		ld	bc,#7ffd
+		out	(c),a
+		ld	hl,$4000
+		ld	de,$4001
+		ld	bc,$1AFF
+		ld	(hl),l
+		ldir
+		ld	hl,bootmov
+		ld	de,bootrg
+		ld	bc,bootlen
+		push	de
+		ldir
+		ret
+
+bootmov		org	#6000
+
+bootrg:		ld	a,dos.h0d		;; switch to DOS bank
+		out	(dos.ram),a
+		ld	hl,dos.xxx		;; clear DOS variables
+		ld	de,dos.xxx+1
+		ld	bc,dos.bsdos-(dos.xxx+1)
+		ld	(hl),0
+		ldir
+		ld	a,4
+		ld	(dos.crcrtr),a
+		ld	a,1
+		ld	(dos.disk),a		;; set actual drive to first
+		dec	a
+		in	a,(#fe)			;; test key, if pressed
+		or	#e0			;; don't run "autosys"
+		inc	a
+		ld	a,#30			;; else call #30 service of DOS:
+		call	z,#20			;; init DOS and run "autosys"
+
+		ld	a,dos.h04		;; switch to ROM bank
+		out	(dos.ram),a
+		ld	a,(#0006)		;; test which ROM is loaded:
+		cp	#31			;; BSROM140 ?
+		jp	z,rom.RES128		;; reset in bsrom140
+		cp	#66			;; BSROM118 ?
+		jp	z,#3978			;; reset in bsrom118
+		rst	0			;; else restart normally
+
+booteffect:	xor	a	;; if everything fails just do the booteffect
+		out	(#fe),a
+		ld	a,3
+		ld	hl,#4000
+		ld	de,#4001
+.loop1		ld	bc,#0100
+		ld	(hl),l
+		ldir
+		ld	b,6
+		ld	(hl),#7E
+		ldir
+		inc	b
+		ld	(hl),l
+		ldir
+		dec	a
+		jr	nz,.loop1
+.loop2		ld	b,h
+		ld	c,l
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		add	hl,bc
+		ld	bc,12
+		add	hl,bc
+		ld	a,h
+		and	3
+		or	88
+		ld	h,a
+		ex	de,hl
+		ldi
+		ex	de,hl
+		ld	b,32
+		djnz	$
+		jr	.loop2
+
+bootlen		equ	$-bootrg
