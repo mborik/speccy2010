@@ -1,0 +1,190 @@
+; RTC.SYS - ESXDOS driver for RTC 724121A
+; created by VELESOFT (c) 15.6.2014
+; improved and fixed RTC init by ub880d (autumn 2019)
+
+
+PORT		equ	#0003
+HIADR		equ	#0000
+
+
+		output	"rtc.sys"
+		org	#2700
+
+		push	af
+
+		ld	bc,#0D00+PORT		; rtc_control_d
+		ld	de,#0200		; timeout
+
+rtc_detect:	in	a,(c)
+
+		set	0,a			; hold
+		out	(c),a
+
+		in	a,(c)
+		bit	1,a			; busy?
+		jr	z,rtc_found
+
+		res	0,a			; unhold
+		out	(c),a
+
+		dec	de
+		ld	a,d
+		or	e
+		jr	nz,rtc_detect
+
+		pop	af
+		scf
+		ret
+
+rtc_found:	push	hl
+		ld	hl,reg.CTRL_F
+		ld	b,HIADR+#0F
+
+; read all 16 registers of RTC
+; mask lower nibble and save into buffer
+rtc_port_read:	in	a,(c)
+		and	#0F
+		ld	(hl),a
+		dec	hl
+		ld	a,b
+		dec	b
+		or	a
+		jr	nz,rtc_port_read
+
+; READ TIME -----------------------------------------------------------------------------
+		ld	a,(reg.SEC10)
+		and	7
+		call	X10
+		ld	b,a
+
+		ld	a,(reg.SEC)
+		add	a,b
+		srl	a			; seconds / 2
+		and	#1F			; keep bits 0-4
+		ld	e,a
+
+		ld	a,(reg.MIN10)
+		and	7
+		call	X10
+		ld	b,a
+
+		ld	a,(reg.MIN)
+		add	a,b
+		ld	d,a
+		xor	a
+	dup 3
+		rr	d
+		rra
+	edup
+		or	e
+		ld	e,a
+
+		ld	a,(reg.CTRL_F)	; control
+		bit	2,a			; 12h? 24h?
+
+		ld	a,(reg.HOUR10)
+		jr	nz,mode24		; 24h => jump
+
+		bit	2,a			; am/pm
+		jr	z,mode24		; am => jump
+
+		and	1			; +12h if pm and 12h
+		inc	a
+		ld	(reg.HOUR10),a
+
+		ld	a,(reg.HOUR)
+		add	a,2
+		ld	(reg.HOUR),a
+
+mode24:		ld	a,(reg.HOUR10)
+		and	3
+		ld	(reg.HOUR10),a
+		call	X10
+		ld	b,a
+
+		ld	a,(reg.HOUR)
+		add	a,b
+		and	0x1F			; keep bits 0-4
+		rlca
+		rlca
+		rlca
+		or	d
+		ld	d,a			; register DE for ESXDOS completed
+
+; READ DATE -----------------------------------------------------------------------------
+		ld	a,(reg.DAY10)
+		and	3
+		call	X10
+		ld	b,a
+
+		ld	a,(reg.DAY)
+		add	a,b
+		and	0x1F			; keep bits 0-4
+		ld	l,a
+
+		ld	a,(reg.MON10)
+		and	1
+		call	X10
+		ld	b,a
+
+		ld	a,(reg.MON)
+		add	a,b
+		ld	h,a
+		xor	a
+	dup 3
+		rr	h
+		rra
+	edup
+		or	l
+		ld	l,a
+
+		ld	a,(reg.YEAR10)
+		add	a,2			; fixed year 1980 > 2000
+		call	X10
+		ld	b,a
+
+		ld	a,(reg.YEAR)
+		add	a,b
+		add	a,a
+		or	h			; register BC from ESXDOS completed
+		ld	h,a			; temporarily stored in HL
+
+; RETURN & ENABLE RTC -------------------------------------------------------------------
+		ld	bc,0x0D00+PORT		; reg.CTRL_D
+		in	a,(c)
+		res	0,a			; unhold
+		out	(c),a
+
+		ld	b,h
+		ld	c,l
+		pop	hl
+		pop	af
+		or	a			; return without error
+		ret
+
+; multiple A by ten
+X10:		add	a,a ; * 2
+		ld	b,a ; * 2
+		add	a,a ; * 4
+		add	a,a ; * 8
+		add	a,b ; * 10
+		ret
+
+; buffer for all RTC registers
+reg:
+.SEC		db	0
+.SEC10		db	0
+.MIN		db	0
+.MIN10		db	0
+.HOUR		db	0
+.HOUR10		db	0
+.DAY		db	0
+.DAY10		db	0
+.MON		db	0
+.MON10		db	0
+.YEAR		db	0
+.YEAR10		db	0
+.DAYOFW		db	0
+.CTRL_D		db	0
+.CTRL_E		db	0
+.CTRL_F		db	0

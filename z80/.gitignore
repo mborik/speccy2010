@@ -5,6 +5,7 @@
 # Compiled files
 *.bin
 *.rom
+*.sys
 *.h
 
 # Intermediate files

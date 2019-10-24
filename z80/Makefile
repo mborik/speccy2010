@@ -24,18 +24,21 @@ FNT_BOLD_DST = ../arm/shell/font1.h
 #------------------------------------------------------------------------------
 default: all
 
-all: bootlogo fonts esxautoload bsdos mb02
+all: bootlogo fonts esxautoload esxrtc bsdos mb02
 
 
 mb02: bsdos
 	$(BIN2H) bsdos308s/bootstrap.bin "epromBootstrap" "SPEC_MB02_BOOTSTAP_H_INCLUDED" > bsdos308s/bootstrap.h
 
 bsdos: bsdos308s/bsdos308s.a80
-	$(CD) bsdos308s; $(SJASMPLUS) --lst=compiler.lst compiler.a80
+	$(CD) bsdos308s; $(SJASMPLUS) --lst compiler.a80
 
 esxautoload: esxautoload/autoloader.a80
 	$(CD) esxautoload; $(SJASMPLUS) autoloader.a80
 	$(BIN2H) esxautoload/autoloader.bin "esxAutoloader" "SPEC_ESXDOS_AUTOLOADER_H_INCLUDED" > esxautoload/autoloader.h
+
+esxrtc: esxrtc/rtc.sys.a80
+	$(CD) esxrtc; $(SJASMPLUS) --lst rtc.sys.a80
 
 fonts: bin2h fntex
 	$(FNTEX) $(FNT_CLASSIC_SRC)
@@ -63,6 +66,8 @@ clean:
 		$(FNT_BOLD_SRC).bin \
 		esxautoload/autoloader.bin \
 		esxautoload/autoloader.h \
+		esxrtc/rtc.sys.lst \
+		esxrtc/rtc.sys \
 		bsdos308s/compiler.lst \
 		bsdos308s/bsdos308s.rom \
 		bsdos308s/bootstrap.bin \
@@ -71,5 +76,5 @@ clean:
 distclean: clean
 	$(RM) $(BIN2H) $(FNTEX) $(SCRPACK)
 
-.PHONY: bin2h fntex scrpack esxautoload bsdos clean distclean
+.PHONY: bin2h fntex scrpack esxautoload esxrtc bsdos clean distclean
 .SUFFIXES: .c .a80
