@@ -396,6 +396,11 @@ void Debugger_UpdateSidePanel()
 		// 2000-3FFF > DivMMC bank #00-#3F (controlled by port #E3)
 		DrawHexNum(242, 1, (diskIfState & 0x3f), 2, 'A');
 	}
+	else if (specConfig.specDiskIf == SpecDiskIf_DivMMC && (diskIfState & 0x400)) {
+		// 0000-3FFF > DivMMC AllRAM emulation on port #17
+		DrawStr(224, 1, "AR\7");
+		DrawHexNum(242, 1, (diskIfState & 0x1f), 2, 'A');
+	}
 	else if (specConfig.specDiskIf == SpecDiskIf_MB02 && rom >= 0x22)
 		DrawHexNum(242, 1, (diskIfState & 0x1f), 2, 'A');
 
