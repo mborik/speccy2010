@@ -27,7 +27,7 @@
   - **Pentagon** 128k/512k/1024k
   - **Scorpion** 256k
 * Disk interfaces
-  - **Betadisk** (real floppy disk controller emulation, supported TRD, SCL and FDI disk images)
+  - **Betadisk** (simple floppy disk controller emulation, supported TRD, SCL and FDI disk images)
   - **DivMMC** (basically [DivIDE](https://divide.speccy.cz/files/pgm_model.txt) control register and memory model with all 64 x 8kB SRAM pages)
   - **MB-02** (without Z80DMA or real floppy disk controller but specifically modified original BIOS and simplified data transfer with new BS-DOS 308s firmware)
 * 2xAY (Turbosound), Covox/Soundrive
@@ -48,7 +48,7 @@
 * **z00m** & **ikon** - undying support, beta-testing and production of a new batches
 * **RomBor** - support while my first steps in VHDL when DivMMC has been implemented
 * **Busy** - intensive support while MB-02 implementation and customizing BS-DOS
-* **ub880d** - improvements, suggestions and support while ESXDOS autoloader implementation
+* **ub880d** - improvements, suggestions and support while ESXDOS autoloader and RTC implementation
 * **lordcoxis** - ESXDOS support and access to API documentation
 * **Akio** - supply of stylish bold 6x8 font
 * **azesmbog** - snapshot testing and timing suggestions

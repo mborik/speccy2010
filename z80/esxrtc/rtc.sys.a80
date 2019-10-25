@@ -170,6 +170,8 @@ X10:		add	a,a ; * 2
 		add	a,b ; * 10
 		ret
 
+		outend
+
 ; buffer for all RTC registers
 reg:
 .SEC		db	0
