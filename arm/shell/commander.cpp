@@ -2,6 +2,7 @@
 #include "screen.h"
 #include "snapshot.h"
 #include "dialog.h"
+#include "lister.h"
 #include "viewer.h"
 #include "../system.h"
 #include "../system/sdram.h"
@@ -1033,6 +1034,9 @@ void Shell_Commander()
 				strlwr(ext);
 				if (strcmp(ext, ".scr") == 0 || mem.ra.size == 6912 || mem.ra.size == 6144)
 					Shell_ScreenBrowser(mem.fullName);
+
+				else if (strcmp(ext, ".tap") == 0)
+					Shell_TapLister(mem.fullName);
 
 				else if (!Shell_Viewer(mem.fullName)) {
 					show_sel(true);
