@@ -121,6 +121,7 @@ CXX_SRCS = \
 	$(SRCDIR)/shell/snapshot.cpp \
 	$(SRCDIR)/shell/textReader.cpp \
 	$(SRCDIR)/shell/viewer.cpp \
+	$(SRCDIR)/shell/lister.cpp \
 	$(SRCDIR)/shell/commander.cpp \
 	$(SRCDIR)/shell/debugger.asm.cpp \
 	$(SRCDIR)/shell/debugger.dump.cpp \
