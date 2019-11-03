@@ -943,6 +943,27 @@ void Shell_Commander()
 
 			show_sel(true);
 		}
+		else if (((key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z')) && files_size > 0) {
+			hide_sel();
+
+			char au = key & ~0x20, al = au | 0x20;
+			for (int i = files_sel + 1; i != files_sel;) {
+				Read(&mem.ra, table_buffer, i);
+
+				if (*mem.ra.name == au || *mem.ra.name == al) {
+					files_sel = i;
+					break;
+				}
+
+				if ((i & 0x3f) == 0)
+					CycleMark();
+
+				if (++i >= files_size)
+					i = 0;
+			}
+
+			show_sel(true);
+		}
 		else if (key >= '1' && key <= '4') {
 			if (specConfig.specDiskIf != SpecDiskIf_DivMMC && (mem.ra.attr & AM_DIR) == 0) {
 				sniprintf(mem.fullName, PATH_SIZE, "%s%s", get_current_dir(), mem.ra.name);

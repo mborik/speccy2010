@@ -39,6 +39,7 @@ Space - select files
 '+' - select all files
 '-' - unselect all selected files
 '\' - invert selection
+A..Z - quick search of file/dir name
 1..4 - mount selected image into drive
 F1 - show this help
 F2 - select destination directory
