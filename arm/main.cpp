@@ -651,8 +651,8 @@ void DivMMC_Routine()
 
 	if (isActiveNow) {
 		if (diskIfWasActive == 0)
-			diskIfWasActive = 1023;
-		else if (diskIfWasActive < 1024)
+			diskIfWasActive = 16384;
+		if (diskIfWasActive < 16384)
 			diskIfWasActive++;
 	}
 	else {
@@ -702,6 +702,11 @@ void MB02_Routine()
 		else
 			SystemBus_Write(0xc00040, lastCpuConfig);
 	}
+}
+
+bool DiskIF_SPI_Active()
+{
+	return (specConfig.specDiskIf == SpecDiskIf_DivMMC && diskIfWasActive > 0);
 }
 
 void DiskIF_Routine()

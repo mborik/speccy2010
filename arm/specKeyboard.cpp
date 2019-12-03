@@ -235,6 +235,9 @@ void DecodeKey(word keyCode, word keyFlags)
 					case KEY_3: 	i++;
 					case KEY_2: 	i++;
 					case KEY_1: 	i++;
+						if (DiskIF_SPI_Active())
+							break;
+
 						specConfig.specVideoMode = i;
 						Spectrum_UpdateConfig();
 						SaveConfig();
@@ -254,10 +257,16 @@ void DecodeKey(word keyCode, word keyFlags)
 						break;
 
 					case KEY_F6:
+						if (DiskIF_SPI_Active())
+							break;
+
 						LoadSnapshotName();
 						break;
 
 					case KEY_F7:
+						if (DiskIF_SPI_Active())
+							break;
+
 						SaveSnapshotAs();
 						break;
 
@@ -280,6 +289,9 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 					case KEY_F9:
+						if (DiskIF_SPI_Active())
+							break;
+
 						Shell_RomCfgMenu();
 						break;
 
@@ -292,7 +304,7 @@ void DecodeKey(word keyCode, word keyFlags)
 						break;
 				}
 			}
-			else {
+			else if (!DiskIF_SPI_Active()) {
 				switch (keyCode) {
 					case KEY_F10:	i++;
 					case KEY_F9:	i++;
@@ -318,6 +330,9 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_F1:
+					if (DiskIF_SPI_Active())
+						break;
+
 					Shell_HelpViewer(true);
 					break;
 
@@ -331,10 +346,16 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_F7:
+					if (DiskIF_SPI_Active())
+						break;
+
 					SaveSnapshot();
 					break;
 
 				case KEY_F9:
+					if (DiskIF_SPI_Active())
+						break;
+
 					Shell_SettingsMenu();
 					break;
 
@@ -353,6 +374,9 @@ void DecodeKey(word keyCode, word keyFlags)
 					break;
 
 				case KEY_F12:
+					if (DiskIF_SPI_Active())
+						break;
+
 					Shell_Commander();
 					break;
 

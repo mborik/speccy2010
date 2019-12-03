@@ -35,6 +35,7 @@ extern "C" {
 	void DiskIF_StopTimer();
 	void DiskIF_StartTimer();
 	void DiskIF_Routine();
+	bool DiskIF_SPI_Active();
 
 	void WDT_Kick();
 
