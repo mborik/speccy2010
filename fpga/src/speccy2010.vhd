@@ -1012,8 +1012,8 @@ begin
 					-- memory write into #2000-3FFF segment of DivMMC SRAMx
 					elsif divmmcEnabled = '1' and divmmcMB02AllRAM = '0'
 						and cpuA( 15 downto 13 ) = "001"
-						and (divmmcConmem = '1' or divmmcAmap = '1')
-						and not (divmmcMapram = '1' and divmmcSramPage = "000011") then
+						and ( divmmcConmem = '1' or divmmcAmap = '1' )
+						and not ( divmmcConmem = '0' and divmmcMapram = '1' and divmmcSramPage = "000011" ) then
 
 						memAddress <= divmmcMemAddr;
 						memDataIn <= cpuDout & cpuDout;

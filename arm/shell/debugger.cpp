@@ -60,7 +60,7 @@ dword CalculateAddrAtCursor(word addr)
 	if (addr < 0x4000) {
 		page = 0x100;
 
-		if (specConfig.specMachine != SpecRom_Classic48 && (specPort7ffd & 0x10))
+		if (specConfig.specMachine == SpecRom_Classic48 || (specPort7ffd & 0x10))
 			page |= 1;
 
 		if (specConfig.specDiskIf == SpecDiskIf_DivMMC) {
