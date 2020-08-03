@@ -9,7 +9,7 @@ enum SpecCfg_Group { PGRP_GENERAL = 0, PGRP_TRDOS, PGRP_MB02, PGRP_ROMS };
 enum SpecRom_Type { SpecRom_Classic48, SpecRom_Classic128, SpecRom_Pentagon128, SpecRom_Pentagon1024, SpecRom_Scorpion };
 enum SpecDiskIf_Type { SpecDiskIf_Betadisk, SpecDiskIf_DivMMC, SpecDiskIf_MB02 };
 enum SpecTurbo_Type { SpecTurbo_None, SpecTurbo_x2, SpecTurbo_x4, SpecTurbo_None_x8 };
-enum SpecJoy_Type { SpecJoy_Kempston, SpecJoy_Sinclair1, SpecJoy_Sinclair2, SpecJoy_Cursor, SpecJoy_Qaopm };
+enum SpecJoy_Type { SpecJoy_None, SpecJoy_Kempston, SpecJoy_Sinclair1, SpecJoy_Sinclair2, SpecJoy_Cursor, SpecJoy_Qaopm };
 
 struct CDiskImage {
 	char name[PATH_SIZE];

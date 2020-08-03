@@ -185,7 +185,7 @@ int disasm(byte *cmd, unsigned current)
 						l1 = "ld ";
 						break;
 					case _shrt: // short jump
-						sprintf(ln, "%04X", 0xFFFF & (current + cm - st + *(char *) cm + 1));
+						sprintf(ln, "%04X", 0xFFFF & (current + (( *cm > 0x7f) ? 0xff00 : 0) + cm - st + *(char *) cm + 1));
 						cm++;
 						break;
 					case _ib: // immediate byte at cm

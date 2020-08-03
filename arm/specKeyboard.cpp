@@ -689,7 +689,10 @@ bool ReadKey(word &_keyCode, word &_keyFlags)
 				break;
 		}
 
-		if (keyCode != KEY_NONE) {
+		if (keyCode != KEY_NONE && (
+			(specConfig.specJoyMode1 != SpecJoy_None && (tempFlag & fKeyJoy1)) ||
+			(specConfig.specJoyMode2 != SpecJoy_None && (tempFlag & fKeyJoy2)))) {
+
 			_keyCode = keyCode;
 			_keyFlags |= tempFlag;
 		}
