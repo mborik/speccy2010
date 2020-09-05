@@ -46,9 +46,9 @@
 * **Syd** - thank you for bringing this project to life!
 * **poopisan** & **axc** - former improvements into FPGA core
 * **z00m** & **ikon** - undying support, beta-testing and production of a new batches
+* **ub880d** - bugfixes, improvements, suggestions and support while ESXDOS autoloader and RTC implementation
 * **RomBor** - support while my first steps in VHDL when DivMMC has been implemented
 * **Busy** - intensive support while MB-02 implementation and customizing BS-DOS
-* **ub880d** - improvements, suggestions and support while ESXDOS autoloader and RTC implementation
 * **lordcoxis** - ESXDOS support and access to API documentation
 * **Akio** - supply of stylish bold 6x8 font
 * **azesmbog** - snapshot testing and timing suggestions

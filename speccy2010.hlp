@@ -84,3 +84,24 @@ M - set cursor to address (also in dump)
 Ctrl+Shift+H/D/B - watch HL`/DE`/BC`
 Ctrl+H/D/B/X/Y/P
   - watch HL/DE/BC/IX/IY/PC or ports
+Ctrl+G - set cursor to address in dump
+
+Debugger memmap in `pages` panel:
+---------------------------------
+ZXROM - 48k ROM
+ZX128 - 128k ROM
+TRDOS - TR-DOS paged
+GLKRS - TR-DOS: Mr. Gluk Reset Service
+RAM 0 - Scorpion AllRAM mode
+SCR x - 128k normal=5 or shadow=7 screen
+
+~ MB-02 memmap controlled by port #17
+BSROM - MB-02: BS-ROM (SRAM bank #00)
+BSDOS - MB-02: BS-DOS (SRAM bank #01)
+BNKxx - MB-02: SRAM bank #02-#1F
+EPROM - MB-02: EPROM (bootstrapper)
+
+~ DivMMC memmap 0000-1FFF | 2000-3FFF
+EP.xx - (E)EPROM firmware | paged 8k bank
+03.xx - MAPRAM R/O bank 3 | paged 8k bank
+AR.xx - AllRAM mode throught by port #17

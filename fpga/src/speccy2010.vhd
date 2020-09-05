@@ -1423,12 +1423,12 @@ begin
 							ARM_AD <= x"00" & std_logic_vector(cpuTurbo) & std_logic_vector(syncMode) & std_logic_vector(specMode);
 
 						elsif addressReg( 7 downto 0 ) = x"42" then
-							if divmmcMB02AllRAM = '1' then
+							if mb02Enabled = '1' then
+								ARM_AD <= x"00" & mb02MemEprom & mb02MemSram & mb02MemWriteRom & mb02SramPage;
+							elsif divmmcMB02AllRAM = '1' then
 								ARM_AD <= divmmcCardSelect & "0000" & divmmcMB02AllRAM & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & mb02MemWriteRom & mb02SramPage;
 							elsif divmmcEnabled = '1' then
 								ARM_AD <= divmmcCardSelect & "00000" & divmmcAmapRq & divmmcAmap & divmmcConmem & divmmcMapram & divmmcSramPage;
-							elsif mb02Enabled = '1' then
-								ARM_AD <= x"00" & mb02MemEprom & mb02MemSram & mb02MemWriteRom & mb02SramPage;
 							end if;
 
 						elsif addressReg( 7 downto 0 ) = x"50" then
@@ -1441,7 +1441,7 @@ begin
 							ARM_AD <= std_logic_vector( counterMem( 31 downto 16 ) );
 
 						elsif addressReg( 7 downto 0 ) = x"f0" then
-							ARM_AD <= x"f126"; -- for firmware version >= 1.2.6
+							ARM_AD <= x"f128"; -- for firmware version >= 1.2.8
 
 						else
 							ARM_AD <= x"ffff";

@@ -401,7 +401,7 @@ void Debugger_UpdateSidePanel()
 		DrawStr(224, 1, "AR\7");
 		DrawHexNum(242, 1, (diskIfState & 0x1f), 2, 'A');
 	}
-	else if (specConfig.specDiskIf == SpecDiskIf_MB02 && rom >= 0x22)
+	else if (specConfig.specDiskIf == SpecDiskIf_MB02 && rom >= 0x22 && rom < 0x40)
 		DrawHexNum(242, 1, (diskIfState & 0x1f), 2, 'A');
 
 	if (activeWindow == WIN_TRACE) {

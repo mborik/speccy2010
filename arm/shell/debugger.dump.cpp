@@ -180,6 +180,14 @@ bool Debugger_TestKeyDump(byte key, bool *updateAll)
 				WriteByteAtCursor(pos++, key);
 				*updateAll = true;
 			}
+			else if (key == 'm' || key == 'M') {
+				if ((reg = Debugger_GetMemAddress(dumpTop)) < 0) {
+					return (*updateAll = true);
+				}
+				else {
+					top = pos = (unsigned) reg;
+				}
+			}
 			else {
 				if (key >= '0' && key <= '9')
 					key -= '0';
@@ -209,10 +217,13 @@ bool Debugger_TestKeyDump(byte key, bool *updateAll)
 					return (*updateAll = lowNibble = true);
 			}
 		}
-		else if (((ModComb(MOD_ALT_0 | MOD_CTRL_1 | MOD_SHIFT_0) && key == 'g') ||
-			(noMod && key == 'm')) && (reg = Debugger_GetMemAddress(dumpTop)) >= 0) {
-
-			top = pos = (unsigned) reg;
+		else if (ModComb(MOD_ALT_0 | MOD_CTRL_1 | MOD_SHIFT_0) && key == 'g') {
+			if ((reg = Debugger_GetMemAddress(dumpTop)) < 0) {
+				return (*updateAll = true);
+			}
+			else {
+				top = pos = (unsigned) reg;
+			}
 		}
 		else if (noMod) {
 			if (key == K_UP)
