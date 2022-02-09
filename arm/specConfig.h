@@ -19,6 +19,7 @@ struct CDiskImage {
 struct CSpecConfig {
 	char fpgaConfigName[SHORT_PATH];
 
+	bool modified;
 	int specMachine;
 	int specSync;
 	int specDiskIf;

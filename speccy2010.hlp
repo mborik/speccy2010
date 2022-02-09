@@ -59,6 +59,7 @@ Settings/ROM/Disk Menu keys:
 Arrows - move cursor
 Enter - modify value
 Backspace - eject disk / remove ROM file
+Ctrl+S - save changes
 Alt+F5 - cold reset machine
 
 Debugger keys:

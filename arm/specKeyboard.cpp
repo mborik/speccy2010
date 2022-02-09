@@ -240,7 +240,6 @@ void DecodeKey(word keyCode, word keyFlags)
 
 						specConfig.specVideoMode = i;
 						Spectrum_UpdateConfig();
-						SaveConfig();
 						ResetKeyboard();
 						break;
 

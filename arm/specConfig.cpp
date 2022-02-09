@@ -89,6 +89,7 @@ void RestoreConfig()
 {
 	strcpy(specConfig.fpgaConfigName, "speccy2010.rbf");
 
+	specConfig.modified = false;
 	specConfig.specMachine = SpecRom_Pentagon128;
 	specConfig.specSync = SpecRom_Classic128;
 	specConfig.specDiskIf = SpecDiskIf_Betadisk;

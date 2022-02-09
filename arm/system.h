@@ -8,7 +8,7 @@
 
 #include "types.h"
 
-#define VERSION "1.2.8"
+#define VERSION "1.2.9"
 
 
 #ifdef __cplusplus

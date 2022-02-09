@@ -986,7 +986,7 @@ void Shell_Commander()
 							beta_set_disk_wp(i, specConfig.specBdiImages[i].writeProtect);
 
 							strcpy(specConfig.specBdiImages[i].name, mem.fullName);
-							SaveConfig();
+							specConfig.modified = true;
 
 							mountPoint = &"A:\0B:\0C:\0D:"[i * 3]; // TR-DOS drive letter
 							imgValid = true;
@@ -1004,7 +1004,7 @@ void Shell_Commander()
 							mb02_set_disk_wp(i, (specConfig.specMB2Images[i].writeProtect != 0));
 
 							strcpy(specConfig.specMB2Images[i].name, mem.fullName);
-							SaveConfig();
+							specConfig.modified = true;
 
 							mountPoint = &"@1\0@2\0@3\0@4"[i * 3]; // BS-DOS drive number
 							imgValid = true;
@@ -1182,6 +1182,7 @@ void Shell_Commander()
 				}
 				else if (strcmp(ext, ".sna") == 0) {
 					sniprintf(specConfig.snaName, sizeof(specConfig.snaName), "/%s", mem.fullName);
+					specConfig.modified = true;
 
 					if (LoadSnapshot(mem.fullName, mem.ra.name))
 						break;
@@ -1192,7 +1193,7 @@ void Shell_Commander()
 							beta_set_disk_wp(0, specConfig.specBdiImages[0].writeProtect);
 
 							strcpy(specConfig.specBdiImages[0].name, mem.fullName);
-							SaveConfig();
+							specConfig.modified = true;
 
 							CPU_Start();
 							CPU_Reset(true);
@@ -1226,7 +1227,7 @@ void Shell_Commander()
 						mb02_set_disk_wp(0, (specConfig.specMB2Images[0].writeProtect != 0));
 
 						strcpy(specConfig.specMB2Images[0].name, mem.fullName);
-						SaveConfig();
+						specConfig.modified = true;
 						break;
 					}
 					else

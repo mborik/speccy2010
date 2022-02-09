@@ -6,6 +6,7 @@
 #include "../specKeyboard.h"
 #include "../specRtc.h"
 
+bool firstTimeSaveConfigWarning = true;
 //---------------------------------------------------------------------------------------
 CMenuItem mainMenu[] = {
 	CMenuItem(  8,  2, "Date:", "0000"),
@@ -120,6 +121,29 @@ void InitScreen(const char *title)
 	DrawLine(20, 5);
 }
 //---------------------------------------------------------------------------------------
+void SaveConfigDialog()
+{
+	ScreenPush();
+	Shell_ProgressBar("speccy2010.ini", "Saving config...", 0126);
+
+	SaveConfig();
+	specConfig.modified = false;
+
+	Shell_UpdateProgress(1.0f, 0126);
+	DelayMs(500);
+
+	int timeout = 500;
+	while (timeout > 0) {
+		if (ReadKeySimple(true))
+			break;
+
+		DelayMs(10);
+		timeout -= 10;
+	}
+
+	ScreenPop();
+}
+//---------------------------------------------------------------------------------------
 void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 {
 	static tm time;
@@ -201,6 +225,7 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 								value = param->GetValueMax();
 							param->SetValue(value);
 
+							specConfig.modified = true;
 							menu[menuPos].UpdateData();
 						}
 					}
@@ -271,6 +296,8 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 						for (int i = 0; i < menuSize; i++)
 							menu[i].UpdateData();
 					}
+
+					specConfig.modified = true;
 				}
 			}
 		}
@@ -284,6 +311,9 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 					menu[menuPos].UpdateState(1);
 				}
 			}
+		}
+		else if (key == 's' && ModComb(MOD_ALT_0 | MOD_CTRL_1 | MOD_SHIFT_0)) {
+			SaveConfigDialog();
 		}
 		else if (menu == mainMenu && key == K_F5 && ModComb(MOD_ALT_1 | MOD_CTRL_0 | MOD_SHIFT_0)) {
 			hardReset = true;
@@ -321,7 +351,14 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 			hardReset = true;
 	}
 
-	SaveConfig();
+	if (firstTimeSaveConfigWarning && specConfig.modified) {
+		if (Shell_MessageBox("speccy2010.ini", "Config changed. Save?", "(use Ctrl+S in menu)", "", MB_YESNO, 0050, 0115)) {
+			SaveConfigDialog();
+		}
+
+		firstTimeSaveConfigWarning = false;
+		specConfig.modified = false;
+	}
 
 	SystemBus_Write(0xc00021, 0); // Enable Video
 	SystemBus_Write(0xc00022, 0);
