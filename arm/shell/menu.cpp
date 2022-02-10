@@ -119,17 +119,22 @@ void InitScreen(const char *title)
 	DrawAttr8(0, 20, 0002, 32);
 	DrawLine(20, 3);
 	DrawLine(20, 5);
+
+	DrawStrAttr(8, 21, "Ctrl+S - save changes to `speccy2010.ini'", 0102, 41);
 }
 //---------------------------------------------------------------------------------------
 void SaveConfigDialog()
 {
+	if (!specConfig.modified)
+		return;
+
 	ScreenPush();
-	Shell_ProgressBar("speccy2010.ini", "Saving config...", 0126);
+	Shell_ProgressBar("speccy2010.ini", "Saving config...", 0150);
 
 	SaveConfig();
 	specConfig.modified = false;
 
-	Shell_UpdateProgress(1.0f, 0126);
+	Shell_UpdateProgress(1.0f, 0150);
 	DelayMs(500);
 
 	int timeout = 500;
@@ -352,12 +357,11 @@ void Shell_Menu(const char *title, CMenuItem *menu, int menuSize)
 	}
 
 	if (firstTimeSaveConfigWarning && specConfig.modified) {
-		if (Shell_MessageBox("speccy2010.ini", "Config changed. Save?", "(use Ctrl+S in menu)", "", MB_YESNO, 0050, 0115)) {
+		if (Shell_MessageBox("speccy2010.ini", "Config changed. Save?", "", "", MB_YESNO, 0050, 0115)) {
 			SaveConfigDialog();
 		}
 
 		firstTimeSaveConfigWarning = false;
-		specConfig.modified = false;
 	}
 
 	SystemBus_Write(0xc00021, 0); // Enable Video
